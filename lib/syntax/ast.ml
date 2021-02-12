@@ -17,8 +17,8 @@ type expr =
   (* (var, type of var, return type) *)
   | Pi of name * expr * expr
   | Var of name
-  (* (var, type of var, body expression) *)
-  | Fun of name * expr * expr
+  (* (var, type of var, return type, body expression) *)
+  | Fun of name * expr * expr * expr
   | App of expr * expr
 [@@deriving show]
 
