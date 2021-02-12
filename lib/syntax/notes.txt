@@ -1,0 +1,10 @@
+https://github.com/andrejbauer/spartan-type-theory
+
+https://ilyasergey.net/YSC3208/_static/lectures/PLDI-Week-07-more-parsing.pdf
+https://ilyasergey.net/YSC3208/_static/lectures/PLDI-Week-08-lambda.pdf
+
+https://log.h11.io/2020/0528/
+
+https://dev.realworldocaml.org/parsing-with-ocamllex-and-menhir.html
+
+https://www.cs.cornell.edu/courses/cs3110/2015fa/l/12-interp/rec.html

@@ -1,0 +1,3 @@
+(library
+ (name cs4215_dependent_types)
+ (libraries (re_export syntax)))
