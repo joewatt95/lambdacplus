@@ -51,7 +51,7 @@ expr:
   | fun_expr_=fun_expr                          { fun_expr_ }
   | pi_expr_=pi_expr                            { pi_expr_ }
   | LPAREN expr_=expr RPAREN                    { expr_ }
-  (* This lAst rule is causing shift/reduce conflicts. *)
+  (* This last rule is causing shift/reduce conflicts in menhir. *)
   | fn=expr arg=expr                 %prec APP  { Ast.App (fn, arg) }
 
 var_name:
@@ -62,9 +62,11 @@ fun_expr:
     { Ast.Fun (var_name_, input_type, ret_type, body) }
 
 pi_expr:
-  | PI LPAREN var_name_=var_name COLON type_=expr RPAREN COMMA body=expr
-     { Ast.Pi (var_name_, type_, body) }
-   (* | Pi type_ascriptions_=nonempty_list(type_ascriptions) body=expr
-    *   { List.fold_right (fun (var_name', type') acc -> Pi (var_name', type', acc))
-    *                     type_ascriptions body
-    *   } *)
+  | PI arg_list_=arg_list COMMA body=expr
+     { List.fold_right (fun (var_name_, type_) b -> Ast.Pi (var_name_, type_, b)) arg_list_ body }
+
+arg_list:
+  | LPAREN var_name_=var_name COLON type_=expr RPAREN arg_list_=arg_list
+    { (var_name_, type_) :: arg_list_ }
+  | LPAREN var_name_=var_name COLON type_=expr RPAREN
+    { [(var_name_, type_)] }
