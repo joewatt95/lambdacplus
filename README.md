@@ -31,11 +31,10 @@ To build the package, use
 
 To run the compiled executable:
 ```console
-esy ./_esy/default/build/default/bin/main.bc
+% esy ./_esy/default/build/default/bin/main.bc
 ```
 
 To run the compiled js:
-To run the compiled executable:
 ```console
-esy ./_esy/default/build/default/bin/main.bc.js
+% esy ./_esy/default/build/default/bin/main.bc.js
 ```
