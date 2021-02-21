@@ -1,0 +1,22 @@
+{
+    "name": "cs4215_dependent_types",
+    "version": "0.1.0",
+    "description": "CS4215 project on dependent types",
+    "esy": {
+        "build": [
+            "dune build ./bin/main.bc",
+            "dune build ./bin/main.bc.js"
+        ]
+    },
+    "dependencies": {
+        "@opam/dune": "~2.8.1",
+        "@opam/sedlex": ">= 2.3",
+        "@opam/menhir": ">= 20201216",
+        "@opam/ppx_deriving": "~5.2.1",
+        "ocaml": "~4.11.1"
+    },
+    "devDependencies": {
+        "@opam/js_of_ocaml": "~3.9.0",
+        "ocaml": "~4.11.1"
+    }
+}
