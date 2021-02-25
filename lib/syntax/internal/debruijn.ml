@@ -40,14 +40,14 @@ let empty_ctx = BatVect.empty
 let extend_ctx = CCFun.flip BatVect.prepend
 
 (* Find the index corresponding to the variable name in the naming context *)
-let find_index ctx var_name =
+let var_name_to_index ctx var_name =
   let open CCEither in
   try
-    Right (BatVect.findi (Stdlib.(==) var_name) ctx)
+    Right (BatVect.findi (Stdlib.(=) var_name) ctx)
   with Not_found -> Left UnknownIndex
 
 (* Find thee variable name corresponding to the index in the naming context *)
-let find_var ctx index =
+let index_to_var_name ctx index =
   let open CCEither in
   try
     Right (BatVect.get ctx index)
@@ -55,6 +55,9 @@ let find_var ctx index =
 
 (* Get the length of the naming context *)
 let ctx_length = BatVect.length
+
+(* For debugging *)
+let print_ctx ctx = print_endline (CCList.to_string CCFun.id (BatVect.to_list ctx));
 (******************************************************************************)
 
 (******************************************************************************)
@@ -72,7 +75,7 @@ let rec expr_to_internal_ast ctx expr =
   match expr with
   | Var var_name ->
     begin
-      match find_index ctx var_name with
+      match var_name_to_index ctx var_name with
       | Right index -> Ast.Var index
       (* If we can't find the index of the variable, then it wasn't declared
       previously, ie the variable is unknown. Hence we just throw an error. *)
@@ -82,12 +85,12 @@ let rec expr_to_internal_ast ctx expr =
   we then use to convert the body. *)
   | Fun (input_var, body, type_of_fun) ->
     let new_ctx = extend_ctx ctx input_var in
-    Ast.Fun (ctx_length ctx,
+    Ast.Fun (input_var,
              expr_to_internal_ast new_ctx body,
              expr_to_internal_ast ctx type_of_fun)
   | Pi (input_var, input_type, ret_type) ->
     let new_ctx = extend_ctx ctx input_var in
-    Ast.Pi (ctx_length ctx,
+    Ast.Pi (input_var,
             expr_to_internal_ast ctx input_type,
             expr_to_internal_ast new_ctx ret_type)
   | App (expr1, expr2) ->
@@ -106,7 +109,7 @@ let stmt_to_internal_ast ctx stmt =
   | Def (var_name, expr) ->
     begin
       (* Currently, we don't handle variable shadowing. *)
-      match find_index ctx var_name with
+      match var_name_to_index ctx var_name with
       | Right _ -> raise VariablePreviouslyDefd
       | Left _ ->
         Ast.Def (var_name, expr_to_internal_ast ctx expr), extend_ctx ctx var_name
