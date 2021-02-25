@@ -10,9 +10,11 @@
     },
     "dependencies": {
         "@opam/dune": "~2.8.1",
-        "@opam/sedlex": ">= 2.3",
+        "@opam/sedlex": ">= 2.3 < 3.0",
         "@opam/menhir": ">= 20201216",
         "@opam/ppx_deriving": "~5.2.1",
+        "@opam/containers": ">= 3.2 < 4.0",
+        "@opam/batteries": "~3.2.0",
         "ocaml": "~4.11.1"
     },
     "devDependencies": {
