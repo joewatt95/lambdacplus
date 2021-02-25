@@ -1,3 +1,6 @@
 (library
  (name cs4215_dependent_types)
- (libraries (re_export syntax)))
+ (libraries
+  (re_export parsing)
+  (re_export internal)
+))

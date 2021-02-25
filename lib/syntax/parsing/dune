@@ -2,6 +2,7 @@
  (modules parser))
 
 (library
- (name syntax)
+ (name parsing)
  (preprocess (pps sedlex.ppx ppx_deriving.show ppx_deriving.ord))
- (libraries sedlex menhirLib ppx_deriving))
+ (libraries sedlex menhirLib ppx_deriving)
+)

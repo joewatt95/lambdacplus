@@ -11,8 +11,8 @@ https://github.com/amblafont/sedlex-menhir/blob/master/sedlex-menhir/calc.ml
 let () =
   print_endline "Enter input for parsing:";
   let lexbuf = Sedlexing.Utf8.from_channel stdin in
-  let lexer  = Sedlexing.with_tokenizer Syntax.Lexer.tokenize lexbuf in
-  let parser = MenhirLib.Convert.Simplified.traditional2revised Syntax.Parser.main in
+  let lexer  = Sedlexing.with_tokenizer Parsing.Lexer.tokenize lexbuf in
+  let parser = MenhirLib.Convert.Simplified.traditional2revised Parsing.Parser.main in
   let result = parser lexer in
-  print_endline (Syntax.Ast.show_list_of_stmts result);
+  print_endline (Parsing.Ast.show_list_of_stmts result);
   flush stdout

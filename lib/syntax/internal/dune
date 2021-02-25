@@ -1,0 +1,4 @@
+(library
+ (name internal)
+ (libraries containers batteries
+            parsing))

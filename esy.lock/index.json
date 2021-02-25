@@ -1,5 +1,5 @@
 {
-  "checksum": "769589a554d06c5d102f2682698c782f",
+  "checksum": "d3d129af980eaa4a7d8aac821ba801f3",
   "root": "cs4215_dependent_types@link-dev:./package.json",
   "node": {
     "ocaml@4.11.1000@d41d8cd9": {
@@ -46,7 +46,9 @@
         "ocaml@4.11.1000@d41d8cd9", "@opam/sedlex@opam:2.3@20d8fda6",
         "@opam/ppx_deriving@opam:5.2.1@479736f0",
         "@opam/menhir@opam:20201216@1a09d886",
-        "@opam/dune@opam:2.8.2@3d714e5f"
+        "@opam/dune@opam:2.8.2@3d714e5f",
+        "@opam/containers@opam:3.2@c4e3f662",
+        "@opam/batteries@opam:3.2.0@e2218fd1"
       ],
       "devDependencies": [
         "ocaml@4.11.1000@d41d8cd9", "@opam/js_of_ocaml@opam:3.9.0@db27df96"
@@ -152,6 +154,25 @@
       "devDependencies": [
         "ocaml@4.11.1000@d41d8cd9", "@opam/dune@opam:2.8.2@3d714e5f"
       ]
+    },
+    "@opam/seq@opam:base@d8d7de1d": {
+      "id": "@opam/seq@opam:base@d8d7de1d",
+      "name": "@opam/seq",
+      "version": "opam:base",
+      "source": {
+        "type": "install",
+        "source": [ "no-source:" ],
+        "opam": {
+          "name": "seq",
+          "version": "base",
+          "path": "esy.lock/opam/seq.base"
+        }
+      },
+      "overrides": [],
+      "dependencies": [
+        "ocaml@4.11.1000@d41d8cd9", "@esy-ocaml/substs@0.0.1@d41d8cd9"
+      ],
+      "devDependencies": [ "ocaml@4.11.1000@d41d8cd9" ]
     },
     "@opam/sedlex@opam:2.3@20d8fda6": {
       "id": "@opam/sedlex@opam:2.3@20d8fda6",
@@ -403,6 +424,34 @@
       "devDependencies": [
         "ocaml@4.11.1000@d41d8cd9", "@opam/dune@opam:2.8.2@3d714e5f"
       ]
+    },
+    "@opam/num@opam:1.4@a5195c8d": {
+      "id": "@opam/num@opam:1.4@a5195c8d",
+      "name": "@opam/num",
+      "version": "opam:1.4",
+      "source": {
+        "type": "install",
+        "source": [
+          "archive:https://opam.ocaml.org/cache/md5/cd/cda2b727e116a0b6a9c03902cc4b2415#md5:cda2b727e116a0b6a9c03902cc4b2415",
+          "archive:https://github.com/ocaml/num/archive/v1.4.tar.gz#md5:cda2b727e116a0b6a9c03902cc4b2415"
+        ],
+        "opam": {
+          "name": "num",
+          "version": "1.4",
+          "path": "esy.lock/opam/num.1.4"
+        }
+      },
+      "overrides": [
+        {
+          "opamoverride":
+            "esy.lock/overrides/opam__s__num_opam__c__1.4_opam_override"
+        }
+      ],
+      "dependencies": [
+        "ocaml@4.11.1000@d41d8cd9", "@opam/ocamlfind@opam:1.8.1@b7dc3072",
+        "@esy-ocaml/substs@0.0.1@d41d8cd9"
+      ],
+      "devDependencies": [ "ocaml@4.11.1000@d41d8cd9" ]
     },
     "@opam/menhirSdk@opam:20201216@5e08e674": {
       "id": "@opam/menhirSdk@opam:20201216@5e08e674",
@@ -709,6 +758,37 @@
         "@opam/base-unix@opam:base@87d0b2eb"
       ]
     },
+    "@opam/containers@opam:3.2@c4e3f662": {
+      "id": "@opam/containers@opam:3.2@c4e3f662",
+      "name": "@opam/containers",
+      "version": "opam:3.2",
+      "source": {
+        "type": "install",
+        "source": [
+          "archive:https://opam.ocaml.org/cache/md5/14/14787fb6878a94dd728a0ef7e368ab89#md5:14787fb6878a94dd728a0ef7e368ab89",
+          "archive:https://github.com/c-cube/ocaml-containers/archive/v3.2.tar.gz#md5:14787fb6878a94dd728a0ef7e368ab89"
+        ],
+        "opam": {
+          "name": "containers",
+          "version": "3.2",
+          "path": "esy.lock/opam/containers.3.2"
+        }
+      },
+      "overrides": [],
+      "dependencies": [
+        "ocaml@4.11.1000@d41d8cd9", "@opam/seq@opam:base@d8d7de1d",
+        "@opam/dune-configurator@opam:2.8.2@c90ff40b",
+        "@opam/dune@opam:2.8.2@3d714e5f",
+        "@opam/base-unix@opam:base@87d0b2eb",
+        "@opam/base-threads@opam:base@36803084",
+        "@esy-ocaml/substs@0.0.1@d41d8cd9"
+      ],
+      "devDependencies": [
+        "ocaml@4.11.1000@d41d8cd9", "@opam/seq@opam:base@d8d7de1d",
+        "@opam/dune-configurator@opam:2.8.2@c90ff40b",
+        "@opam/dune@opam:2.8.2@3d714e5f"
+      ]
+    },
     "@opam/conf-m4@opam:1@196bf219": {
       "id": "@opam/conf-m4@opam:1@196bf219",
       "name": "@opam/conf-m4",
@@ -780,6 +860,32 @@
       "devDependencies": [
         "ocaml@4.11.1000@d41d8cd9", "@opam/easy-format@opam:1.3.2@0484b3c4",
         "@opam/dune@opam:2.8.2@3d714e5f"
+      ]
+    },
+    "@opam/batteries@opam:3.2.0@e2218fd1": {
+      "id": "@opam/batteries@opam:3.2.0@e2218fd1",
+      "name": "@opam/batteries",
+      "version": "opam:3.2.0",
+      "source": {
+        "type": "install",
+        "source": [
+          "archive:https://opam.ocaml.org/cache/md5/06/066051f9a210277710c54ad57c3b9568#md5:066051f9a210277710c54ad57c3b9568",
+          "archive:https://github.com/ocaml-batteries-team/batteries-included/archive/v3.2.0.tar.gz#md5:066051f9a210277710c54ad57c3b9568"
+        ],
+        "opam": {
+          "name": "batteries",
+          "version": "3.2.0",
+          "path": "esy.lock/opam/batteries.3.2.0"
+        }
+      },
+      "overrides": [],
+      "dependencies": [
+        "ocaml@4.11.1000@d41d8cd9", "@opam/ocamlfind@opam:1.8.1@b7dc3072",
+        "@opam/ocamlbuild@opam:0.14.0@6ac75d03",
+        "@opam/num@opam:1.4@a5195c8d", "@esy-ocaml/substs@0.0.1@d41d8cd9"
+      ],
+      "devDependencies": [
+        "ocaml@4.11.1000@d41d8cd9", "@opam/num@opam:1.4@a5195c8d"
       ]
     },
     "@opam/base-unix@opam:base@87d0b2eb": {

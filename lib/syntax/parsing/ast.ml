@@ -5,8 +5,8 @@ Here we use the ppx_deriving library to automatically generate show functions th
 can convert each ADT into a string.
 *)
 
-type name = string
-[@@deriving show]
+(* type name = string
+ * [@@deriving show] *)
 
 (*
 Note here that we don't distinguish between types and expressions anymore since
@@ -15,16 +15,16 @@ types have been promoted to expressions.
 type expr =
   | Type (* The paradoxical type universe, ie the type of all types. *)
   (* (var, type of var, return type) *)
-  | Pi of name * expr * expr
-  | Var of name
-  (* (var, type of var, return type, body expression) *)
-  | Fun of name * expr * expr * expr
+  | Pi of string * expr * expr
+  | Var of string
+  (* (var, body expression, type of function abstraction) *)
+  | Fun of string * expr * expr
   | App of expr * expr
 [@@deriving show]
 
 type stmt =
-  | Def of name * expr
-  | Axiom of name * expr
+  | Def of string * expr
+  | Axiom of string * expr
   | Check of expr
   | Eval of expr
 [@@deriving show]

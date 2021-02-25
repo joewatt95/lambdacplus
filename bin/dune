@@ -1,4 +1,4 @@
 (executable
  (name main)
- (libraries syntax)
+ (libraries parsing internal)
  (modes js))

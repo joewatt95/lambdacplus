@@ -59,7 +59,7 @@ var_name:
 
 fun_expr:
   | FUN LPAREN var_name_=var_name COLON input_type=expr RPAREN COLON ret_type=expr DOUBLE_ARROW body=expr
-    { Ast.Fun (var_name_, input_type, ret_type, body) }
+    { Ast.Fun (var_name_, body, Ast.Pi (var_name_, input_type, ret_type)) }
 
 pi_expr:
   | PI arg_list_=arg_list COMMA body=expr
