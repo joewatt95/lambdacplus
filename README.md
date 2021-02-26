@@ -15,28 +15,28 @@ dependencies via `package.json`.
 
 To install all the required dependencies and build the project with a single
 command, you may run
-```console
-% esy
+```shell
+$ esy
 ```
 
 If you just want to install the dependencies without building, use
-```console
-% esy install
+```shell
+$ esy install
 ```
 
 To build the package, use
-```console
-% esy build
+```shell
+$ esy build
 ```
 
 To run the compiled executable:
-```console
-% esy ./_esy/default/build/default/bin/main.bc
+```shell
+$ esy ./_esy/default/build/default/bin/main.bc
 ```
 
 To run the compiled js:
-```console
-% esy ./_esy/default/build/default/bin/main.bc.js
+```shell
+$ esy ./_esy/default/build/default/bin/main.bc.js
 ```
 
 ## Overview of this branch
@@ -73,6 +73,38 @@ new context resulting from processing a new variable.
 
 The implementation for these functions is heavily inspired by Spartan tt and
 the `Types and Programming Languages` book.
+
+### Testing
+To test these functions, `main.ml` has been updated with boilerplate for testing
+and a handy `run_main.sh` script has been provided to run the built binary.
+
+A sample run is as follows:
+```shell
+$ ./run_main.sh
+Enter input for parsing:
+axiom T : Type
+def f := fun (x : T) : T => x
+
+Parser AST:
+[(Ast.Axiom ("T", Ast.Type));
+  (Ast.Def ("f",
+     (Ast.Fun ("x", (Ast.Var "x"),
+        (Ast.Pi ("x", (Ast.Var "T"), (Ast.Var "T")))))
+     ))
+  ]
+
+De Bruijn AST:
+[(Ast.Axiom ("T", Ast.Type));
+  (Ast.Def ("f",
+     (Ast.Fun ("x", (Ast.Var 0), (Ast.Pi ("x", (Ast.Var 1), (Ast.Var 2)))))))
+  ]
+
+Final naming context:
+[f, T]
+
+Parsing last expr back to parser's AST:
+(Ast.Fun ("x", (Ast.Var "x"), (Ast.Pi ("x", (Ast.Var "T"), (Ast.Var "T")))))
+```
 
 ## Future directions
 We have 2 ways we can proceed from here.
