@@ -92,17 +92,17 @@ let rec parser_to_internal_expr expr ctx =
   we then use to convert the body. *)
   | Fun {input_var; body; fn_type} ->
     let new_ctx = extend_ctx input_var ctx in
-    let body = parser_to_internal_expr body new_ctx
-    and fn_type = parser_to_internal_expr fn_type ctx in
+    let body = parser_to_internal_expr body new_ctx in
+    let fn_type = parser_to_internal_expr fn_type ctx in
     Ast.Fun {input_var; body; fn_type}
   | Pi {input_var; input_type; output_type} ->
     let new_ctx = extend_ctx input_var ctx in
-    let input_type = parser_to_internal_expr input_type ctx
-    and output_type = parser_to_internal_expr output_type new_ctx in
+    let input_type = parser_to_internal_expr input_type ctx in
+    let output_type = parser_to_internal_expr output_type new_ctx in
     Ast.Pi {input_var; input_type; output_type}
   | App {fn; arg} ->
-    let fn = parser_to_internal_expr fn ctx
-    and arg = parser_to_internal_expr arg ctx in
+    let fn = parser_to_internal_expr fn ctx in
+    let arg = parser_to_internal_expr arg ctx in
     Ast.App {fn; arg}
   | Type -> Type
 
@@ -169,17 +169,17 @@ let rec internal_to_parser_expr expr ctx =
       ~left:raise
   | Ast.Fun {input_var; body; fn_type} ->
     let input_var, new_ctx = pick_fresh_name input_var ctx in
-    let body = internal_to_parser_expr body new_ctx
-    and fn_type = internal_to_parser_expr fn_type ctx in
+    let body = internal_to_parser_expr body new_ctx in
+    let fn_type = internal_to_parser_expr fn_type ctx in
     Fun {input_var; body; fn_type}
   | Ast.Pi {input_var; input_type; output_type} ->
     let input_var, new_ctx = pick_fresh_name input_var ctx in
-    let input_type = internal_to_parser_expr input_type ctx
-    and output_type = internal_to_parser_expr output_type new_ctx in
+    let input_type = internal_to_parser_expr input_type ctx in
+    let output_type = internal_to_parser_expr output_type new_ctx in
     Pi {input_var; input_type; output_type}
   | Ast.App {fn; arg} ->
-    let fn = internal_to_parser_expr fn ctx
-    and arg = internal_to_parser_expr arg ctx in
+    let fn = internal_to_parser_expr fn ctx in
+    let arg = internal_to_parser_expr arg ctx in
     App {fn; arg}
   | Type -> Type
 
