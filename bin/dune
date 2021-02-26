@@ -1,4 +1,5 @@
 (executable
  (name main)
- (libraries parsing internal)
+ (libraries containers
+            parsing internal)
  (modes js))

@@ -22,6 +22,9 @@ type expr =
   | App of expr * expr
 [@@deriving show]
 
+type list_of_exprs = expr list
+[@@deriving show]
+
 type stmt =
   | Def of string * expr
   | Axiom of string * expr
