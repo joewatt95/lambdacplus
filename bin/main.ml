@@ -13,10 +13,10 @@ open Internal.Debruijn
 
 let internal_stmt_to_parser_expr ctx stmt =
   match stmt with
-  | Def (_, expr)
-  | Axiom (_, expr)
+  | Def {var_expr; _} -> internal_to_parser_expr var_expr ctx
+  | Axiom {var_type; _} -> internal_to_parser_expr var_type ctx
   | Check expr
-  | Eval expr -> internal_to_parser_expr ctx expr
+  | Eval expr -> internal_to_parser_expr expr ctx
 
 let () =
   print_endline "Enter input for parsing:";

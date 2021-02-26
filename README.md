@@ -86,24 +86,33 @@ axiom T : Type
 def f := fun (x : T) : T => x
 
 Parser AST:
-[(Ast.Axiom ("T", Ast.Type));
-  (Ast.Def ("f",
-     (Ast.Fun ("x", (Ast.Var "x"),
-        (Ast.Pi ("x", (Ast.Var "T"), (Ast.Var "T")))))
-     ))
+[Ast.Axiom {var_name = "T"; var_type = Ast.Type};
+  Ast.Def {var_name = "f";
+    var_expr =
+    Ast.Fun {input_var = "x"; body = (Ast.Var "x");
+      fn_type =
+      Ast.Pi {input_var = "x"; input_type = (Ast.Var "T");
+        output_type = (Ast.Var "T")}}}
   ]
 
 De Bruijn AST:
-[(Ast.Axiom ("T", Ast.Type));
-  (Ast.Def ("f",
-     (Ast.Fun ("x", (Ast.Var 0), (Ast.Pi ("x", (Ast.Var 1), (Ast.Var 2)))))))
+[Ast.Axiom {var_name = "T"; var_type = Ast.Type};
+  Ast.Def {var_name = "f";
+    var_expr =
+    Ast.Fun {input_var = "x"; body = (Ast.Var 0);
+      fn_type =
+      Ast.Pi {input_var = "x"; input_type = (Ast.Var 1);
+        output_type = (Ast.Var 2)}}}
   ]
 
 Final naming context:
-[f, T]
+[f; T]
 
 Parsing last expr back to parser's AST:
-(Ast.Fun ("x", (Ast.Var "x"), (Ast.Pi ("x", (Ast.Var "T"), (Ast.Var "T")))))
+Ast.Fun {input_var = "x"; body = (Ast.Var "x");
+  fn_type =
+  Ast.Pi {input_var = "x"; input_type = (Ast.Var "T");
+    output_type = (Ast.Var "T")}}
 ```
 
 ## Future directions

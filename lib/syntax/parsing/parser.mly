@@ -40,8 +40,8 @@ main:
 | stmt_=stmt stmts=main { stmt_ :: stmts }
 
 stmt:
-  | DEF var_name_=var_name COLON_EQ expr_=expr  { Ast.Def (var_name_, expr_) }
-  | AXIOM var_name_=var_name COLON expr_=expr   { Ast.Axiom (var_name_, expr_) }
+  | DEF var_name_=var_name COLON_EQ expr_=expr  { Ast.Def {var_name=var_name_; var_expr=expr_} }
+  | AXIOM var_name_=var_name COLON expr_=expr   { Ast.Axiom {var_name=var_name_; var_type=expr_} }
   | CHECK expr_=expr                            { Ast.Check expr_ }
   | EVAL expr_=expr                             { Ast.Eval expr_ }
 
@@ -52,18 +52,18 @@ expr:
   | pi_expr_=pi_expr                            { pi_expr_ }
   | LPAREN expr_=expr RPAREN                    { expr_ }
   (* This last rule is causing shift/reduce conflicts in menhir. *)
-  | fn=expr arg=expr                 %prec APP  { Ast.App (fn, arg) }
+  | fn=expr arg=expr                 %prec APP  { Ast.App {fn=fn; arg=arg} }
 
 var_name:
   | VAR_NAME                                    { $1 }
 
 fun_expr:
-  | FUN LPAREN var_name_=var_name COLON input_type=expr RPAREN COLON ret_type=expr DOUBLE_ARROW body=expr
-    { Ast.Fun (var_name_, body, Ast.Pi (var_name_, input_type, ret_type)) }
+  | FUN LPAREN var_name_=var_name COLON input_type=expr RPAREN COLON output_type=expr DOUBLE_ARROW body=expr
+    { Ast.Fun {input_var=var_name_; body=body; fn_type=Ast.Pi {input_var=var_name_; input_type=input_type; output_type=output_type}}}
 
 pi_expr:
   | PI arg_list_=arg_list COMMA body=expr
-     { List.fold_right (fun (var_name_, type_) b -> Ast.Pi (var_name_, type_, b)) arg_list_ body }
+     { List.fold_right (fun (var_name_, type_) b -> Ast.Pi {input_var=var_name_; input_type=type_; output_type=b}) arg_list_ body }
 
 arg_list:
   | LPAREN var_name_=var_name COLON type_=expr RPAREN arg_list_=arg_list

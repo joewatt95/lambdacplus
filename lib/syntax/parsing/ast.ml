@@ -15,19 +15,23 @@ types have been promoted to expressions.
 type expr =
   | Type (* The paradoxical type universe, ie the type of all types. *)
   (* (var, type of var, return type) *)
-  | Pi of string * expr * expr
+  | Pi of {input_var : string;
+           input_type : expr;
+           output_type : expr}
   | Var of string
   (* (var, body expression, type of function abstraction) *)
-  | Fun of string * expr * expr
-  | App of expr * expr
+  | Fun of {input_var : string;
+            body : expr;
+            fn_type : expr}
+  | App of {fn : expr; arg : expr}
 [@@deriving show]
 
 type list_of_exprs = expr list
 [@@deriving show]
 
 type stmt =
-  | Def of string * expr
-  | Axiom of string * expr
+  | Def of {var_name : string; var_expr : expr}
+  | Axiom of {var_name : string; var_type : expr}
   | Check of expr
   | Eval of expr
 [@@deriving show]
