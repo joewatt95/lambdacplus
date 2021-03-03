@@ -21,9 +21,9 @@ type expr =
   | Var of string
   (* (var, body expression, type of function abstraction) *)
   | Fun of {input_var : string;
-            body : expr;
-            fn_type : expr}
+            body : expr}
   | App of {fn : expr; arg : expr}
+  | Ascription of {expr : expr; expr_type : expr}
 [@@deriving show]
 
 type list_of_exprs = expr list

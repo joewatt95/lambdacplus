@@ -50,6 +50,7 @@ expr:
   | var_name_=var_name                          { Var var_name_ }
   | fun_expr_=fun_expr                          { fun_expr_ }
   | pi_expr_=pi_expr                            { pi_expr_ }
+  | ascription_=ascription                      { ascription_ }
   | LPAREN expr_=expr RPAREN                    { expr_ }
   (* This last rule is causing shift/reduce conflicts in menhir. *)
   | fn=expr arg=expr                 %prec APP  { Ast.App {fn=fn; arg=arg} }
@@ -57,9 +58,12 @@ expr:
 var_name:
   | VAR_NAME                                    { $1 }
 
+ascription:
+    | LPAREN expr1=expr COLON expr2 = expr RPAREN {Ast.Ascription {expr=expr1; expr_type=expr2}}
+
 fun_expr:
-  | FUN LPAREN var_name_=var_name COLON input_type=expr RPAREN COLON output_type=expr DOUBLE_ARROW body=expr
-    { Ast.Fun {input_var=var_name_; body=body; fn_type=Ast.Pi {input_var=var_name_; input_type=input_type; output_type=output_type}}}
+  | FUN var_name_=var_name DOUBLE_ARROW body=expr
+    { Ast.Fun {input_var=var_name_; body=body}}
 
 pi_expr:
   | PI arg_list_=arg_list COMMA body=expr

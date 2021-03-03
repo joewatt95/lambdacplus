@@ -17,9 +17,9 @@ type expr =
            output_type : expr}
   | Var of int
   | Fun of {input_var : string;
-            body : expr;
-            fn_type : expr}
+            body : expr}
   | App of {fn : expr; arg : expr}
+  | Ascription of {expr : expr; expr_type : expr}
 [@@deriving show]
 
 type list_of_exprs = expr list
