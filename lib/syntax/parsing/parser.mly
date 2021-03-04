@@ -62,15 +62,22 @@ ascription:
     | LPAREN expr1=expr COLON expr2 = expr RPAREN {Ast.Ascription {expr=expr1; expr_type=expr2}}
 
 fun_expr:
-  | FUN var_name_=var_name DOUBLE_ARROW body=expr
-    { Ast.Fun {input_var=var_name_; body=body}}
+  | FUN arg_list=fun_arg_list DOUBLE_ARROW body=expr
+    { List.fold_right (fun var_name_ b -> Ast.Fun {input_var=var_name_; body=b}) arg_list body}
+
+fun_arg_list:
+  | var_name_=var_name arg_list_=fun_arg_list
+    { var_name_ :: arg_list_ }
+  | var_name_=var_name
+    { [var_name_] }
 
 pi_expr:
-  | PI arg_list_=arg_list COMMA body=expr
-     { List.fold_right (fun (var_name_, type_) b -> Ast.Pi {input_var=var_name_; input_type=type_; output_type=b}) arg_list_ body }
+  | PI arg_list=pi_arg_list COMMA body=expr
+    { List.fold_right (fun (var_name_, type_) b ->
+          Ast.Pi {input_var=var_name_; input_type=type_; output_type=b}) arg_list body }
 
-arg_list:
-  | LPAREN var_name_=var_name COLON type_=expr RPAREN arg_list_=arg_list
+pi_arg_list:
+  | LPAREN var_name_=var_name COLON type_=expr RPAREN arg_list_=pi_arg_list
     { (var_name_, type_) :: arg_list_ }
   | LPAREN var_name_=var_name COLON type_=expr RPAREN
     { [(var_name_, type_)] }
