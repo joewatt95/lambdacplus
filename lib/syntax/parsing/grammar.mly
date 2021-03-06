@@ -1,6 +1,8 @@
 (*
 https://github.com/andrejbauer/spartan-type-theory/blob/master/src/parser.mly
 https://github.com/amblafont/sedlex-menhir/blob/master/sedlex-menhir/parser.mly
+
+https://mukulrathi.co.uk/create-your-own-programming-language/parsing-ocamllex-menhir/
  *)
 
 (*
@@ -46,14 +48,14 @@ stmt:
   | EVAL expr_=expr                             { Ast.Eval expr_ }
 
 expr:
+  (* This 1st rule is causing shift/reduce conflicts in menhir. *)
+  | fn=expr arg=expr                 %prec APP  { Ast.App {fn=fn; arg=arg} }
   | TYPE                                        { Type }
   | var_name_=var_name                          { Var var_name_ }
   | fun_expr_=fun_expr                          { fun_expr_ }
   | pi_expr_=pi_expr                            { pi_expr_ }
   | ascription_=ascription                      { ascription_ }
   | LPAREN expr_=expr RPAREN                    { expr_ }
-  (* This last rule is causing shift/reduce conflicts in menhir. *)
-  | fn=expr arg=expr                 %prec APP  { Ast.App {fn=fn; arg=arg} }
 
 var_name:
   | VAR_NAME                                    { $1 }

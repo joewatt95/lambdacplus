@@ -20,10 +20,10 @@ let internal_stmt_to_parser_expr ctx stmt =
 
 let () =
   print_endline "Enter input for parsing:";
-  let lexbuf = Sedlexing.Utf8.from_channel stdin in
-  let lexer  = Sedlexing.with_tokenizer Parsing.Lexer.tokenize lexbuf in
-  let parser = MenhirLib.Convert.Simplified.traditional2revised Parsing.Parser.main in
-  let stmts = parser lexer in
+  (* let lexbuf = Sedlexing.Utf8.from_channel stdin in
+   * let lexer  = Sedlexing.with_tokenizer Parsing.Lexer.tokenize lexbuf in
+   * let parser = MenhirLib.Convert.Simplified.traditional2revised Parsing.Parser.main in *)
+  let stmts = Parsing.Parser.parse_channel stdin in
   print_endline "\nParser AST: ";
   print_endline (Parsing.Ast.show_list_of_stmts stmts);
   let stmts, ctx = (parser_to_internal_stmts stmts empty_ctx) in
