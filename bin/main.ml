@@ -28,14 +28,14 @@ let () =
   print_endline (Parsing.Ast.show_list_of_stmts stmts);
   let stmts, ctx = (parser_to_internal_stmts stmts empty_ctx) in
   print_endline "\nDe Bruijn AST: ";
-  print_endline (show_list_of_stmts stmts);
+  (* print_endline (show_list_of_stmts stmts); *)
   print_endline "\nFinal naming context: ";
   print_ctx ctx;
   print_endline "\nParsing last expr back to parser's AST:";
-  stmts
-  |> List.rev
-  |> List.hd
-  |> internal_stmt_to_parser_expr ctx
-  |> Parsing.Ast.show_expr
-  |> print_endline;
-  flush stdout
+  (* stmts
+   * |> List.rev
+   * |> List.hd
+   * |> internal_stmt_to_parser_expr ctx
+   * |> Parsing.Ast.show_expr
+   * |> print_endline;
+   * flush stdout *)

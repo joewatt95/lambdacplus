@@ -41,13 +41,15 @@ main:
 | stmt_=stmt EOF { [stmt_] }
 | stmt_=stmt stmts=main { stmt_ :: stmts }
 
-stmt:
+stmt: located(stmt_) { $1 }
+stmt_:
   | DEF var_name_=var_name COLON_EQ expr_=expr  { Ast.Def {var_name=var_name_; var_expr=expr_} }
   | AXIOM var_name_=var_name COLON expr_=expr   { Ast.Axiom {var_name=var_name_; var_type=expr_} }
   | CHECK expr_=expr                            { Ast.Check expr_ }
   | EVAL expr_=expr                             { Ast.Eval expr_ }
 
-expr:
+expr: located(expr_) { $1 }
+expr_:
   (* This 1st rule is causing shift/reduce conflicts in menhir. *)
   | fn=expr arg=expr                 %prec APP  { Ast.App {fn=fn; arg=arg} }
   | TYPE                                        { Type }
@@ -73,13 +75,23 @@ fun_arg_list:
   | var_name_=var_name
     { [var_name_] }
 
+(*
+ TODO: Fix these rules.
+ *)
 pi_expr:
   | PI arg_list=pi_arg_list COMMA body=expr
     { List.fold_right (fun (var_name_, type_) b ->
-          Ast.Pi {input_var=var_name_; input_type=type_; output_type=b}) arg_list body }
+          Ast.Pi {input_var=var_name_; input_type=type_; output_type=b}) arg_list body}
 
 pi_arg_list:
   | LPAREN var_name_=var_name COLON type_=expr RPAREN arg_list_=pi_arg_list
     { (var_name_, type_) :: arg_list_ }
   | LPAREN var_name_=var_name COLON type_=expr RPAREN
     { [(var_name_, type_)] }
+
+(*
+https://discuss.ocaml.org/t/your-favorite-menhir-tricks-and-fanciness/7299/4
+ *)
+%public %inline located(X):
+  x=X
+  { {data=x; source_loc=$startpos, $endpos} }
