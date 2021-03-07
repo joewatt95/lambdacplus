@@ -1,5 +1,5 @@
 (* Boilerplate taken from
-   https://log.h11.io/2020/0528/
+   https://stackoverflow.com/questions/52474076/using-ocamlyacc-with-sedlex
 *)
 
 let parse (lexbuf : Sedlexing.lexbuf) =

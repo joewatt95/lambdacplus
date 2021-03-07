@@ -50,19 +50,18 @@ main:
 https://discuss.ocaml.org/t/your-favorite-menhir-tricks-and-fanciness/7299/4
 https://inbox.ocaml.org/caml-list/58FE606B.5000400@inria.fr/t/
  *)
-%inline located(X):
-   x=X
-       { locate x $loc}
 
-stmt: located(plain_stmt) { $1 }
-plain_stmt:
+located(X): x=X { locate x $loc }
+
+stmt: located(raw_stmt) { $1 }
+raw_stmt:
   | DEF var_name_=var_name COLON_EQ expr_=expr  { Def {var_name=var_name_; var_expr=expr_} }
   | AXIOM var_name_=var_name COLON expr_=expr   { Axiom {var_name=var_name_; var_type=expr_} }
   | CHECK expr_=expr                            { Check expr_ }
   | EVAL expr_=expr                             { Eval expr_ }
 
-expr: located(plain_expr) { $1 }
-plain_expr:
+expr: located(raw_expr) { $1 }
+raw_expr:
   (* This 1st rule is causing shift/reduce conflicts in menhir. *)
   | fn=expr arg=expr                 %prec APP  { App {fn=fn; arg=arg} }
   | TYPE                                        { Type }
@@ -76,8 +75,8 @@ plain_expr:
 var_name:
   | VAR_NAME                                    { $1 }
 
-ascription: located(plain_ascription) { $1 }
-plain_ascription:
+(* ascription: located(plain_ascription) { $1 } *)
+ascription:
     | LPAREN expr1=expr COLON expr2 = expr RPAREN {Ascription {expr=expr1; expr_type=expr2}}
 
 fun_expr:
