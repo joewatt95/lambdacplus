@@ -9,7 +9,7 @@ can convert each ADT into a string.
 Note here that we don't distinguish between types and expressions anymore since
 types have been promoted to expressions.
 *)
-type expr = {data : expr'; source_loc : Lexing.position * Lexing.position}
+type expr = expr' Syntax.Location.located
 and expr' =
   | Type (* The paradoxical type universe, ie the type of all types. *)
   (* (var, type of var, return type) *)
@@ -29,7 +29,7 @@ and expr' =
 type list_of_exprs = expr list
 (* [@@deriving show] *)
 
-type stmt = {data : stmt'; source_loc : Lexing.position * Lexing.position}
+type stmt = stmt' Syntax.Location.located
 and stmt' =
   | Def of {var_name : string; var_expr : expr}
   | Axiom of {var_name : string; var_type : expr}
