@@ -1,0 +1,8 @@
+(menhir
+ (modules grammar))
+
+(library
+ (name parsing)
+ (preprocess (pps sedlex.ppx ppx_deriving.show))
+ (libraries containers sedlex menhirLib ppx_deriving)
+)
