@@ -42,66 +42,56 @@ https://ptival.github.io/2017/05/16/parser-generators-and-function-application/
 
 %%
 
-main:
-  | stmt_=stmt EOF { [stmt_] }
-  | stmt_=stmt stmts=main { stmt_ :: stmts }
-
-(*
-https://discuss.ocaml.org/t/your-favorite-menhir-tricks-and-fanciness/7299/4
-https://inbox.ocaml.org/caml-list/58FE606B.5000400@inria.fr/t/
+(* References on Menhir's new syntax and carrying around source locations
+   http://gallium.inria.fr/blog/parser-construction-menhir-appetizers/
+   https://gitlab.inria.fr/fpottier/menhir/blob/master/doc/new-rule-syntax-summary.md
  *)
 
-located(X): x=X { locate x $loc }
+let main := terminated(nonempty_list(stmt), EOF)
 
-stmt: located(raw_stmt) { $1 }
-raw_stmt:
-  | DEF var_name_=var_name COLON_EQ expr_=expr  { Def {var_name=var_name_; var_expr=expr_} }
-  | AXIOM var_name_=var_name COLON expr_=expr   { Axiom {var_name=var_name_; var_type=expr_} }
-  | CHECK expr_=expr                            { Check expr_ }
-  | EVAL expr_=expr                             { Eval expr_ }
+let located(x) == ~ = x; { locate x $loc }
 
-expr: located(raw_expr) { $1 }
-raw_expr:
+let stmt := located(
+  | DEF; ~ = var_name; COLON_EQ; var_expr = expr; { Def {var_name; var_expr}}
+  | AXIOM; ~ = var_name; COLON; var_type = expr;  { Axiom {var_name; var_type} }
+  | CHECK; ~ = expr;                              { Check expr }
+  | EVAL; ~ = expr;                               { Eval expr }
+)
+
+let expr :=
+  | located(raw_expr)
+  (* Don't include the left and right parens in the source location *)
+  | delimited(LPAREN, expr, RPAREN)
+  | fun_expr
+  | pi_expr
+
+let raw_expr :=
   (* This 1st rule is causing shift/reduce conflicts in menhir. *)
-  | fn=expr arg=expr                 %prec APP  { App {fn=fn; arg=arg} }
-  | TYPE                                        { Type }
-  | var_name_=var_name                          { Var var_name_ }
-  | fun_expr_=fun_expr                          { fun_expr_ }
-  | pi_expr_=pi_expr                            { pi_expr_ }
-  | ascription_=ascription                      { ascription_ }
-  | LPAREN expr_=expr RPAREN                    { expr_ }
+  | fn=expr; arg=expr;                           { App {fn; arg} } %prec APP
+  | TYPE;                                        { Type }
+  | ~ = var_name;                                { Var var_name }
+  | ascription
 
-(* var_name: located(plain_var_name) { $1 } *)
-var_name:
-  | VAR_NAME                                    { $1 }
+let var_name := VAR_NAME
 
-(* ascription: located(plain_ascription) { $1 } *)
-ascription:
-    | LPAREN expr1=expr COLON expr2 = expr RPAREN {Ascription {expr=expr1; expr_type=expr2}}
+let ascription :=
+      (expr, expr_type) = delimited(LPAREN, separated_pair(expr, COLON, expr), RPAREN);
+    { Ascription {expr; expr_type} }
 
-fun_expr:
-  | FUN arg_list=fun_arg_list DOUBLE_ARROW body=expr
+let fun_expr := FUN; ~ = fun_arg_list; DOUBLE_ARROW; body=expr;
+    { List.fold_right
+        (fun input_var body : expr ->
+          locate (Fun {input_var; body}) $loc)
+      fun_arg_list body}
+
+let fun_arg_list := nonempty_list(var_name)
+
+let pi_expr := PI; ~ = pi_arg_list; COMMA; output_type=expr;
   { List.fold_right
-    (fun var_name_ b : expr ->
-      locate (Fun {input_var=var_name_; body=b}) $loc)
-    arg_list body}
-
-fun_arg_list:
-  | var_name_=var_name arg_list_=fun_arg_list
-    { var_name_ :: arg_list_ }
-  | var_name_=var_name
-    { [var_name_] }
-
-pi_expr:
-  | PI arg_list=pi_arg_list COMMA body=expr
-  { List.fold_right
-    (fun (var_name_, type_) b : expr ->
+    (fun (input_var, input_type) output_type : expr ->
        locate
-         (Pi {input_var=var_name_; input_type=type_; output_type=b}) $loc)
-    arg_list body}
+         (Pi {input_var; input_type; output_type}) $loc)
+    pi_arg_list output_type}
 
-pi_arg_list:
-  | LPAREN var_name_=var_name COLON type_=expr RPAREN arg_list_=pi_arg_list
-    { (var_name_, type_) :: arg_list_ }
-  | LPAREN var_name_=var_name COLON type_=expr RPAREN
-    { [(var_name_, type_)] }
+let pi_arg_list :=
+      nonempty_list(delimited(LPAREN, separated_pair(var_name, COLON, expr), RPAREN))

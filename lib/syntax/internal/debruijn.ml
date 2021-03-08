@@ -79,35 +79,41 @@ previously, we throw this error.
 *)
 exception VariablePreviouslyDefd
 
+let update_data_with_ctx (located : 'a Syntax.Location.located) f ctx =
+  Syntax.Location.update_data_with_f located @@ Fun.flip f ctx
+
 (* Convert a parsed expression to our internal AST. *)
-let rec parser_to_internal_expr expr ctx =
+let rec parser_to_internal_raw_expr raw_expr ctx =
   let open Parsing.Ast in
-  match expr with
-  | Var {source_loc; data=var_name} ->
+  match raw_expr with
+  | Var var_name ->
     (* If we can't find the index of the variable, then it wasn't declared
        previously, ie the variable is unknown. Hence we just throw an error. *)
     Either.fold (var_name_to_index var_name ctx)
-      ~left:raise ~right:(fun var_index -> Ast.Var {source_loc; var_index})
+      ~left:raise ~right:(fun var_index -> Ast.Var var_index)
   (* For Fun and Pi, we add the input var to the context to get a new one, which
-  we then use to convert the body. *)
-  | Fun {source_loc; input_var; body} ->
+     we then use to convert the body. *)
+  | Fun {input_var; body} ->
     let new_ctx = extend_ctx input_var ctx in
     let body = parser_to_internal_expr body new_ctx in
-    Ast.Fun {source_loc; input_var; body}
-  | Pi {source_loc; input_var; input_type; output_type} ->
+    Ast.Fun {input_var; body}
+  | Pi {input_var; input_type; output_type} ->
     let new_ctx = extend_ctx input_var ctx in
     let input_type = parser_to_internal_expr input_type ctx in
     let output_type = parser_to_internal_expr output_type new_ctx in
-    Ast.Pi {source_loc; input_var; input_type; output_type}
-  | App {source_loc; fn; arg} ->
+    Ast.Pi {input_var; input_type; output_type}
+  | App {fn; arg} ->
     let fn = parser_to_internal_expr fn ctx in
     let arg = parser_to_internal_expr arg ctx in
-    Ast.App {source_loc; fn; arg}
-  | Ascription {source_loc; expr; expr_type} ->
+    Ast.App {fn; arg}
+  | Ascription {expr; expr_type} ->
     let expr = parser_to_internal_expr expr ctx in
     let expr_type = parser_to_internal_expr expr_type ctx in
-    Ast.Ascription {source_loc; expr; expr_type}
+    Ast.Ascription {expr; expr_type}
   | Type -> Type
+
+and parser_to_internal_expr expr ctx =
+  update_data_with_ctx expr parser_to_internal_raw_expr ctx
 
 (* Convert a parsed statement to our internal AST.
 Note that the return type here is actually (Ast.expr * ctx) because Def and Axiom
@@ -115,10 +121,10 @@ will modify the context, affecting future statements.
 This is important to carry around in stmts_to_internal_ast when converting a
 list of statements to our internal AST.
 *)
-let parser_to_internal_stmt stmt ctx =
+let rec parser_to_internal_raw_stmt raw_stmt ctx =
   let open Parsing.Ast in
-  match stmt with
-  | Def {source_loc; var_name; var_expr} ->
+  match raw_stmt with
+  | Def {var_name; var_expr} ->
     (* Currently, we don't handle variable shadowing. *)
     Either.fold (var_name_to_index var_name ctx)
       ~right:(fun _ -> raise VariablePreviouslyDefd)
@@ -126,17 +132,25 @@ let parser_to_internal_stmt stmt ctx =
           (* This allows for recursive definitions *)
           let new_ctx = extend_ctx var_name ctx in
           let var_expr = parser_to_internal_expr var_expr new_ctx in
-          Ast.Def {source_loc; var_name; var_expr}, new_ctx)
-  | Axiom {source_loc; var_name; var_type} ->
+          Ast.Def {var_name; var_expr}, new_ctx)
+  | Axiom {var_name; var_type} ->
     let var_type = parser_to_internal_expr var_type ctx in
-    Ast.Axiom {source_loc; var_name; var_type},
+    Ast.Axiom {var_name; var_type},
     extend_ctx var_name ctx
-  | Eval {source_loc; expr} ->
+  | Eval expr ->
     let expr = parser_to_internal_expr expr ctx in
-    Ast.Eval {source_loc; expr}, ctx
-  | Check {source_loc; expr} ->
+    Ast.Eval expr, ctx
+  | Check expr ->
     let expr = parser_to_internal_expr expr ctx in
-    Ast.Check {source_loc; expr}, ctx
+    Ast.Check expr, ctx
+
+and parser_to_internal_stmt stmt ctx =
+  (* Here we need to open the Syntax.Location module so that Ocaml can infer
+     the type of stmt properly. Otherwise, it complains that data is an unbound
+     field of stmt *)
+  let open Syntax.Location in
+  let internal_raw_stmt, new_ctx = parser_to_internal_raw_stmt stmt.data ctx in
+  update_data stmt internal_raw_stmt, new_ctx
 
 (*
 This converts a list of parser statements to our internal AST.
@@ -167,31 +181,34 @@ let pick_fresh_name var_name ctx =
   new_var_name, extend_ctx new_var_name ctx
 
 (* Convert an expression from our internal AST back to the parser's AST *)
-let rec internal_to_parser_expr expr ctx =
+let rec internal_to_parser_raw_expr raw_expr ctx =
   let open Parsing.Ast in
-  match expr with
-  | Ast.Var {source_loc; var_index} ->
+  match raw_expr with
+  | Ast.Var var_index ->
     Either.fold (index_to_var_name var_index ctx)
-      ~right:(fun var_name -> Var {source_loc; var_name})
+      ~right:(fun var_name -> Var var_name)
       ~left:raise
-  | Ast.Fun {source_loc; input_var; body} ->
+  | Ast.Fun {input_var; body} ->
     let input_var, new_ctx = pick_fresh_name input_var ctx in
     let body = internal_to_parser_expr body new_ctx in
-    Fun {source_loc; input_var; body}
+    Fun {input_var; body}
   | Ast.Pi {input_var; input_type; output_type} ->
     let input_var, new_ctx = pick_fresh_name input_var ctx in
     let input_type = internal_to_parser_expr input_type ctx in
     let output_type = internal_to_parser_expr output_type new_ctx in
-    Pi {source_loc; input_var; input_type; output_type}
+    Pi {input_var; input_type; output_type}
   | Ast.App {fn; arg} ->
     let fn = internal_to_parser_expr fn ctx in
     let arg = internal_to_parser_expr arg ctx in
-    App {source_loc; fn; arg}
+    App {fn; arg}
   | Ast.Ascription {expr; expr_type} ->
     let expr = internal_to_parser_expr expr ctx in
     let expr_type = internal_to_parser_expr expr_type ctx in
-    Ascription {source_loc; expr; expr_type}
+    Ascription {expr; expr_type}
   | Type -> Type
+
+and internal_to_parser_expr expr ctx =
+  update_data_with_ctx expr internal_to_parser_raw_expr ctx
 
 (* let stmt_to_parser_ast ctx stmt =
  *   let open Parsing.Ast in
