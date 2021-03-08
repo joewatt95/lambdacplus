@@ -1,4 +1,7 @@
-type 'a located = { data: 'a; source_loc : Lexing.position * Lexing.position}
+type 'a located = {
+  data: 'a;
+  source_loc : Lexing.position * Lexing.position [@printer fun _ _ -> ()];
+} [@@deriving show]
 
 let locate data source_loc = {data; source_loc}
 

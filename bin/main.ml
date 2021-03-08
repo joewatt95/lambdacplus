@@ -11,7 +11,7 @@ https://github.com/amblafont/sedlex-menhir/blob/master/sedlex-menhir/calc.ml
 open Internal.Ast
 open Internal.Debruijn
 
-let internal_stmt_to_parser_expr ctx stmt =
+let internal_stmt_to_parser_expr ctx ({data=stmt; _} : stmt) =
   match stmt with
   | Def {var_expr; _} -> internal_to_parser_expr var_expr ctx
   | Axiom {var_type; _} -> internal_to_parser_expr var_type ctx
@@ -25,17 +25,17 @@ let () =
    * let parser = MenhirLib.Convert.Simplified.traditional2revised Parsing.Parser.main in *)
   let stmts = Parsing.Parser.parse_channel stdin in
   print_endline "\nParser AST: ";
-  (* print_endline (Parsing.Ast.show_list_of_stmts stmts); *)
-  let _, ctx = parser_to_internal_stmts stmts empty_ctx in
+  print_endline (Parsing.Ast.show_list_of_stmts stmts);
+  let stmts, ctx = parser_to_internal_stmts stmts empty_ctx in
   print_endline "\nDe Bruijn AST: ";
-  (* print_endline (show_list_of_stmts stmts); *)
+  print_endline (show_list_of_stmts stmts);
   print_endline "\nFinal naming context: ";
   print_ctx ctx;
   print_endline "\nParsing last expr back to parser's AST:";
-  (* stmts
-   * |> List.rev
-   * |> List.hd
-   * |> internal_stmt_to_parser_expr ctx
-   * |> Parsing.Ast.show_expr
-   * |> print_endline;
-   * flush stdout *)
+  stmts
+  |> List.rev
+  |> List.hd
+  |> internal_stmt_to_parser_expr ctx
+  |> Parsing.Ast.show_expr
+  |> print_endline;
+  flush stdout

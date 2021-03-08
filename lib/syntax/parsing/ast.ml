@@ -27,10 +27,10 @@ and raw_expr =
             arg : expr}
   | Ascription of {expr : expr;
                    expr_type : expr}
-(* [@@deriving show] *)
+[@@deriving show]
 
 type list_of_exprs = expr list
-(* [@@deriving show] *)
+[@@deriving show]
 
 type stmt = raw_stmt Syntax.Location.located
 and raw_stmt =
@@ -38,7 +38,7 @@ and raw_stmt =
   | Axiom of {var_name : string; var_type : expr}
   | Check of expr
   | Eval of expr
-(* [@@deriving show] *)
+[@@deriving show]
 
 type list_of_stmts = stmt list
-(* [@@deriving show] *)
+[@@deriving show]

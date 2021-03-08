@@ -3,6 +3,6 @@
 
 (library
  (name parsing)
- (preprocess (pps sedlex.ppx ppx_deriving.show ppx_deriving.ord))
+ (preprocess (pps sedlex.ppx ppx_deriving.show))
  (libraries sedlex menhirLib ppx_deriving syntax)
 )

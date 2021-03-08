@@ -1,6 +1,6 @@
 (library
  (name internal)
- (preprocess (pps sedlex.ppx ppx_deriving.show ppx_deriving.ord))
+ (preprocess (pps ppx_deriving.show))
  (libraries containers batteries ppx_deriving
             parsing utils)
 )
