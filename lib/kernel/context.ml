@@ -32,7 +32,7 @@ struct
   exception UnknownVar
   exception UnknownIndex
 
-  type t = entry BatVect
+  type t = entry BatVect.t
   let empty = BatVect.empty
   let is_empty = BatVect.is_empty
   let length = BatVect.length
