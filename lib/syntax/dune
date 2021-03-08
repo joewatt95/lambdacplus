@@ -1,5 +1,0 @@
-(library
- (name syntax)
- (preprocess (pps ppx_deriving.show))
- (libraries ppx_deriving containers)
-)

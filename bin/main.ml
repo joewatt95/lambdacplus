@@ -8,8 +8,8 @@ Boilerplate taken from:
 https://github.com/amblafont/sedlex-menhir/blob/master/sedlex-menhir/calc.ml
 *)
 
-open Internal.Ast
-open Internal.Debruijn
+open Kernel.Ast
+open Kernel.Debruijn
 
 let internal_stmt_to_parser_expr ctx ({data=stmt; _} : stmt) =
   match stmt with

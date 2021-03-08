@@ -1,6 +1,0 @@
-(library
- (name internal)
- (preprocess (pps ppx_deriving.show))
- (libraries containers batteries ppx_deriving
-            parsing utils)
-)
