@@ -6,6 +6,8 @@ data structure with:
 - O(log N) set/get
 *)
 
+open Containers
+
 module type CONTEXT =
 sig
   type t
