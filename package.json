@@ -19,6 +19,7 @@
     },
     "devDependencies": {
         "@opam/js_of_ocaml": "~3.9.0",
+        "@opam/merlin": ">= 4.1-412",
         "ocaml": "~4.12.0"
     }
 }
