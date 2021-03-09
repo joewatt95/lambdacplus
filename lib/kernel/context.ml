@@ -1,11 +1,3 @@
-(*
-BatVect is a module provided by the Batteries library. It's a persistent array-like
-data structure with:
-- O(1) length
-- amortized O(1) prepend/append
-- O(log N) set/get
-*)
-
 open Containers
 
 type entry = {
@@ -25,7 +17,7 @@ let is_empty = BatFingerTree.is_empty
 
 let length = BatFingerTree.size
 
-let add_binding ~var_name ?var_type ?binding ctx =
+let add_binding var_name ?var_type ?binding ctx =
   BatFingerTree.cons ctx {var_name; var_type; binding}
 
 let var_name_to_index string ctx =

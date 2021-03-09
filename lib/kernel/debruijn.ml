@@ -27,11 +27,11 @@ let rec parser_to_internal_raw_expr raw_expr ctx =
   (* For Fun and Pi, we add the input var to the context to get a new one, which
      we then use to convert the body. *)
   | Fun {input_var; body} ->
-    let new_ctx = Context.add_binding ~var_name:input_var ctx in
+    let new_ctx = Context.add_binding input_var ctx in
     let body = parser_to_internal_expr body new_ctx in
     Ast.Fun {input_var; body}
   | Pi {input_var; input_type; output_type} ->
-    let new_ctx = Context.add_binding ~var_name:input_var ctx in
+    let new_ctx = Context.add_binding input_var ctx in
     let input_type = parser_to_internal_expr input_type ctx in
     let output_type = parser_to_internal_expr output_type new_ctx in
     Ast.Pi {input_var; input_type; output_type}
@@ -59,12 +59,12 @@ let rec parser_to_internal_raw_stmt raw_stmt ctx =
   match raw_stmt with
   | Def {var_name; var_expr} ->
     let var_expr = parser_to_internal_expr var_expr ctx in
-    let new_ctx = Context.add_binding ~var_name:var_name ctx in
+    let new_ctx = Context.add_binding var_name ctx in
     Ast.Def {var_name; var_expr}, new_ctx
   | Axiom {var_name; var_type} ->
     let var_type = parser_to_internal_expr var_type ctx in
     Ast.Axiom {var_name; var_type},
-    Context.add_binding ~var_name:var_name ctx
+    Context.add_binding var_name ctx
   | Eval expr ->
     let expr = parser_to_internal_expr expr ctx in
     Ast.Eval expr, ctx
@@ -108,7 +108,7 @@ let pick_fresh_name var_name ctx =
     not @@ Context.is_var_name_bound var_name ctx in
   let new_var_name =
     Utils.General.until is_var_name_free append_prime var_name in
-  new_var_name, Context.add_binding ~var_name:new_var_name ctx
+  new_var_name, Context.add_binding new_var_name ctx
 
 (* Convert an expression from our internal AST back to the parser's AST *)
 let rec internal_to_parser_raw_expr raw_expr ctx =
