@@ -65,7 +65,7 @@ previously, we throw this error.
 exception VariablePreviouslyDefd
 
 let update_data_with_ctx (located : 'a Parsing.Location.located) f ctx =
-  Parsing.Location.update_data_with_f located @@ Fun.flip f ctx
+  Parsing.Location.update_data located @@ Fun.flip f ctx
 
 (* Convert a parsed expression to our internal AST. *)
 let rec parser_to_internal_raw_expr raw_expr ctx =
@@ -135,7 +135,7 @@ and parser_to_internal_stmt stmt ctx =
      field of stmt *)
   let open Parsing.Location in
   let internal_raw_stmt, new_ctx = parser_to_internal_raw_stmt stmt.data ctx in
-  update_data stmt internal_raw_stmt, new_ctx
+  set_data stmt internal_raw_stmt, new_ctx
 
 (*
 This converts a list of parser statements to our internal AST.
