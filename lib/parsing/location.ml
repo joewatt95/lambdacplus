@@ -4,7 +4,7 @@ open Containers
 *)
 type 'a located = {
   data: 'a;
-  source_loc : Lexing.position * Lexing.position [@printer fun _ _ -> ()];
+  source_loc : Lexing.position * Lexing.position [@opaque];
 } [@@deriving show]
 
 (* Given some data and a source location, wrap them up in the located type. *)
