@@ -1,25 +1,22 @@
 {
-    "name": "cs4215_dependent_types",
-    "version": "0.1.0",
-    "description": "CS4215 project on dependent types",
-    "esy": {
-        "build": [
-            "dune build ./bin/main.bc",
-            "dune build ./bin/main.bc.js"
-        ]
-    },
-    "dependencies": {
-        "@opam/dune": "~2.8.1",
-        "@opam/sedlex": ">= 2.3 < 3.0",
-        "@opam/menhir": ">= 20201216",
-        "@opam/ppx_deriving": "~5.2.1",
-        "@opam/containers": ">= 3.2 < 4.0",
-        "@opam/batteries": "~3.3.0",
-        "ocaml": "~4.12.0"
-    },
-    "devDependencies": {
-        "@opam/js_of_ocaml": "~3.9.0",
-        "@opam/merlin": ">= 4.1-412",
-        "ocaml": "~4.12.0"
-    }
+  "name": "cs4215_dependent_types",
+  "version": "0.1.0",
+  "description": "CS4215 project on dependent types",
+  "esy": {
+    "build": [ "dune build ./bin/main.bc", "dune build ./bin/main.bc.js" ]
+  },
+  "dependencies": {
+    "@opam/batteries": "~3.3.0",
+    "@opam/containers": ">= 3.2 < 4.0",
+    "@opam/menhir": ">= 20201216",
+    "@opam/ppx_deriving": "~5.2.1",
+    "@opam/sedlex": ">= 2.3 < 3.0",
+    "ocaml": "~4.11.2"
+  },
+  "devDependencies": {
+    "@opam/dune": "~2.8.4",
+    "@opam/ocaml-lsp-server": "~1.4.0",
+    "@opam/js_of_ocaml": "~3.9.0",
+    "ocaml": "~4.11.2"
+  }
 }
