@@ -13,9 +13,6 @@ let internal_stmt_to_parser_expr ctx ({data=stmt; _} : stmt) =
 
 let () =
   print_endline "Enter input for parsing:";
-  (* let lexbuf = Sedlexing.Utf8.from_channel stdin in
-   * let lexer  = Sedlexing.with_tokenizer Parsing.Lexer.tokenize lexbuf in
-   * let parser = MenhirLib.Convert.Simplified.traditional2revised Parsing.Parser.main in *)
   let stmts = Parsing.Parser.parse_channel stdin in
   print_endline "\nParser AST: ";
   print_endline @@ Parsing.Ast.show_list_of_stmts stmts;
@@ -24,7 +21,7 @@ let () =
   print_endline @@ show_list_of_stmts stmts;
   print_endline "\nFinal context: ";
   print_endline @@ Context.show ctx;
-  print_endline "\nParsing last expr back to parser's AST:";
+  print_endline "\nNormalizing last expr back to parser's AST:";
   stmts
   |> List.rev
   |> List.hd
