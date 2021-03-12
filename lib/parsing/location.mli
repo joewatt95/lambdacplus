@@ -3,7 +3,7 @@ type 'a located = {
   source_loc : Lexing.position * Lexing.position [@opaque];
 }
 
-val locate : 'a -> Lexing.position * Lexing.position -> 'a located 
+val locate : ?source_loc:Lexing.position * Lexing.position -> 'a -> 'a located 
 
 val update_data : 'a located -> ('a -> 'b) -> 'b located
 

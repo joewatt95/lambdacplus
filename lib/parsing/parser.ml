@@ -2,7 +2,9 @@
    https://stackoverflow.com/questions/52474076/using-ocamlyacc-with-sedlex
 *)
 
-let parse (lexbuf : Sedlexing.lexbuf) =
+open CCFun
+
+let parse lexbuf =
   let revised_parser =
     MenhirLib.Convert.Simplified.traditional2revised Grammar.main
   in
@@ -13,6 +15,6 @@ let parse (lexbuf : Sedlexing.lexbuf) =
   in
   revised_parser lexer
 
-let parse_string (src : string) = parse (Sedlexing.Utf8.from_string src)
+let parse_string = Sedlexing.Utf8.from_string %> parse
 
-let parse_channel (src : in_channel) = parse (Sedlexing.Utf8.from_channel src)
+let parse_channel = Sedlexing.Utf8.from_channel %> parse

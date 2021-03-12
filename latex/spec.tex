@@ -1,0 +1,786 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\input{preamble}
+
+\begin{document}
+
+\section{Preliminaries}
+\subsection{Overview}
+Our language is a dependently typed lambda calculus, based on what is known in
+the literature as $\lambda P$ or $\lambda \Pi$.
+The main references which we base our language on are
+\href{https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf}{this paper on $\lambda
+  \Pi$} and \href{https://github.com/andrejbauer/spartan-type-theory}{this
+  implementation of a dependent type theory}.
+
+In System F, types may depend on other type variables, thus enabling
+parametrically polymorphic functions. 
+In our language, we generalize this to allow types to depend on terms as well.
+In order to achieve this, we promote all types to expressions, so we no longer
+have separate syntactic categories for them. 
+
+Yes, this means that \textit{everything} in our language is an expression, even those
+things which we call types!
+With this in mind, a type is then an expression, say $T$, which satisfies a very
+specific typing judgment, ie $\Gamma \vdash T \Leftarrow \Type$. We'll revisit
+this again later.
+
+The main aim of our project is to implement a simple lambda calculus with the
+dependent function type. These are also known as Pi types in the literature.
+These generalize the simple function type $A \to B$ by allowing the output type
+$B$ to now \textit{depend on the value} of the input expression.
+The type of functions in our language is now written as $\Pi_{x : A} B(x)$ where
+we write $B(x)$ for the return type to emphasize that $x$ may appear free in
+$B$.
+
+The set theoretic analogue to this dependent Pi type is the generalized
+cartesian product. Given a set $A$ and a family of sets $\langle B_x \, | \, x
+\in A\rangle$ indexed by the
+elements $x \in A$, we can form the generalized cartesian product, denoted
+\begin{align*}
+  \Pi_{x \in A} B_x = \bigg\{ f : A \rightarrow \bigcup_{x \in A} B_x \, | \, \forall x \in A, \, f(x) \in B_x \bigg\}
+\end{align*}
+Functions that inhabit this set are known as \textit{choice functions} in set
+theory. Such choice functions associate to each $x \in A$, an element $f(x)$ in $B_x$.
+As a fun fact, the Axiom of Choice asserts that this set is nonempty
+if every $B_x$ is inhabited.
+
+Another core feature of our language will be type inference.
+This will be implemented alongside typechecking, using a fancy
+\textit{bidirectional typechecking} algorithm. Don't worry, we'll formalize all
+this later. For now, this just means that typechecking and type inference are
+mutually recursive processes.
+
+Our language also doesn't have full blown recursion and is
+\textit{strongly normalizing} in that every sequence of beta reductions will
+always terminate in a unique head normal form. This allows us to safely
+normalize all terms to full head normal form.
+
+TODO: explain why our language is strongly normalizing and why this allows us to
+normalize everything all the way.
+
+\subsection{Metavariables}
+\begin{enumerate}
+\item $A$, $B$, $T$, $E$ range over expressions. 
+\item $x$, $y$, $z$ range over variables. 
+\item $\nu, \, \tau$ range over expressions that are in \textit{full} head normal
+  form.
+  \begin{comment}
+    We define this set of expressions inductively via:
+    \[ \begin{prooftree} \infer0{\Type} \end{prooftree} \]
+    \[ \begin{prooftree} \infer0{x} \end{prooftree} \]
+    \[ \begin{prooftree} \hypo{\nu} \infer1{x} \end{prooftree} \]
+    \[ \begin{prooftree}
+        \hypo{x}
+        \hypo{\tau}
+        \hypo{\tau'}
+        \infer3{\Pi_{x : \tau} \tau'}
+      \end{prooftree} \]
+    \[ \begin{prooftree} \infer0{\Type} \end{prooftree} \]
+  \end{comment}
+\end{enumerate}
+
+We often add primes and subscripts, like $E'$ or $\nu_2$ while referring to these.
+
+\section{Syntax}
+Here we describe the concrete ascii syntax for our language.
+We have a separate syntax for expressions and statements, the latter of which
+function like top-level commands. These will be used by the user to interact
+with our language.
+
+\subsection{Syntax for expressions}
+\begin{enumerate}
+\item \textbf{Variables} \\
+  \[
+    \begin{prooftree}
+      \infer0{x}
+    \end{prooftree}
+  \]
+
+\item \textbf{Optional parentheses} \\
+  \[
+    \begin{prooftree}
+      \hypo{E}
+      \infer1{( \, E \, )}
+    \end{prooftree}
+  \]
+  
+\item \textbf{Function abstraction} \\
+  \[
+    \begin{prooftree}
+      \hypo{x}
+      \hypo{E}
+      \infer2{\fun \, x => E}
+    \end{prooftree}
+  \]
+  \[
+    \begin{prooftree}
+      \hypo{x_0}
+      \hypo{x_1}
+      \hypo{\dots}
+      \hypo{x_n}
+      \hypo{E}
+      \infer5{\fun \, x_0 \, x_1 \, \dots \, x_n => E}
+    \end{prooftree}
+  \]
+  Note that all functions in our language are unary and so
+  $\fun \, x_0 \, x_1 \, \dots \, x_n => E$ is syntactic sugar for
+  \[ \fun \, x_0 => (\fun \, x_1 => \dots (\fun x_n => E)) \]
+
+\item \textbf{Pi type} \\
+  \[
+    \begin{prooftree}
+      \hypo{x}
+      \hypo{A}
+      \hypo{B}
+      \infer3{\Pii \, (x : A), \, B}
+    \end{prooftree}
+  \] 
+
+  \[
+    \begin{prooftree}
+      \hypo{x_i}
+      \hypo{A_i}
+      \hypo{B}
+      \infer3{\Pii \, (x_0 : A_0) \, (x_1 : A_1) \, \dots \, (x_n : A_n), \, B}
+    \end{prooftree}
+  \] 
+  As with functions, this is syntactic sugar for
+  \[ \Pii \, (x_0 : A_0), \, (\Pii \, (x_1 : A_1), \,  \dots \, (\Pii \, (x_n : A_n), \, B)) \]
+
+\item \textbf{Type ascriptions} \\
+  \[
+    \begin{prooftree}
+      \hypo{E}
+      \hypo{T}
+      \infer2{(E : T)}
+    \end{prooftree}
+  \]
+  This functions similarly to other functional languages in that it's used
+  mainly to provide a type annotation. For instance, it can be used to help the
+  type checker if it's unable to infer the type of an expression.
+\end{enumerate}
+
+\subsection{Syntax for statements}
+Statements are top level commands through which users interact with our
+language. Programs in our language will be \textit{nonempty} sequences of
+these statements.
+
+\begin{enumerate}
+\item \textbf{Def} \\
+\[
+  \begin{prooftree}
+    \hypo{x}
+    \hypo{E}
+    \infer2{\deff \, x := E}
+  \end{prooftree}
+\]
+This creates a top level, global definition, binding the variable $x$ to the
+expression given by $E$.
+
+\item \textbf{Axiom} \\
+\[
+  \begin{prooftree}
+    \hypo{x}
+    \hypo{T}
+    \infer2{\axiom \, x : T}
+  \end{prooftree}
+\]
+This defines the variable $x$ to have a type of $T$ with an unknown binding.
+The interpreter will treat $x$ like an unknown, indeterminate constant.
+
+\item \textbf{Check} \\
+\[
+  \begin{prooftree}
+    \hypo{E}
+    \infer1{\checkk \,\, E}
+  \end{prooftree}
+\]
+This instructs the interpreter to compute the type of the expression $E$ and
+output it.
+
+\item \textbf{Eval} \\
+\[
+  \begin{prooftree}
+    \hypo{E}
+    \infer1{\evall \,\, E}
+  \end{prooftree}
+\]
+This instructs the interpreter to fully normalize the expression $E$ to full
+head normal form.
+
+\end{enumerate}
+
+Note that we often write $\lambda x, \, E$ instead of $\fun \, x => E$ as in the
+concrete syntax. Similarly, we also write $\Pi_{x : A}B(x)$ instead of $\Pii (x
+: A), \, B$.
+
+\section{Capture avoiding substitutions}
+Here we define the notion of capture avoiding substitutions. For this, we first
+formalize the notion of free variables.
+Practically, we will implement substitutions and stuff using de bruijn indices
+so this formalization is for purposes of metatheory only.
+
+\subsection{Free variables}
+\begin{align*}
+  \FV (x) &:= \{x\} \\
+  \FV (E_1 \, E_2) &:= \FV(E_1) \cup \FV(E_2) \\
+  \FV (\lambda x, \, E(x)) &:= \FV(E) \setminus \{x\} \\
+  \FV (\Pi_{x : A} B(x)) &:= \FV(A) \cup (\FV(B) \setminus \{x\})
+\end{align*}
+Note that in Pi expressions, the input type $A$ is actually an expression itself
+and so may contain free variables. It's important to note that the $\Pi_{x :
+  A}$, like a lambda is a binder binding $x$ in $B$. However, this does not bind
+$x$ in the input type, $A$. If $x$ does appear in the input type $A$, then it is
+free there.
+
+\subsection{Substitution}
+Here we define $E [x \mapsto E'] := E''$ to mean substituting all free
+occurrences of $x$ by $E'$ in the expression $E$ yields another expression $E''$.
+\begin{align*}
+  x[x \mapsto E] &:= E \\
+  y[x \mapsto E] &:= y \quad (\text{if } y \ne x) \\
+  (E_1 \,\,\, E_2) [x \mapsto E] &:= (E_1 [x \mapsto E] \,\,\, E_2 [x \mapsto E]) \\
+  (\lambda x, \, E) [x \mapsto E'] &:= \lambda x, \, E \\ 
+  (\lambda y, \, E) [x \mapsto E'] &:= \lambda y, \, E[x \mapsto E'] \quad (\text{if } y \notin \FV(E')) \\ 
+  (\lambda y, \, E) [x \mapsto E'] &:= \lambda z, E[y \mapsto z][x \mapsto E'] \\
+                 &\quad \quad \quad (\text{if } z \notin FV(E) \cup FV(E') \cup \{x\}) \\
+  (\Pi_{x : A} B(x)) [x \mapsto B'] &:= \Pi_{x : A[x \mapsto B']} B(x) \\ 
+  (\Pi_{y : A} B(y)) [x \mapsto B'] &:= \Pi_{y : A[x \mapsto B']} B[x \mapsto B'] \quad (\text{if } y \notin \FV(B')) \\ 
+  (\Pi_{y : A} B(y)) [x \mapsto B'] &:= \Pi_{z : A[x \mapsto B']} B[y \mapsto z][x \mapsto B'] \\
+                 &\quad \quad \quad (\text{if } z \notin FV(B) \cup FV(B') \cup \{x\})
+\end{align*}
+For Pi expressions, $A$ is an expression and thus when substituting $x$ by
+$B'$, we must also perform the substitution in the input type $A$. However, as
+$x$ is not bound there, we need not worry about capturing it when substituting there. 
+
+\section{Big step operational semantics}
+Here we choose to use a big-step semantics for our language as it fits nicer
+with the functional style that we're using to write our recursive interpreter with.
+\begin{comment}
+  https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf
+  http://math.andrej.com/2012/11/08/how-to-implement-dependent-type-theory-i/
+  
+  http://fsl.cs.illinois.edu/images/archive/b/b3/20110221180817!CS522-Spring-2011-PL-book-bigstep.pdf
+  https://www.cs.cornell.edu/courses/cs4110/2010fa/lectures/lecture03.pdf
+\end{comment}
+
+\subsection{Expressions}
+\subsubsection{Contexts and judgment forms}
+Here we take the context, $\Gamma$, to be a list of triples of the form
+\begin{align*}
+  (\text{variable name}, \, \text{type of variable}, \, \text{binding})
+\end{align*}
+We will use $\emptyset$ to denote the empty context, and $::$ to refer to the
+list cons operation.
+
+The binding can be an expression or a sentinel value \verb|undefined|.
+Contexts have global scope and can be modified at the top level by \verb|def|
+and \verb|axiom| statements. This \verb|undefined| value is used for the
+bindings created by \verb|axiom| statements.
+
+We first give an overview of the main judgment forms which we will define in a
+mutually recursive fashion.
+
+\begin{enumerate}
+\item $\wf(\Gamma)$ \\
+  This asserts that a context $\Gamma$ is well formed.
+
+\item $\Gamma \vdash E \Leftarrow T$ and $\Gamma \vdash E \Rightarrow T$ \\
+  These judgments will be used to formalize our bidirectional typechecking
+  algorithm. They form the typing rules for our language.
+  For now, it suffices to say that $\Gamma \vdash E \Leftarrow T$ formalizes the
+  meaning that given an expression $E$ and some type $T$, we may verify that
+  $E$ has type $T$ under the context $\Gamma$.
+
+  On the other hand, $\Gamma \vdash E \Rightarrow T$ formalizes the notion of
+  \textit{type inference}. It says that from a context $\Gamma$, we may infer
+  the type of $E$ to be $T$.
+
+\item $\Gamma \vdash E \Downarrow \nu$ \\
+  This $\Gamma \vdash \cdot \Downarrow \cdot$ relation is used in our definition of a
+  big-step operational semantics to normalize expressions to their full head
+  normal form.
+  It says that with respect to a context $\Gamma$ containing global bindings, we
+  may normalize $E$ to an expression, $\nu$ that is in head normal form.
+  % Note that we can do so because our language is a lambda calculus that does
+  % not contain full blown recursion and is strongly normalizing. 
+\end{enumerate}
+
+\subsubsection{Normalizing expressions}
+Before defining our type system given by the 2 judgments,
+$\Gamma \vdash \cdot \Leftarrow \cdot$ and $\Gamma \vdash \cdot \Rightarrow
+\cdot$, we must first define $\Gamma \vdash \cdot \Downarrow \cdot$, the big
+step semantics for evaluating expressions. This is because types are now
+expression and we will actually need to perform normalization while
+typechecking.
+
+\begin{enumerate}
+\item \textbf{Type}
+  \[
+    \begin{prooftree}
+      \hypo{\wf(\Gamma)}
+      \infer1{\Gamma \vdash \Type \Downarrow \Type} 
+    \end{prooftree}
+  \]
+\item \textbf{Variables} \\
+  \[
+    \begin{prooftree}
+      \hypo{\wf(\Gamma)}
+      \hypo{(x, \, \tau, \, \nu) \in \Gamma}
+      \infer2{\Gamma \vdash x \Downarrow \nu}
+    \end{prooftree} 
+  \]
+
+  \[
+    \begin{prooftree}
+      \hypo{\wf(\Gamma)}
+      \hypo{(x, \, \tau, \, \text{undefined}) \in \Gamma}
+      \infer2{\Gamma \vdash x \Downarrow x}
+    \end{prooftree} 
+  \]
+
+\item \textbf{Type ascriptions} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Downarrow \nu}
+      \infer1{\Gamma \vdash (E : T) \Downarrow \nu}
+    \end{prooftree}
+  \]
+  
+\item \textbf{Pi elimination, ie function application} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E_1 \Downarrow \lambda x, \, \nu_1}
+      \hypo{\Gamma \vdash E_2 \Downarrow \nu_2}
+      \hypo{\Gamma \vdash \nu_1[x \mapsto \nu_2] \Downarrow \nu}
+      \infer3{\Gamma \vdash E_1 \,\, E_2 \Downarrow \nu}
+    \end{prooftree}
+  \]
+
+\item \textbf{Normalizing under lambdas} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Downarrow \nu}
+      \infer1{\Gamma \vdash \lambda x, \, E, \, \Downarrow \lambda x, \, \nu}
+    \end{prooftree}
+  \]
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Downarrow \nu}
+      \infer1{\Gamma \vdash \lambda (x : T), \, E, \, \Downarrow \lambda x, \, \nu}
+    \end{prooftree}
+  \]
+
+\item \textbf{Pi} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash A \Downarrow \tau}
+      \hypo{\Gamma \vdash B(x) \Downarrow \tau'(x)}
+      \infer2{\Gamma \vdash \Pi_{x : A} B(x) \Downarrow \Pi_{x : \tau} \tau'(x)}
+    \end{prooftree}
+  \]
+\end{enumerate}
+
+\subsubsection{Well formed context and typing judgments}
+\begin{definition} [Well formed type]
+  An expression $T$ is said to be a well-formed type with respect to the context
+  $\Gamma$ if it satisfies
+  \[ \Gamma \vdash T \Leftarrow \Type \]
+
+  Informally, we can think of $\Type$ as the ``type of all types'' and so all
+  all well formed types are
+  expressions which we can check to have the type $\Type$.
+\end{definition}
+
+\begin{definition} [Well formed context]
+  Note that our definition below implies that expressions and types that we
+  store in our context are fully normalized to head normal form.
+
+  \begin{enumerate}
+  \item \textbf{Base case} \\
+    \[
+      \begin{prooftree}
+        \hypo{\wf(\emptyset)}
+      \end{prooftree}
+    \]
+
+  \item \textbf{Inductive cases} \\
+    \[
+      \begin{prooftree}
+        \hypo{\wf(\Gamma)}
+        \hypo{\Gamma \vdash \tau \Leftarrow \Type}
+        \infer2{\wf ((x, \, \tau, \, \nu) :: \Gamma)}
+      \end{prooftree}
+    \]
+
+    \[
+      \begin{prooftree}
+        \hypo{\wf(\Gamma)}
+        \hypo{\Gamma \vdash \tau \Leftarrow \Type}
+        \infer2{\wf ((x, \, \tau, \, \text{undefined}) :: \Gamma)}
+      \end{prooftree}
+    \]
+  \end{enumerate}
+\end{definition}
+
+\begin{definition} [Bidrectional typechecking]
+  Here we define the 2 \textit{mutually recursive} relations
+  \begin{enumerate}
+  \item$\Gamma \vdash \cdot \Rightarrow \cdot $ which corresponds to \textit{inference}
+  \item$\Gamma \vdash \cdot \Leftarrow \cdot$ which corresponds to \textit{checking}
+  \end{enumerate}
+
+  The idea is that there are some expressions for which it is easier to
+  \textit{infer},
+  ie compute the type directly, while for others, it is easier to have the user
+  supply a type annotation and then \textit{check} that it is correct.
+
+  As a rule of thumb, it is often easier to check the type for term
+  introduction rules while for elimination rules, it is usually easier to infer
+  the type.
+
+  \begin{enumerate}
+
+  \item \textbf{Type ascriptions} \\
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash T \Leftarrow \Type}
+        \hypo{\Gamma \vdash T \Downarrow \tau}
+        \hypo{\Gamma \vdash E \Leftarrow \tau}
+        \infer3{\Gamma \vdash (E : T) \Rightarrow \tau}
+      \end{prooftree}
+    \]
+   Optional type ascriptions allow the interpreter to infer the type of an
+   expression. This is useful for lambda abstractions in particular because it's
+   kinda hard to infer the type of a function like $\lambda x, \, x$ without any
+   further contextual information.
+    
+  \item \textbf{Var} \\
+    \[
+      \begin{prooftree}
+        \hypo{\wf(\Gamma)}
+        \hypo{(x, \, \tau, \, v) \in \Gamma}
+        \infer2{\Gamma \vdash x \Rightarrow \tau}
+      \end{prooftree}
+    \]
+    This says that we may infer the type of a variable if the type information
+    is already in our context.
+
+  \item \textbf{Type} \\
+    \[
+      \begin{prooftree}
+        \hypo{\wf(\Gamma)}
+        \infer1{\Gamma \vdash \Type \Rightarrow \Type}
+      \end{prooftree}
+    \]
+
+  \item \textbf{Check} \\
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E \Rightarrow \tau}
+        \infer1{\Gamma \vdash E \Leftarrow \tau}
+      \end{prooftree}
+    \]
+    Given a context $\Gamma$, if we can compute the type of an expression $E$ to
+    be $\tau$, then if we are also given $\tau$, we can verify that $E$
+    indeed has type $\tau$.
+
+  \item \textbf{Pi formation} \\
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash A \Leftarrow \Type}
+        \hypo{\Gamma \vdash A \Downarrow \tau}
+        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash B(x) \Leftarrow \Type}
+        \infer3{\Gamma \vdash \Pi_{x : A}B(x) \Rightarrow \Type}
+      \end{prooftree}
+    \]
+
+  \item \textbf{Pi introduction} \\
+    \[
+      \begin{prooftree}
+        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E \Leftarrow \tau'(x)}
+        \infer1{\Gamma \vdash \lambda x, \, E \Leftarrow \Pi_{x : \tau}\tau'(x)}
+      \end{prooftree}
+    \]
+    Note that our language (currently at least) doesn't support optional type
+    ascriptions for input parameters, and so we don't have an inference rule
+    for inferring the type of a lambda abstraction. 
+
+    TODO: Alpha renaming.
+    % \[
+    %   \begin{prooftree}
+    %     \hypo{\Gamma \vdash T \Leftarrow \Type}
+    %     \hypo{\Gamma \vdash T \Downarrow \tau}
+    %     \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E \Rightarrow \tau'(x)}
+    %     \infer3{\Gamma \vdash \lambda \, (x : T), \, E \Rightarrow \Pi_{x : \tau}\tau'(x)}
+    %   \end{prooftree}
+    % \]
+    % The second rule says that if the user type annotates the input argument of
+    % the function, then we can try to infer the type of the output and
+    % consequently, the type of the function as a whole.
+
+  \item \textbf{Function application, ie Pi elimination} \\
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E_1 \Rightarrow \Pi_{x : \tau}\tau'(x)}
+        \hypo{\Gamma \vdash E_2 \Leftarrow \tau}
+        \hypo{\Gamma \vdash \tau'[x \mapsto E_2] \Downarrow \tau''}
+        \infer3{E_1 \,\, E_2 \Rightarrow \tau''}
+      \end{prooftree}
+    \]
+
+  % \item \textbf{Sigma formation} \\
+  %   \[
+  %     \begin{prooftree}
+  %       \hypo{\Gamma \vdash A \Leftarrow \Type}
+  %       \hypo{\Gamma \vdash A \Downarrow \tau}
+  %       \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash B(x) \Leftarrow \Type}
+  %       \infer3{\Gamma \vdash \Sigma_{x : A}B(x) \Rightarrow \Type}
+  %     \end{prooftree}
+  %   \]
+
+  % \item \textbf{Sigma introduction} \\
+  %   \[
+  %     \begin{prooftree}
+  %       \hypo{\Gamma \vdash E_1 \Leftarrow \tau_1}
+  %       \hypo{\Gamma \vdash E_2 \Leftarrow \tau_2[x \mapsto E_1]}
+  %       \infer2{\Gamma \vdash \langle  E_1, \, E_2 \rangle \Leftarrow \Sigma_{x : \tau_1}\tau_2(x)}
+  %     \end{prooftree}
+  %   \]
+  %   Here we don't have a type inference rule because doing so would require us
+  %   to infer that $E_2$ has type $\tau_2[x \mapsto E_1]$ and then undo the
+  %   substitution to get $\tau_2(x)$.
+
+  % \item \textbf{Sigma elimination} \\
+  %   \[
+  %     \begin{prooftree}
+  %       \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau}\tau'(x)}
+  %       \infer1{\Gamma \vdash \fst E \Rightarrow \tau}
+  %     \end{prooftree}
+  %   \]
+
+  %   \[
+  %     \begin{prooftree}
+  %       \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+  %       \hypo{\Gamma \vdash \tau_2[x \mapsto \fst E] \Downarrow \tau_2'}
+  %       \infer2{\Gamma \vdash \snd E \Rightarrow \tau_2'}
+  %     \end{prooftree}
+  %   \]
+
+  % \item \textbf{Local let binding} \\
+  %   \[
+  %     \begin{prooftree}
+  %       \hypo{\Gamma \vdash E \Rightarrow \tau}
+  %       \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E' \Rightarrow \tau'(x)}
+  %       \hypo{\Gamma \vdash \tau'[x \mapsto E] \Downarrow \tau''}
+  %       \infer3{\Gamma \vdash (\text{let } x := E \text{ in } E') \Rightarrow \tau''}
+  %     \end{prooftree}
+  %   \]
+
+  %   \[
+  %     \begin{prooftree}
+  %       \hypo{\Gamma \vdash (\text{let } x := (E : T)) \text{ in } E' \Rightarrow \tau}
+  %       \infer1{\Gamma \vdash (\text{let } (x : T) := E \text{ in } E') \Rightarrow \tau}
+  %     \end{prooftree}
+  %   \]
+  %   This second rule handles the case when an optional type annotation is given
+  %   for the variable $x$.
+
+  % \item \textbf{Pair destructuring} \\
+  %   \[
+  %     \begin{prooftree}
+  %       % \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+  %       \hypo{\Gamma \vdash (\lambda z, \, E'[x_1 \mapsto \fst z][x_2 \mapsto
+  %         \snd z]) \,\, E
+  %         \Rightarrow \tau}
+  %         \hypo{z \notin \FV(E')}
+  %         \infer2{\Gamma \vdash (\text{let } \langle x_1, \, x_2 \rangle := E
+  %         \text{ in } E') \Rightarrow \tau}
+  %       \end{prooftree}
+  %     \]
+
+  \end{enumerate}
+\end{definition}
+
+The nice thing about these rules is that we can translate it almost directly
+into a typechecking and inference algorithm!
+More precisely, we may translate $\Gamma \vdash E \Rightarrow T$ into a
+function called $\text{check}(\Gamma, \, E, \, T)$ which checks if the
+expression $E$ really has the type $T$ given a context $\Gamma$.
+
+Similarly, $\Gamma \vdash E \Leftarrow T$ gives us a the function
+$\text{infer}(\Gamma, \, E)$ which outputs the inferred type of $E$ given
+the context $\Gamma$.
+
+In the literature, such rules are called \textit{syntax directed}, as the
+algorithm closely follows the formalization of the corresponding judgments.
+
+TODO: This next part on admissible rules could be expanded on and better
+elaborated.
+
+It's worth noting that since we normalize everything to full head normal form,
+the following \textit{conversion rule} is a theorem:
+\begin{align*}
+  \begin{prooftree}
+    \hypo{\Gamma \vdash E \Leftarrow \tau}
+    \hypo{\tau =_\beta \tau'}
+    \infer2[\text{Conv}]{\Gamma \vdash E \Leftarrow \tau'}
+  \end{prooftree}
+\end{align*}
+
+where we use $\tau =_\beta \tau'$ to mean that we may obtain one from the other
+through a sequence of beta reductions. In this case, we say that $\tau$ and
+$\tau'$ are beta equivalent to each other.
+
+Also, since we will be using de bruijn indices internally, lambda terms will
+always be deemed equal up to alpha renaming, so we actually have
+
+\begin{align*}
+  \begin{prooftree}
+    \hypo{\Gamma \vdash E \Leftarrow \tau}
+    \hypo{\tau =_{\alpha \beta} \tau'}
+    \infer2[\text{Conv}]{\Gamma \vdash E \Leftarrow \tau'}
+  \end{prooftree}
+\end{align*}
+Note the extra $\alpha$ in the subscript for $=$ next to the $\beta$.
+
+Another kind of equivalence is \textit{eta equivalence}. To explain this,
+consider the terms $\lambda x, \, B \, x$ and $B$. Both of them have exactly the
+same behavior. This is one form of eta equivalence.
+In lambda calculus terms, the latter is obtained from the former by an eta
+reduction.
+
+Now, we may view the lambda as the data constructor for
+the Pi type and function application as the eliminator.
+Then the expression $\lambda x, \, B \, x$ is obtained from $B$ by first
+eliminating $B$ to obtain $B x$ and then using the lambda
+constructor to obtain $\lambda x, \, B \, x$.
+
+More generally, we say that 2 terms are eta equivalent to each other if one can
+be obtained from the other by eliminating the term and then reconstructing the
+original term using the constructor. For instance, if we had a binary coproduct,
+we could project out both components and then recombine them to obtain the
+original sum.
+
+Unfortunately our type system is intensional rather than extensional in
+that the following rule does \textit{not} hold: 
+\[
+  \begin{prooftree}
+    \hypo{\Gamma \vdash E \Leftarrow \tau}
+    \hypo{\tau =_\eta \tau'}
+    \infer2{\Gamma \vdash E \Leftarrow \tau'}
+  \end{prooftree}
+\]
+
+One way to fix this is to allow the type checker to eta expand terms, via
+eliminating and then applying the data constructor, after
+computing the beta normal form.
+
+\subsection{Programs}
+To specify the big step semantics for evaluating programs, we first define the
+notion of a \textit{configuration}.
+\begin{comment}
+  Follows this approach:
+  https://www.cs.cornell.edu/courses/cs6110/2013sp/lectures/lec05-sp13.pdf
+\end{comment}
+\subsubsection{Configuration/state of program}
+A configuration has the form
+\begin{align*}
+  (\Gamma, \, \langle S_0; \, \dots; \, S_n \rangle, \, E)
+\end{align*}
+Configurations are triples representing the instantaneous state during an
+execution of a program. Here, $\Gamma$ denotes the current state of the
+global context and the sequence $\langle S_0; \, \dots; \, S_n \rangle$ denotes
+the next statements to be executed. 
+The expression $E$ is used to indicate the output of the previously executed
+statement.
+
+With this view, given a program, $\langle S_0; \, \dots; \, S_n
+\rangle$, we also define:
+\begin{enumerate}
+\item \textbf{Initial configuration} \\
+  $ (\emptyset, \, \langle S_0; \, \dots; \, S_n \rangle, \, \Type)$
+\item \textbf{Final configurations} \\
+  These are all configurations of the form
+  $(\Gamma, \, \langle \rangle, \, E)$
+\end{enumerate}
+
+In the next section, we define the big-step relation for programs $\cdot
+\Downarrow \cdot$ using
+this notion of a configuration.
+
+\subsubsection{Big step semantics for programs}
+We interleave type checking and evaluation, ie we type check and then evaluate
+each statement, one at a time, carrying the context along as we go.
+We do not statically type check the whole program first, then evaluate
+afterwards.
+
+\begin{enumerate}
+\item \textbf{Check} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Rightarrow \tau}
+      \infer1{(\Gamma, \, \langle \checkk \, E \rangle, \, E') \Downarrow
+        (\Gamma, \, \langle \rangle, \, \tau)}
+    \end{prooftree}
+  \]
+
+\item \textbf{Eval} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Rightarrow \tau}
+      \hypo{\Gamma \vdash E \Downarrow \nu}
+      \infer2{(\Gamma, \, \langle \evall \, E \rangle, \, E') \Downarrow
+        (\Gamma, \, \langle \rangle, \, \nu)}
+    \end{prooftree}
+  \]
+
+\item \textbf{Axiom} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash T \Leftarrow \Type}
+      \hypo{\Gamma \vdash T \Downarrow \tau}
+      \infer2{(\Gamma, \, \langle \axiom x : T \rangle, \, E') \Downarrow
+        ((x, \, \tau, \, \text{undefined}) :: \Gamma, \, \langle \rangle, \, \tau)}
+    \end{prooftree}
+  \]
+
+\item \textbf{Def} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Rightarrow \tau}
+      \hypo{\Gamma \vdash E \Downarrow \nu}
+      \infer2{(\Gamma, \, \langle \deff x := E \rangle, \, E') \Downarrow
+        ((x, \, \tau, \, \nu) :: \Gamma, \, \langle \rangle, \, (\nu : \tau))}
+    \end{prooftree}
+  \]
+
+\item \textbf{Sequences of statements} \\
+  \[
+    \begin{prooftree}
+      \hypo{(\Gamma, \, \langle S_0 \rangle, \, E) \Downarrow
+        (\Gamma', \, \langle \rangle, \, E') }
+      \hypo{(\Gamma', \, \langle S_1; \, \dots; \, S_n \rangle, \, E) \Downarrow
+        (\Gamma'', \, \langle \rangle, \, E'') }
+      \infer2{(\Gamma, \, \langle S_0; \, S_1; \, \dots; \, S_n \rangle, \, E) \Downarrow
+        (\Gamma'', \, \langle \rangle, \, E'') }
+    \end{prooftree}
+  \]
+
+\end{enumerate}
+
+\subsubsection{Output expression of evaluating a program}
+With these rules, given a user-entered program, say $\langle S_0;
+\dots; S_n \rangle$, we define the
+output expression of a program to be the $E$ such that
+\begin{align*}
+  (\emptyset, \, \langle S_0; \, \dots \; S_n \rangle, \, \Type) \Downarrow
+  (\Gamma, \, \langle \rangle, \, E)
+\end{align*}
+
+In other words, the expression output to the user is the expression obtained by
+beginning with the initial configuration and then recursively evaluating it
+until we reach a final configuration.
+\end{document}

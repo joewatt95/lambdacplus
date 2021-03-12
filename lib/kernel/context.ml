@@ -11,6 +11,11 @@ exception UnknownTypeBinding
 
 type t = entry BatFingerTree.t
 
+let show =
+  let open Fun in
+  BatFingerTree.to_list %>
+  List.to_string show_entry ~start:"[" ~stop:"]" ~sep:";" 
+
 let empty = BatFingerTree.empty
 
 let is_empty = BatFingerTree.is_empty
@@ -50,11 +55,6 @@ let is_var_name_bound var_name ctx =
     true
   with _ ->
     false
-
-let show =
-  let open Fun in
-  BatFingerTree.to_list %>
-  List.to_string show_entry ~start:"[" ~stop:"]" ~sep:"; "
 
 (* module Context : CONTEXT =
  * struct

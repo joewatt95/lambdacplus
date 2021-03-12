@@ -49,7 +49,7 @@ https://ptival.github.io/2017/05/16/parser-generators-and-function-application/
 
 let main := terminated(nonempty_list(stmt), EOF)
 
-let located(x) == ~ = x; { locate x $loc }
+let located(x) == ~ = x; { locate x ~source_loc:$loc }
 
 let stmt := located(
   | DEF; ~ = var_name; COLON_EQ; var_expr = expr; { Def {var_name; var_expr}}
@@ -81,7 +81,7 @@ let ascription :=
 let fun_expr := FUN; ~ = fun_arg_list; DOUBLE_ARROW; body=expr;
     { List.fold_right
         (fun input_var body : expr ->
-          locate (Fun {input_var; body}) $loc)
+          locate (Fun {input_var; body}) ~source_loc:$loc)
       fun_arg_list body}
 
 let fun_arg_list := nonempty_list(var_name)
@@ -90,7 +90,7 @@ let pi_expr := PI; ~ = pi_arg_list; COMMA; output_type=expr;
   { List.fold_right
     (fun (input_var, input_type) output_type : expr ->
        locate
-         (Pi {input_var; input_type; output_type}) $loc)
+         (Pi {input_var; input_type; output_type}) ~source_loc:$loc)
     pi_arg_list output_type}
 
 let pi_arg_list :=

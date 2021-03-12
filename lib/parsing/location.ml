@@ -8,7 +8,8 @@ type 'a located = {
 } [@@deriving show]
 
 (* Given some data and a source location, wrap them up in the located type. *)
-let locate data source_loc = {data; source_loc}
+let locate ?(source_loc = (Lexing.dummy_pos, Lexing.dummy_pos)) data = 
+  {data; source_loc}
 
 (* Update the data in a located type using a function f which takes as input the
    old data and outputs the new one.*)
