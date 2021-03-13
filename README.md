@@ -33,9 +33,9 @@ Refer to the `latex` directory.
 - Theory side
   - What theoretical properties does our language possess?
     - ie is type checking decidable? will our bidirectional algorithm always terminate?
-    - Add Sigma types, binary product, binary coproduct
-    - Stratify universe into 2 levels, like 2 sorted set theories, to avoid Girard's paradox, ie Burali-Forti.
-    - Local let bindings would be nice too.
+  - Add Sigma types, binary product, binary coproduct
+  - Stratify universe into 2 levels, like 2 sorted set theories, to avoid Girard's paradox, ie Burali-Forti.
+  - Local let bindings would be nice too.
 
 ## Project structure
 - `bin` is where all the driver code for the compiled
