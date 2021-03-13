@@ -20,7 +20,6 @@ module PAst = Parsing.Ast
 let update_data_with_ctx (located : 'a Loc.located) f ctx =
   Loc.update_data located @@ Fun.flip f ctx
 
-(* Convert a parsed expression to our internal AST. *)
 let rec parser_to_internal_raw_expr raw_expr ctx =
   match raw_expr with
   | PAst.Var var_name ->
@@ -55,12 +54,6 @@ let rec parser_to_internal_raw_expr raw_expr ctx =
 and parser_to_internal_expr expr ctx =
   update_data_with_ctx expr parser_to_internal_raw_expr ctx
 
-(* Convert a parsed statement to our internal AST.
-   Note that the return type here is actually (Ast.expr * ctx) because Def and
-   Axiom will modify the context, affecting future statements.
-   This is important to carry around in stmts_to_internal_ast when converting a
-   list of statements to our internal AST.
-*)
 let rec parser_to_internal_raw_stmt raw_stmt ctx =
   match raw_stmt with
   | PAst.Def {var_name; binding} ->
@@ -119,7 +112,6 @@ let pick_fresh_name var_name ctx =
     Utils.General.until is_var_name_free append_prime var_name in
   new_var_name, Context.add_binding new_var_name ctx
 
-(* Convert an expression from our internal AST back to the parser's AST *)
 let rec internal_to_parser_raw_expr raw_expr ctx =
   match raw_expr with
   | Ast.Var var_index ->

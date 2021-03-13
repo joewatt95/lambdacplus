@@ -1,11 +1,15 @@
 (* Concrete implementation of the Context module.
-  Concretely, contexts are finger trees, as implemented in the BatFingerTree
+  Concretely, contexts are finger trees, as implemented in the BFT
   module in the Batteries library.
   Finger trees are purely functional random access lists with logarithmic time
   concatenation and access, and amortized constant time insertion at both ends.
 *)
 
 open Containers
+
+(* For convenience *)
+module BFT = BatFingerTree
+let (%>) = Fun.(%>)
 
 type entry = {
   var_name : string; (* The name of the variable*)
@@ -16,18 +20,17 @@ type entry = {
 exception UnknownIndex
 exception UnknownTypeBinding
 
-type t = entry BatFingerTree.t
+type t = entry BFT.t
 
 let show =
-  let open Fun in
-  BatFingerTree.to_list %>
+  BFT.to_list %>
     List.to_string show_entry ~start:"[" ~stop:"]" ~sep:";" 
 
-let empty = BatFingerTree.empty
+let empty = BFT.empty
 
-let is_empty = BatFingerTree.is_empty
+let is_empty = BFT.is_empty
 
-let length = BatFingerTree.size
+let length = BFT.size
 
 (*
 This loops through every entry in ctx and increments var_type and
@@ -57,24 +60,23 @@ let incr_indices ctx =
     | Ast.Var _ -> Parsing.Location.update_data expr @@
       begin
         function
-        | Ast.Var i -> Ast.Var (i + 1)
+        | Ast.Var index -> Ast.Var (index + 1)
         | _ -> assert false
       end
     | _ -> expr 
   in
-  BatFingerTree.map 
+  BFT.map 
     (fun entry -> { entry with var_type = incr_index entry.var_type;
                                binding = incr_index entry.binding})
     ctx
 
 let add_binding var_name ?var_type ?binding =
-  let open Fun in
-  Fun.flip BatFingerTree.cons {var_name; var_type; binding} %>
+  Fun.flip BFT.cons {var_name; var_type; binding} %>
     incr_indices
 
 let var_name_to_index string ctx =
   let rec find_index current_index ctx =
-    match BatFingerTree.front ctx with
+    match BFT.front ctx with
     | None -> raise UnknownIndex
     | Some (tail, {var_name; _}) ->
       if Stdlib.(=) var_name string
@@ -83,13 +85,13 @@ let var_name_to_index string ctx =
   in find_index 0 ctx
 
 let index_to_var_name index ctx =
-  (BatFingerTree.get ctx index).var_name
+  (BFT.get ctx index).var_name
 
 let get_binding index ctx =
-  (BatFingerTree.get ctx index).binding
+  (BFT.get ctx index).binding
 
 let get_type index ctx =
-  match (BatFingerTree.get ctx index).var_type with
+  match (BFT.get ctx index).var_type with
   | None -> raise UnknownTypeBinding
   | Some expr -> expr
 

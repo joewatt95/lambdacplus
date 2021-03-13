@@ -4,13 +4,11 @@ parser, except that variables are given by de bruijn indices.
 
 type expr = raw_expr Parsing.Location.located
 and raw_expr =
-  | Type (* The paradoxical type universe, ie the type of all types. *)
-  (* (var, type of var, return type) *)
+  | Type
   | Pi of {input_var : string;
            input_type : expr;
            output_type : expr}
-  | Var of int
-  (* (var, body expression, type of function abstraction) *)
+  | Var of int (* This int is the de bruijn index of the variable. *)
   | Fun of {input_var : string;
             body : expr}
   | App of {fn : expr;
@@ -18,6 +16,26 @@ and raw_expr =
   | Ascription of {expr : expr;
                    expr_type : expr}
 [@@deriving show]
+
+(* Check if 2 expressions are structurally equal. *)
+let rec equal (expr1 : expr) (expr2 : expr) =
+  match expr1.data, expr2.data with
+  | Type, Type -> true
+
+  | Var index1, Var index2 -> index1 = index2 
+    (* print_endline @@ "Checking" ^ (string_of_int index1) ^ (string_of_int index2); *)
+
+  | App {fn=fn1; arg=arg1}, App {fn=fn2; arg=arg2} ->
+    equal fn1 fn2 && equal arg1 arg2
+
+  | Pi {input_type=in1; output_type=out1; _},
+    Pi {input_type=in2; output_type=out2; _} ->
+    equal in1 in2 && equal out1 out2
+
+  | Fun {body=body1; _}, Fun {body=body2; _} ->
+    equal body1 body2
+
+  | _, _ -> assert false
 
 type list_of_exprs = expr list
 [@@deriving show]

@@ -4,6 +4,8 @@ https://github.com/andrejbauer/spartan-type-theory/blob/master/src/typecheck.ml
 
 open Parsing.Location
 
+module Norm = Normalization
+
 let rec infer ctx expr =
  match expr.data with
  | Ast.Type -> expr
@@ -11,14 +13,14 @@ let rec infer ctx expr =
 
  | Ast.Ascription {expr; expr_type} ->
    check_type ctx expr_type;
-   let expr_type = Normalization.normalize ctx expr_type in
+   let expr_type = Norm.normalize ctx expr_type in
    check ctx expr expr_type;
    expr_type
 
- | Ast.Pi {input_type; output_type; _} ->
+ | Ast.Pi {input_var; input_type; output_type} ->
   check_type ctx input_type;
-  let input_type = Normalization.normalize ctx input_type in
-  let ctx = Context.add_binding "dummy" ~var_type:input_type ctx in
+  let input_type = Norm.normalize ctx input_type in
+  let ctx = Context.add_binding input_var ~var_type:input_type ctx in
   check_type ctx output_type;
   Ast.located_type
 
@@ -28,7 +30,7 @@ let rec infer ctx expr =
     match fn_type.data with
     | Ast.Pi {input_type; output_type; _} ->
       check ctx arg input_type;
-      Normalization.beta_reduce output_type arg 
+      Norm.beta_reduce output_type arg 
     | _ -> assert false
   end 
  | _ -> assert false
@@ -48,7 +50,7 @@ and check ctx expr expr_type =
   | _, _ -> 
     let inferred_expr_type = infer ctx expr in
     (* Here we need to check if the inferred type and expr_type are equal *)
-    if Equality.check_beta_equality inferred_expr_type expr_type
+    if Ast.equal inferred_expr_type expr_type
     then ()
     else assert false
 

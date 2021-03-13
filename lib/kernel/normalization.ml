@@ -8,6 +8,8 @@ open Containers
    binder, so we don't shift when we handle the input_type in Pi.
 *)
 
+module Loc = Parsing.Location
+
 let shift shift_by (expr : Ast.expr) =
   let rec shift_raw_expr cutoff raw_expr =
     match raw_expr with
@@ -36,7 +38,7 @@ let shift shift_by (expr : Ast.expr) =
       Ast.Ascription {expr; expr_type}
 
   and shift_expr cutoff expr =
-    Parsing.Location.update_data expr @@ shift_raw_expr cutoff
+    Loc.update_data expr @@ shift_raw_expr cutoff
 
   in shift_expr 0 expr
 
@@ -44,7 +46,7 @@ let rec subst_raw_expr from_index to_expr raw_expr =
   match raw_expr with
   | Ast.Type -> Ast.Type
   (* | Var index as var ->
-   *   let open Parsing.Location in
+   *   let open Loc in
    *   if index = from_index then to_expr.data else var *)
   | Ast.Pi {input_var; input_type; output_type} ->
     let input_type = subst from_index to_expr input_type in
@@ -65,6 +67,8 @@ let rec subst_raw_expr from_index to_expr raw_expr =
     let expr_type = subst from_index to_expr expr_type in
     Ast.Ascription {expr; expr_type}
 
+  (* This case should never happen because it's already taken care of
+  in subst*)
   | Ast.Var _ -> assert false
 
 and subst from_index to_expr expr =
@@ -72,7 +76,11 @@ and subst from_index to_expr expr =
   | Ast.Var index ->
     if index = from_index then to_expr else expr
   | _ ->
-    Parsing.Location.update_data expr @@ subst_raw_expr from_index to_expr
+    Loc.update_data expr @@ subst_raw_expr from_index to_expr
+
+let beta_reduce body arg =
+    let arg = shift 1 arg in
+    body |> subst 0 arg |> shift (-1)
 
 let rec normalize ctx (expr : Ast.expr) =
   match expr.data with
@@ -95,14 +103,10 @@ let rec normalize ctx (expr : Ast.expr) =
   | Ast.Fun {input_var; body} ->
       let ctx = Context.add_binding input_var ctx in
       let body = normalize ctx body in
-      Parsing.Location.set_data expr @@ Ast.Fun {input_var; body}
+      Loc.set_data expr @@ Ast.Fun {input_var; body}
 
   | Ast.Pi {input_var; input_type; output_type} ->
     let input_type = normalize ctx input_type in
     let ctx = Context.add_binding input_var ctx in 
     let output_type = normalize ctx output_type in
-    Parsing.Location.set_data expr @@ Ast.Pi {input_var; input_type; output_type}
-
-and beta_reduce body arg =
-    let arg = shift 1 arg in
-    body |> subst 0 arg |> shift (-1)
+    Loc.set_data expr @@ Ast.Pi {input_var; input_type; output_type}
