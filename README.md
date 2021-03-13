@@ -9,7 +9,7 @@ simple function type.
 Refer to the `latex` directory.
 
 ## Current status
-#### What seems to work
+### What seems to work
 - Normalization
 - Context
 - Type checking and inference
