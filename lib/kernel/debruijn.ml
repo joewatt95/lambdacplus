@@ -14,6 +14,8 @@ open Containers
 module Loc = Parsing.Location
 module PAst = Parsing.Ast
 
+let (%>) = Fun.(%>)
+
 (******************************************************************************)
 (* Functions to convert from the parser's AST to our internal AST *)
 
@@ -106,8 +108,8 @@ let parser_to_internal_stmts stmts ctx =
 
 let pick_fresh_name var_name ctx =
   let append_prime = (Fun.flip (^)) "'" in
-  let is_var_name_free var_name =
-    not @@ Context.is_var_name_bound var_name ctx in
+  let is_var_name_free =
+    Fun.flip Context.is_var_name_bound ctx %> not in
   let new_var_name =
     Utils.General.until is_var_name_free append_prime var_name in
   new_var_name, Context.add_binding new_var_name ctx
@@ -124,8 +126,8 @@ let rec internal_to_parser_raw_expr raw_expr ctx =
     PAst.Fun {input_var; body}
 
   | Ast.Pi {input_var; input_type; output_type} ->
-    let input_var, new_ctx = pick_fresh_name input_var ctx in
     let input_type = internal_to_parser_expr input_type ctx in
+    let input_var, new_ctx = pick_fresh_name input_var ctx in
     let output_type = internal_to_parser_expr output_type new_ctx in
     PAst.Pi {input_var; input_type; output_type}
 
@@ -141,8 +143,8 @@ let rec internal_to_parser_raw_expr raw_expr ctx =
 
   | Type -> PAst.Type
 
-and internal_to_parser_expr expr ctx =
-  update_data_with_ctx expr internal_to_parser_raw_expr ctx
+and internal_to_parser_expr expr =
+  update_data_with_ctx expr internal_to_parser_raw_expr
 
 (* let stmt_to_parser_ast ctx stmt =
  *   let open Parsing.Ast in

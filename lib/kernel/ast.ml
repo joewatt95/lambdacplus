@@ -2,7 +2,9 @@
 parser, except that variables are given by de bruijn indices.
 *)
 
-type expr = raw_expr Parsing.Location.located
+module Loc = Parsing.Location
+
+type expr = raw_expr Loc.located
 and raw_expr =
   | Type
   | Pi of {input_var : string;
@@ -40,7 +42,7 @@ let rec equal (expr1 : expr) (expr2 : expr) =
 type list_of_exprs = expr list
 [@@deriving show]
 
-type stmt = raw_stmt Parsing.Location.located
+type stmt = raw_stmt Loc.located
 and raw_stmt =
   | Def of {var_name : string; binding : expr}
   | Axiom of {var_name : string; var_type : expr}
@@ -51,4 +53,4 @@ and raw_stmt =
 type list_of_stmts = stmt list
 [@@deriving show]
 
-let located_type = Parsing.Location.locate Type
+let located_type = Loc.locate Type
