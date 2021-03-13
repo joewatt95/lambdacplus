@@ -5,6 +5,22 @@ This is a strongly normalizing lambda calculus with dependent types.
 The main focus is to implement the dependent Pi type, which generalizes the
 simple function type.
 
+### Specs
+Refer to the `latex` directory.
+
+## Current status
+#### What seems to work
+- Normalization
+- Context
+- Type checking and inference
+
+### What needs working on
+- More testing
+- Better error reporting and error messages
+  - At the moment we simply `assert false` whenever we encounter an error
+- Better pretty printing
+- Glue code for tying everything together
+
 ## Project structure
 - `bin` is where all the driver code for the compiled
 executable can be found. Currently it only contains `main.ml`, which we are
@@ -42,6 +58,7 @@ using for testing and experimentation.
         - `debruijn.ml` contains facilities for converting the parser's AST to 
         the internal AST and vice versa. For an overview of the key functions,
         refer to its module signature, `debruijn.mli`.
+        - `statements.ml` contains functions for evaluating statements.
     - `utils` contains utilities used in all parts of the project.
 
 ## Usage
@@ -82,81 +99,5 @@ To run the compiled js:
 $ esy ./_esy/default/build/default/bin/main.bc.js
 ```
 
-A sample run is as follows:
-Note that pretty printing for source locations, given by the `source_loc` field
-has yet to be implemented, so those appear blank here.
-```shell
-$ ./run_main.sh
-Enter input for parsing:
-axiom T : Type
-def f := (fun x => x : Pi (x : T), T)
-
-Parser AST:
-[{ Location.data =
-   Ast.Axiom {var_name = "T";
-     var_type = { Location.data = Ast.Type; source_loc =  }};
-   source_loc =  };
-  { Location.data =
-    Ast.Def {var_name = "f";
-      var_expr =
-      { Location.data =
-        Ast.Ascription {
-          expr =
-          { Location.data =
-            Ast.Fun {input_var = "x";
-              body = { Location.data = (Ast.Var "x"); source_loc =  }};
-            source_loc =  };
-          expr_type =
-          { Location.data =
-            Ast.Pi {input_var = "x";
-              input_type = { Location.data = (Ast.Var "T"); source_loc =  };
-              output_type = { Location.data = (Ast.Var "T"); source_loc =  }};
-            source_loc =  }};
-        source_loc =  }};
-    source_loc =  }
-  ]
-
-De Bruijn AST:
-[{ Location.data =
-   Ast.Axiom {var_name = "T";
-     var_type = { Location.data = Ast.Type; source_loc =  }};
-   source_loc =  };
-  { Location.data =
-    Ast.Def {var_name = "f";
-      var_expr =
-      { Location.data =
-        Ast.Ascription {
-          expr =
-          { Location.data =
-            Ast.Fun {input_var = "x";
-              body = { Location.data = (Ast.Var 0); source_loc =  }};
-            source_loc =  };
-          expr_type =
-          { Location.data =
-            Ast.Pi {input_var = "x";
-              input_type = { Location.data = (Ast.Var 0); source_loc =  };
-              output_type = { Location.data = (Ast.Var 1); source_loc =  }};
-            source_loc =  }};
-        source_loc =  }};
-    source_loc =  }
-  ]
-
-Final context:
-[{ Context.Context.var_name = "f"; var_type = None; binding = None }; { Context.Context.var_name = "T"; var_type = None; binding = None }]
-
-Parsing last expr back to parser's AST:
-{ Location.data =
-  Ast.Ascription {
-    expr =
-    { Location.data =
-      Ast.Fun {input_var = "x";
-        body = { Location.data = (Ast.Var "x"); source_loc =  }};
-      source_loc =  };
-    expr_type =
-    { Location.data =
-      Ast.Pi {input_var = "x";
-        input_type = { Location.data = (Ast.Var "f"); source_loc =  };
-        output_type = { Location.data = (Ast.Var "f"); source_loc =  }};
-      source_loc =  }};
-  source_loc =  }
-```
+To ease testing, the `run_main.sh` script has been provided with the command
+`esy ./_esy/default/build/default/bin/main.bc`.

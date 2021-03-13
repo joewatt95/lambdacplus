@@ -31,7 +31,7 @@ type list_of_exprs = expr list
 
 type stmt = raw_stmt Location.located
 and raw_stmt =
-  | Def of {var_name : string; var_expr : expr}
+  | Def of {var_name : string; binding : expr}
   | Axiom of {var_name : string; var_type : expr}
   | Check of expr
   | Eval of expr

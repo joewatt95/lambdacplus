@@ -1,8 +1,8 @@
 (* Boilerplate taken from
    https://stackoverflow.com/questions/52474076/using-ocamlyacc-with-sedlex
 *)
-
-open CCFun
+open Containers
+open Fun
 
 let parse lexbuf =
   let revised_parser =

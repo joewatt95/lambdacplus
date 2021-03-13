@@ -6,7 +6,7 @@ open Kernel
 
 let internal_stmt_to_parser_expr ctx ({data=stmt; _} : stmt) =
   match stmt with
-  | Def {var_expr; _} -> internal_to_parser_expr var_expr ctx
+  | Def {binding; _} -> internal_to_parser_expr binding ctx
   | Axiom {var_type; _} -> internal_to_parser_expr var_type ctx
   | Check expr
   | Eval expr -> internal_to_parser_expr expr ctx
@@ -33,6 +33,7 @@ let () =
          |> print_endline;
     flush stdout
   | _ -> assert false
+
   (* print_endline "\nParser AST: ";
   print_endline @@ Parsing.Ast.show_list_of_stmts stmts;
   let stmts, ctx = parser_to_internal_stmts stmts Context.empty in

@@ -1,19 +1,10 @@
 (*
-https://github.com/andrejbauer/spartan-type-theory/blob/master/src/parser.mly
-https://github.com/amblafont/sedlex-menhir/blob/master/sedlex-menhir/parser.mly
+References on Menhir's new syntax and carrying around source locations
+http://gallium.inria.fr/blog/parser-construction-menhir-appetizers/
+https://gitlab.inria.fr/fpottier/menhir/blob/master/doc/new-rule-syntax-summary.md
 
-https://mukulrathi.co.uk/create-your-own-programming-language/parsing-ocamllex-menhir/
- *)
-
-%{
-  open Ast
-  open Location
-%}
-
-(*
 Dummy token and some precedence rules to make function application left
-associative.
-See:
+associative. See:
 https://ptival.github.io/2017/05/16/parser-generators-and-function-application/
  *)
 %token APP
@@ -38,24 +29,20 @@ https://ptival.github.io/2017/05/16/parser-generators-and-function-application/
 (* Highest precedence *)
 %nonassoc APP
 
-%start <list_of_stmts> main
+%start <Ast.list_of_stmts> main
 
 %%
 
-(* References on Menhir's new syntax and carrying around source locations
-   http://gallium.inria.fr/blog/parser-construction-menhir-appetizers/
-   https://gitlab.inria.fr/fpottier/menhir/blob/master/doc/new-rule-syntax-summary.md
- *)
 
 let main := terminated(nonempty_list(stmt), EOF)
 
-let located(x) == ~ = x; { locate x ~source_loc:$loc }
+let located(x) == ~ = x; { Location.locate x ~source_loc:$loc }
 
 let stmt := located(
-  | DEF; ~ = var_name; COLON_EQ; var_expr = expr; { Def {var_name; var_expr}}
-  | AXIOM; ~ = var_name; COLON; var_type = expr;  { Axiom {var_name; var_type} }
-  | CHECK; ~ = expr;                              { Check expr }
-  | EVAL; ~ = expr;                               { Eval expr }
+  | DEF; ~ = var_name; COLON_EQ; binding = expr;  { Ast.Def {var_name; binding}}
+  | AXIOM; ~ = var_name; COLON; var_type = expr;  { Ast.Axiom {var_name; var_type} }
+  | CHECK; ~ = expr;                              { Ast.Check expr }
+  | EVAL; ~ = expr;                               { Ast.Eval expr }
 )
 
 let expr :=
@@ -67,30 +54,30 @@ let expr :=
 
 let raw_expr :=
   (* This 1st rule is causing shift/reduce conflicts in menhir. *)
-  | fn=expr; arg=expr;                           { App {fn; arg} } %prec APP
-  | TYPE;                                        { Type }
-  | ~ = var_name;                                { Var var_name }
+  | fn=expr; arg=expr;                           { Ast.App {fn; arg} } %prec APP
+  | TYPE;                                        { Ast.Type }
+  | ~ = var_name;                                { Ast.Var var_name }
   | ascription
 
 let var_name := VAR_NAME
 
 let ascription :=
       (expr, expr_type) = delimited(LPAREN, separated_pair(expr, COLON, expr), RPAREN);
-    { Ascription {expr; expr_type} }
+    { Ast.Ascription {expr; expr_type} }
 
 let fun_expr := FUN; ~ = fun_arg_list; DOUBLE_ARROW; body=expr;
     { List.fold_right
-        (fun input_var body : expr ->
-          locate (Fun {input_var; body}) ~source_loc:$loc)
+        (fun input_var body ->
+          Location.locate (Ast.Fun {input_var; body}) ~source_loc:$loc)
       fun_arg_list body}
 
 let fun_arg_list := nonempty_list(var_name)
 
 let pi_expr := PI; ~ = pi_arg_list; COMMA; output_type=expr;
   { List.fold_right
-    (fun (input_var, input_type) output_type : expr ->
-       locate
-         (Pi {input_var; input_type; output_type}) ~source_loc:$loc)
+    (fun (input_var, input_type) output_type ->
+       Location.locate
+         (Ast.Pi {input_var; input_type; output_type}) ~source_loc:$loc)
     pi_arg_list output_type}
 
 let pi_arg_list :=

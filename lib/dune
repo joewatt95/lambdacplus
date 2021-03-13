@@ -2,5 +2,5 @@
  (name cs4215_dependent_types)
  (libraries
   (re_export parsing)
-  (re_export internal)
+  (re_export kernel)
 ))

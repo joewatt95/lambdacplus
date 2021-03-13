@@ -1,15 +1,10 @@
-(*
-https://github.com/andrejbauer/spartan-type-theory/blob/master/src/lexer.ml
-https://github.com/amblafont/sedlex-menhir/blob/master/sedlex-menhir/lexer.ml
-*)
-
 let whitesp = [%sedlex.regexp? ' ' | '\t']
 let newline = [%sedlex.regexp? ('\r' | '\n' | "\r\n")]
 let var_name = [%sedlex.regexp? (alphabetic |  '_'), Star (alphabetic | '_' | '0' .. '9')]
 
 module G = Grammar
 
-let rec tokenize (lexbuf : Sedlexing.lexbuf) =
+let rec tokenize lexbuf =
   match%sedlex lexbuf with
   | eof -> G.EOF
   | "fun" -> G.FUN
