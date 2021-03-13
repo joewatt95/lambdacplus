@@ -23,9 +23,10 @@ let shift shift_by (expr : Ast.expr) =
       let output_type = shift_expr (cutoff + 1) output_type in
       Ast.Pi {input_var; input_type; output_type}
 
-    | Ast.Fun {input_var; body} ->
+    | Ast.Fun {input_var; input_type; body} ->
+      let input_type = CCOpt.map (shift_expr cutoff) input_type in
       let body = shift_expr (cutoff + 1) body in
-      Ast.Fun {input_var; body}
+      Ast.Fun {input_var; input_type; body}
 
     | Ast.App {fn; arg} ->
       let fn = shift_expr cutoff fn in
@@ -53,9 +54,10 @@ let rec subst_raw_expr from_index to_expr raw_expr =
     let output_type = subst (from_index + 1) (shift 1 to_expr) output_type in
     Ast.Pi {input_var; input_type; output_type}
 
-  | Ast.Fun {input_var; body} ->
+  | Ast.Fun {input_var; input_type; body} ->
+    let input_type = CCOpt.map (subst from_index to_expr) input_type in
     let body = subst (from_index + 1) (shift 1 to_expr) body in
-    Ast.Fun {input_var; body}
+    Ast.Fun {input_var; input_type; body}
 
   | Ast.App {fn; arg} ->
     let fn = subst from_index to_expr fn in
@@ -100,10 +102,10 @@ let rec normalize ctx (expr : Ast.expr) =
         | _ -> expr
       end
 
-  | Ast.Fun {input_var; body} ->
+  | Ast.Fun {input_var; body; _} ->
       let ctx = Context.add_binding input_var ctx in
       let body = normalize ctx body in
-      Loc.set_data expr @@ Ast.Fun {input_var; body}
+      Loc.set_data expr @@ Ast.Fun {input_var; input_type=None; body}
 
   | Ast.Pi {input_var; input_type; output_type} ->
     let input_type = normalize ctx input_type in

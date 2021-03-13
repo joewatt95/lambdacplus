@@ -30,10 +30,11 @@ let rec parser_to_internal_raw_expr raw_expr ctx =
 
   (* For Fun and Pi, we add the input var to the context to get a new one, which
      we then use to convert the body. *)
-  | PAst.Fun {input_var; body} ->
+  | PAst.Fun {input_var; input_type; body} ->
+    let input_type = CCOpt.map (Fun.flip parser_to_internal_expr ctx) input_type in
     let new_ctx = Context.add_binding input_var ctx in
     let body = parser_to_internal_expr body new_ctx in
-    Ast.Fun {input_var; body}
+    Ast.Fun {input_var; input_type; body}
 
   | PAst.Pi {input_var; input_type; output_type} ->
     let new_ctx = Context.add_binding input_var ctx in
@@ -120,10 +121,11 @@ let rec internal_to_parser_raw_expr raw_expr ctx =
     let var_name = Context.index_to_var_name var_index ctx in
     PAst.Var var_name
 
-  | Ast.Fun {input_var; body} ->
+  | Ast.Fun {input_var; input_type; body} ->
+    let input_type = CCOpt.map (Fun.flip internal_to_parser_expr ctx) input_type in
     let input_var, new_ctx = pick_fresh_name input_var ctx in
     let body = internal_to_parser_expr body new_ctx in
-    PAst.Fun {input_var; body}
+    PAst.Fun {input_var; input_type; body}
 
   | Ast.Pi {input_var; input_type; output_type} ->
     let input_type = internal_to_parser_expr input_type ctx in

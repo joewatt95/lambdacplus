@@ -8,6 +8,7 @@ and raw_expr =
            output_type : expr}
   | Var of string
   | Fun of {input_var : string;
+            input_type : expr option;
             body : expr}
   | App of {fn : expr;
             arg : expr}

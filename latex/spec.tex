@@ -121,12 +121,35 @@ with our language.
       \hypo{\dots}
       \hypo{x_n}
       \hypo{E}
-      \infer5{\fun \, x_0 \, x_1 \, \dots \, x_n => E}
+      \infer5{\fun \, x_0 \,\, x_1 \, \dots \, x_n => E}
     \end{prooftree}
   \]
   Note that all functions in our language are unary and so
   $\fun \, x_0 \, x_1 \, \dots \, x_n => E$ is syntactic sugar for
   \[ \fun \, x_0 => (\fun \, x_1 => \dots (\fun x_n => E)) \]
+
+  Simimarly, one can also provide optional type annotations for input variables.
+  This is to help the type checker infer the type of a function.
+  \[
+    \begin{prooftree}
+      \hypo{x}
+      \hypo{T}
+      \hypo{E}
+      \infer3{\fun \, (x : T) \, => E}
+    \end{prooftree}
+  \]
+
+  \[
+    \begin{prooftree}
+      \hypo{x_i}
+      \hypo{T_i}
+      \hypo{E}
+      \infer3{\fun \, (x_0 : T_0) \,\, (x_1 : T_1) \, \dots \, (x_n : T_n) => E}
+    \end{prooftree}
+  \]
+  We also treat $\fun \, (x_0 : T_0) \,\, (x_1 : T_1) \, \dots \, (x_n : T_n) => E$
+  as syntactic sugar for
+  \[ \fun \, (x_0 : T_0) => (\fun \, (x_1 : T_1) => \dots (\fun (x_n : T_n) => E)) \]
 
 \item \textbf{Pi type} \\
   \[
@@ -213,8 +236,9 @@ head normal form.
 \end{enumerate}
 
 Note that we often write $\lambda x, \, E$ instead of $\fun \, x => E$ as in the
-concrete syntax. Similarly, we also write $\Pi_{x : A}B(x)$ instead of $\Pii (x
-: A), \, B$.
+concrete syntax. Similarly, we also write $\lambda (x : T), \, E$ in place of
+$\fun \, (x : T) => x$.
+Finally, we use $\Pi_{x : A}B(x)$ to abbreviate $\Pii \, (x : A), \, B$.
 
 \section{Capture avoiding substitutions}
 Here we define the notion of capture avoiding substitutions. For this, we first
@@ -368,10 +392,12 @@ typechecking.
   \]
   \[
     \begin{prooftree}
-      \hypo{\Gamma \vdash E \Downarrow \nu}
-      \infer1{\Gamma \vdash \lambda (x : T), \, E, \, \Downarrow \lambda x, \, \nu}
+      \hypo{\Gamma \vdash \lambda x, \, E \Downarrow \nu}
+      \infer1{\Gamma \vdash \lambda \, (x : T), \, E, \, \Downarrow \nu}
     \end{prooftree}
   \]
+  This second rule says that optional type ascriptions do not play a role in
+  normalization, ie we just ignore them.
 
 \item \textbf{Pi} \\
   \[
@@ -508,18 +534,18 @@ typechecking.
     ascriptions for input parameters, and so we don't have an inference rule
     for inferring the type of a lambda abstraction. 
 
-    TODO: Alpha renaming.
-    % \[
-    %   \begin{prooftree}
-    %     \hypo{\Gamma \vdash T \Leftarrow \Type}
-    %     \hypo{\Gamma \vdash T \Downarrow \tau}
-    %     \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E \Rightarrow \tau'(x)}
-    %     \infer3{\Gamma \vdash \lambda \, (x : T), \, E \Rightarrow \Pi_{x : \tau}\tau'(x)}
-    %   \end{prooftree}
-    % \]
-    % The second rule says that if the user type annotates the input argument of
-    % the function, then we can try to infer the type of the output and
-    % consequently, the type of the function as a whole.
+    TODO: Say something about alpha renaming.
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash T \Leftarrow \Type}
+        \hypo{\Gamma \vdash T \Downarrow \tau}
+        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E \Rightarrow \tau'(x)}
+        \infer3{\Gamma \vdash \lambda \, (x : T), \, E \Rightarrow \Pi_{x : \tau}\tau'(x)}
+      \end{prooftree}
+    \]
+    The second rule says that if the user type annotates the input argument of
+    the function, then we can try to infer the type of the output and
+    consequently, the type of the function as a whole.
 
   \item \textbf{Function application, ie Pi elimination} \\
     \[

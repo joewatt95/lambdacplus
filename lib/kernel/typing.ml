@@ -2,11 +2,10 @@
 https://github.com/andrejbauer/spartan-type-theory/blob/master/src/typecheck.ml
  *)
 
-open Parsing.Location
-
+module Loc = Parsing.Location
 module Norm = Normalization
 
-let rec infer ctx expr =
+let rec infer ctx (expr : Ast.expr) =
  match expr.data with
  | Ast.Type -> expr
  | Ast.Var index -> Context.get_type index ctx
@@ -33,11 +32,18 @@ let rec infer ctx expr =
       Norm.beta_reduce output_type arg 
     | _ -> assert false
   end 
+
+ | Ast.Fun {input_var; input_type=Some input_ty; body} ->
+    check_type ctx input_ty;
+    let input_ty = Norm.normalize ctx input_ty in
+    let ctx = Context.add_binding input_var ~var_type:input_ty ctx in
+    let output_type = infer ctx body in
+    Loc.locate @@ Ast.Pi {input_var; input_type=input_ty; output_type}
  | _ -> assert false
 
 and check ctx expr expr_type =
   match expr.data, expr_type.data with
-  | Ast.Fun {input_var; body}, 
+  | Ast.Fun {input_var; input_type=None; body}, 
     Ast.Pi {input_type; output_type; _} ->
     ctx |> Context.add_binding input_var ~var_type:input_type
         |> fun ctx -> check ctx body output_type

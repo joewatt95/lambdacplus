@@ -8,6 +8,12 @@ simple function type.
 ### Specs
 Refer to the `latex` directory.
 
+## New features
+### 2021-03-14
+- Implement optional type annotations for input arguments to functions
+  - For instance, we can now write `fun (T : Type) (x : T) => x`.
+  - The semantics of this have been documented in the specs.
+
 ## Current status
 ### What seems to work
 - Normalization
@@ -15,11 +21,21 @@ Refer to the `latex` directory.
 - Type checking and inference
 
 ### What needs working on
-- More testing
-- Better error reporting and error messages
-  - At the moment we simply `assert false` whenever we encounter an error
-- Better pretty printing
-- Glue code for tying everything together
+- Practical side
+  - More testing
+  - Better error reporting and error messages
+    - At the moment we simply `assert false` whenever we encounter an error
+  - Better pretty printing
+  - Glue code for tying everything together
+  - REPL environment
+  - Tie our code into Typescript frontend
+
+- Theory side
+  - What theoretical properties does our language possess?
+    - ie is type checking decidable? will our bidirectional algorithm always terminate?
+    - Add Sigma types, binary product, binary coproduct
+    - Stratify universe into 2 levels, like 2 sorted set theories, to avoid Girard's paradox, ie Burali-Forti.
+    - Local let bindings would be nice too.
 
 ## Project structure
 - `bin` is where all the driver code for the compiled

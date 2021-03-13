@@ -12,6 +12,7 @@ and raw_expr =
            output_type : expr}
   | Var of int (* This int is the de bruijn index of the variable. *)
   | Fun of {input_var : string;
+            input_type : expr option;
             body : expr}
   | App of {fn : expr;
             arg : expr}

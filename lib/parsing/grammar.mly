@@ -61,17 +61,26 @@ let raw_expr :=
 
 let var_name := VAR_NAME
 
+let annotated_expr := 
+  delimited(LPAREN, separated_pair(expr, COLON, expr), RPAREN) 
+
 let ascription :=
-      (expr, expr_type) = delimited(LPAREN, separated_pair(expr, COLON, expr), RPAREN);
+      (expr, expr_type) = annotated_expr;
     { Ast.Ascription {expr; expr_type} }
 
 let fun_expr := FUN; ~ = fun_arg_list; DOUBLE_ARROW; body=expr;
     { List.fold_right
-        (fun input_var body ->
-          Location.locate (Ast.Fun {input_var; body}) ~source_loc:$loc)
+        (fun (input_var, input_type) body ->
+          Location.locate (Ast.Fun {input_var; input_type; body}) ~source_loc:$loc)
       fun_arg_list body}
 
-let fun_arg_list := nonempty_list(var_name)
+let fun_arg_list := nonempty_list(fun_arg)
+
+let fun_arg := 
+  | ~ = var_name;
+    { (var_name, None) }
+  | (var_name, expr_type) = delimited(LPAREN, separated_pair(var_name, COLON, expr), RPAREN);    
+    { (var_name, Some expr_type) }
 
 let pi_expr := PI; ~ = pi_arg_list; COMMA; output_type=expr;
   { List.fold_right
