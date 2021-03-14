@@ -14,8 +14,9 @@ Refer to the `latex` directory.
 - Optional type annotations for input arguments to functions
   - eg: `fun (T : Type) (x : T) => x`.
 - Local let bindings
-  - eg: `let f := fun (T : Type) (x : T) => x in f Type)`
+  - eg: `let f := fun (T : Type) (x : T) => x in f Type`
   - For some reason, Menhir complains that the grammar rule for let bindings causes a shift/reduce conflict.
+
 The specs have been updated with these new features.
 
 ### Fixes
