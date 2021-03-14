@@ -14,6 +14,9 @@ and raw_expr =
             arg : expr}
   | Ascription of {expr : expr;
                    expr_type : expr}
+  | Let of {var_name : string; 
+            binding : expr;
+            body : expr}
 [@@deriving show]
 
 type list_of_exprs = expr list

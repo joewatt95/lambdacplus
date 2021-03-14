@@ -51,8 +51,14 @@ let rec parser_to_internal_raw_expr raw_expr ctx =
     let expr = parser_to_internal_expr expr ctx in
     let expr_type = parser_to_internal_expr expr_type ctx in
     Ast.Ascription {expr; expr_type}
+  
+  | PAst.Let {var_name; binding; body} ->
+    let binding = parser_to_internal_expr binding ctx in
+    let new_ctx = Context.add_binding var_name ctx in
+    let body = parser_to_internal_expr body new_ctx in
+    Ast.Let {var_name; binding; body}
 
-  | Type -> Type
+  | PAst.Type -> Ast.Type
 
 and parser_to_internal_expr expr ctx =
   update_data_with_ctx expr parser_to_internal_raw_expr ctx
@@ -144,6 +150,8 @@ let rec internal_to_parser_raw_expr raw_expr ctx =
     PAst.Ascription {expr; expr_type}
 
   | Type -> PAst.Type
+  
+  | Ast.Let _ -> assert false
 
 and internal_to_parser_expr expr =
   update_data_with_ctx expr internal_to_parser_raw_expr

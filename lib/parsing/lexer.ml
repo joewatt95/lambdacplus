@@ -10,6 +10,8 @@ let rec tokenize lexbuf =
   | "fun" -> G.FUN
   | "Pi" -> G.PI
   | "Type" -> G.TYPE
+  | "let" -> G.LET
+  | "in" -> G.IN
   | '(' -> G.LPAREN
   | ')' -> G.RPAREN
   | ',' -> G.COMMA

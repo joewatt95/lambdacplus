@@ -40,6 +40,14 @@ let rec infer ctx (expr : Ast.expr) =
     let output_type = infer ctx body in
     (* What source location info should be used here? *)
     Loc.locate @@ Ast.Pi {input_var; input_type=input_ty; output_type}
+
+ | Ast.Let {var_name; binding; body} ->
+   let var_type = infer ctx binding in
+   let ctx = Context.add_binding var_name ~var_type:var_type ctx in
+   body |> infer ctx
+        |> Fun.flip Norm.beta_reduce binding
+        |> Norm.normalize ctx
+
  | _ -> assert false
 
 and check ctx expr expr_type =

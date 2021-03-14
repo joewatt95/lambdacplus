@@ -183,6 +183,16 @@ with our language.
   This functions similarly to other functional languages in that it's used
   mainly to provide a type annotation. For instance, it can be used to help the
   type checker if it's unable to infer the type of an expression.
+
+\item \textbf{Local let bindings} \\
+\[
+  \begin{prooftree}
+    \hypo{x}
+    \hypo{E}
+    \hypo{E'}
+    \infer3{\text{let } x := E \text{ in } E'}
+  \end{prooftree}
+\]
 \end{enumerate}
 
 \subsection{Syntax for statements}
@@ -407,6 +417,15 @@ typechecking.
       \infer2{\Gamma \vdash \Pi_{x : A} B(x) \Downarrow \Pi_{x : \tau} \tau'(x)}
     \end{prooftree}
   \]
+
+\item \textbf{Local let binding} \\
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E \Downarrow \nu}
+        \hypo{\Gamma \vdash E'[x \mapsto \nu] \Downarrow \nu'}
+        \infer2{\Gamma \vdash \text{let } x := E \text{ in } E' \Downarrow \nu'}
+      \end{prooftree}
+    \]
 \end{enumerate}
 
 \subsubsection{Well formed context and typing judgments}
@@ -554,6 +573,16 @@ typechecking.
         \hypo{\Gamma \vdash E_2 \Leftarrow \tau}
         \hypo{\Gamma \vdash \tau'[x \mapsto E_2] \Downarrow \tau''}
         \infer3{E_1 \,\, E_2 \Rightarrow \tau''}
+      \end{prooftree}
+    \]
+
+  \item \textbf{Local let binding} \\
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E \Rightarrow \tau}
+        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E' \Rightarrow \tau'(x)}
+        \hypo{\Gamma \vdash \tau'[x \mapsto E] \Downarrow \tau''}
+        \infer3{\Gamma \vdash \text{let } x := E \text{ in } E' \Rightarrow \tau''}
       \end{prooftree}
     \]
 

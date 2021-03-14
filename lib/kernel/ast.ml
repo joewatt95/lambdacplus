@@ -18,6 +18,9 @@ and raw_expr =
             arg : expr}
   | Ascription of {expr : expr;
                    expr_type : expr}
+  | Let of {var_name : string; 
+            binding : expr;
+            body : expr}
 [@@deriving show]
 
 (* Check if 2 expressions are structurally equal. *)
@@ -37,6 +40,10 @@ let rec equal (expr1 : expr) (expr2 : expr) =
 
   | Fun {body=body1; _}, Fun {body=body2; _} ->
     equal body1 body2
+
+  | Let {binding=binding1; body=body1; _},
+    Let {binding=binding2; body=body2; _} ->
+      equal binding1 binding2 && equal body1 body2
 
   | _, _ -> assert false
 
@@ -67,6 +74,11 @@ let shift shift_by (expr : expr) =
       let expr = shift_expr cutoff expr in
       let expr_type = shift_expr cutoff expr_type in
       Ascription {expr; expr_type}
+    
+    | Let {var_name; binding; body} ->
+      let binding = shift_expr cutoff binding in
+      let body = shift_expr (cutoff + 1) body in
+      Let {var_name; binding; body}
 
   and shift_expr cutoff expr =
     Loc.update_data expr @@ shift_raw_expr cutoff

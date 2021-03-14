@@ -18,12 +18,12 @@ let rec subst_raw_expr from_index to_expr raw_expr =
    *   if index = from_index then to_expr.data else var *)
   | Ast.Pi {input_var; input_type; output_type} ->
     let input_type = subst from_index to_expr input_type in
-    let output_type = subst (from_index + 1) (Ast.shift 1 to_expr) output_type in
+    let output_type = subst_under_binder from_index to_expr output_type in
     Ast.Pi {input_var; input_type; output_type}
 
   | Ast.Fun {input_var; input_type; body} ->
     let input_type = CCOpt.map (subst from_index to_expr) input_type in
-    let body = subst (from_index + 1) (Ast.shift 1 to_expr) body in
+    let body = subst_under_binder from_index to_expr body in
     Ast.Fun {input_var; input_type; body}
 
   | Ast.App {fn; arg} ->
@@ -36,6 +36,11 @@ let rec subst_raw_expr from_index to_expr raw_expr =
     let expr_type = subst from_index to_expr expr_type in
     Ast.Ascription {expr; expr_type}
 
+  | Ast.Let {var_name; binding; body} ->
+    let binding = subst from_index to_expr binding in
+    let body = subst_under_binder from_index to_expr body in
+    Ast.Let {var_name; binding; body}
+
   (* This case should never happen because it's already taken care of
   in subst*)
   | Ast.Var _ -> assert false
@@ -46,6 +51,8 @@ and subst from_index to_expr expr =
     if index = from_index then to_expr else expr
   | _ ->
     Loc.update_data expr @@ subst_raw_expr from_index to_expr
+
+and subst_under_binder from_index to_expr = subst (from_index + 1) (Ast.shift 1 to_expr)
 
 let beta_reduce body arg =
     let arg = Ast.shift 1 arg in
@@ -64,8 +71,9 @@ let rec normalize ctx (expr : Ast.expr) =
       begin
         match (normalize ctx fn).data with
         | Ast.Fun {body; _} ->
-          let arg = normalize ctx arg in 
-          beta_reduce body arg
+          let arg = normalize ctx arg in
+          let body = beta_reduce body arg in
+          normalize ctx body
         | _ -> expr
       end
 
@@ -82,3 +90,8 @@ let rec normalize ctx (expr : Ast.expr) =
     let ctx = Context.add_binding input_var ctx in 
     let output_type = normalize ctx output_type in
     Loc.set_data expr @@ Ast.Pi {input_var; input_type; output_type}
+
+  | Ast.Let {binding; body; _} ->
+    let binding = normalize ctx binding in
+    let body = beta_reduce body binding in
+    normalize ctx body

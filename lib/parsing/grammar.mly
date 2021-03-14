@@ -10,7 +10,7 @@ https://ptival.github.io/2017/05/16/parser-generators-and-function-application/
 %token APP
 
 (* Types and expressions *)
-%token TYPE PI FUN
+%token TYPE PI FUN LET IN
 
 (* Misc punctuation *)
 %token LPAREN RPAREN COLON_EQ COLON COMMA DOUBLE_ARROW
@@ -25,7 +25,7 @@ https://ptival.github.io/2017/05/16/parser-generators-and-function-application/
 %token EOF
 
 (* Lowest precedence *)
-%nonassoc LPAREN VAR_NAME FUN PI TYPE
+%nonassoc LPAREN VAR_NAME FUN PI TYPE LET
 (* Highest precedence *)
 %nonassoc APP
 
@@ -55,6 +55,8 @@ let expr :=
 let raw_expr :=
   (* This 1st rule is causing shift/reduce conflicts in menhir. *)
   | fn=expr; arg=expr;                           { Ast.App {fn; arg} } %prec APP
+  (* This let rule is also causing shift/reduce conflicts. *)
+  | let_expr
   | TYPE;                                        { Ast.Type }
   | ~ = var_name;                                { Ast.Var var_name }
   | ascription
@@ -91,3 +93,7 @@ let pi_expr := PI; ~ = pi_arg_list; COMMA; output_type=expr;
 
 let pi_arg_list :=
       nonempty_list(delimited(LPAREN, separated_pair(var_name, COLON, expr), RPAREN))
+
+let let_expr := 
+  LET; ~ = var_name; COLON_EQ; binding=expr; IN; body=expr;
+  { Ast.Let {var_name; binding; body} }

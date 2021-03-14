@@ -10,9 +10,15 @@ Refer to the `latex` directory.
 
 ## Changes
 ### 2021-03-14
-- Implement optional type annotations for input arguments to functions
-  - For instance, we can now write `fun (T : Type) (x : T) => x`.
-  - The semantics of this have been documented in the specs.
+### New features
+- Optional type annotations for input arguments to functions
+  - eg: `fun (T : Type) (x : T) => x`.
+- Local let bindings
+  - eg: `let f := fun (T : Type) (x : T) => x in f Type)`
+  - For some reason, Menhir complains that the grammar rule for let bindings causes a shift/reduce conflict.
+The specs have been updated with these new features.
+
+### Fixes
 - Fix and optimize context management.
 
 ## Current status
