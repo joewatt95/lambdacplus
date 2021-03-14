@@ -7,6 +7,12 @@
 
 \section{Preliminaries}
 \subsection{Overview}
+
+BIG TODO: Write something about Pure Type Systems and the lambda cube and how
+this language is essentially an extension of the Calculus of Constructions, with
+stuff like top level definitions and lightweight Typed Source esque type
+inference.
+
 Our language is a dependently typed lambda calculus, based on what is known in
 the literature as $\lambda P$ or $\lambda \Pi$.
 The main references which we base our language on are
@@ -66,6 +72,7 @@ normalize everything all the way.
 \item $x$, $y$, $z$ range over variables. 
 \item $\nu, \, \tau$ range over expressions that are in \textit{full} head normal
   form.
+\item $s$ ranges over all sorts, ie $\Type$ and $\Kind$.
   \begin{comment}
     We define this set of expressions inductively via:
     \[ \begin{prooftree} \infer0{\Type} \end{prooftree} \]
@@ -91,6 +98,19 @@ with our language.
 
 \subsection{Syntax for expressions}
 \begin{enumerate}
+\item \textbf{Sorts} \\
+  \[
+    \begin{prooftree}
+      \infer0{\Type}
+    \end{prooftree}
+  \]
+
+  \[
+    \begin{prooftree}
+      \infer0{\Kind}
+    \end{prooftree}
+  \]
+
 \item \textbf{Variables} \\
   \[
     \begin{prooftree}
@@ -260,7 +280,9 @@ so this formalization is for purposes of metatheory only.
 \begin{align*}
   \FV (x) &:= \{x\} \\
   \FV (E_1 \, E_2) &:= \FV(E_1) \cup \FV(E_2) \\
-  \FV (\lambda x, \, E(x)) &:= \FV(E) \setminus \{x\} \\
+  \FV (\lambda \, x, \, E(x)) &:= \FV(E) \setminus \{x\} \\
+  \FV (\lambda \, (x : T), \, E(x)) &:= \FV(T) \cup (\FV(E) \setminus \{x\}) \\
+  \FV (\text{let } x := E \text{ in } E') &:= \FV((\lambda x, \, E') \,\, E) \\
   \FV (\Pi_{x : A} B(x)) &:= \FV(A) \cup (\FV(B) \setminus \{x\})
 \end{align*}
 Note that in Pi expressions, the input type $A$ is actually an expression itself
@@ -280,11 +302,22 @@ occurrences of $x$ by $E'$ in the expression $E$ yields another expression $E''$
   (\lambda y, \, E) [x \mapsto E'] &:= \lambda y, \, E[x \mapsto E'] \quad (\text{if } y \notin \FV(E')) \\ 
   (\lambda y, \, E) [x \mapsto E'] &:= \lambda z, E[y \mapsto z][x \mapsto E'] \\
                  &\quad \quad \quad (\text{if } z \notin FV(E) \cup FV(E') \cup \{x\}) \\
+  (\text{let } y := E \text{ in } E'') [x \mapsto E'] &:= 
+    ((\lambda y, \, E) \,\, E'') [x \mapsto E'] \\
+\end{align*}
+
+We also define $(\lambda \, (x : T), \, E) [x \mapsto E']$
+similar to the case withouit the optional type annotation above. The only
+difference here is we also need to substitute $x$ for $E'$ in the type annotation,
+$T$. Note that we do not treat $x$ as being bound in $T$ here.
+
+\begin{align*}
   (\Pi_{x : A} B(x)) [x \mapsto B'] &:= \Pi_{x : A[x \mapsto B']} B(x) \\ 
   (\Pi_{y : A} B(y)) [x \mapsto B'] &:= \Pi_{y : A[x \mapsto B']} B[x \mapsto B'] \quad (\text{if } y \notin \FV(B')) \\ 
   (\Pi_{y : A} B(y)) [x \mapsto B'] &:= \Pi_{z : A[x \mapsto B']} B[y \mapsto z][x \mapsto B'] \\
                  &\quad \quad \quad (\text{if } z \notin FV(B) \cup FV(B') \cup \{x\})
 \end{align*}
+
 For Pi expressions, $A$ is an expression and thus when substituting $x$ by
 $B'$, we must also perform the substitution in the input type $A$. However, as
 $x$ is not bound there, we need not worry about capturing it when substituting there. 
@@ -491,7 +524,7 @@ typechecking.
   \item \textbf{Type ascriptions} \\
     \[
       \begin{prooftree}
-        \hypo{\Gamma \vdash T \Leftarrow \Type}
+        \hypo{\Gamma \vdash T \Rightarrow s}
         \hypo{\Gamma \vdash T \Downarrow \tau}
         \hypo{\Gamma \vdash E \Leftarrow \tau}
         \infer3{\Gamma \vdash (E : T) \Rightarrow \tau}
@@ -517,15 +550,23 @@ typechecking.
     \[
       \begin{prooftree}
         \hypo{\wf(\Gamma)}
-        \infer1{\Gamma \vdash \Type \Rightarrow \Type}
+        \infer1{\Gamma \vdash \Type \Rightarrow \Kind}
       \end{prooftree}
     \]
+
+    % \[
+    %   \begin{prooftree}
+    %     \hypo{\wf(\Gamma)}
+    %     \infer1{\Gamma \vdash \Type \Rightarrow \Type}
+    %   \end{prooftree}
+    % \]
 
   \item \textbf{Check} \\
     \[
       \begin{prooftree}
-        \hypo{\Gamma \vdash E \Rightarrow \tau}
-        \infer1{\Gamma \vdash E \Leftarrow \tau}
+        \hypo{\Gamma \vdash E \Rightarrow \tau'}
+        \hypo{\tau \equiv_{\alpha \beta} \tau'}
+        \infer2{\Gamma \vdash E \Leftarrow \tau}
       \end{prooftree}
     \]
     Given a context $\Gamma$, if we can compute the type of an expression $E$ to
@@ -535,12 +576,23 @@ typechecking.
   \item \textbf{Pi formation} \\
     \[
       \begin{prooftree}
-        \hypo{\Gamma \vdash A \Leftarrow \Type}
+        \hypo{\Gamma \vdash A \Rightarrow s_1}
         \hypo{\Gamma \vdash A \Downarrow \tau}
-        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash B(x) \Leftarrow \Type}
-        \infer3{\Gamma \vdash \Pi_{x : A}B(x) \Rightarrow \Type}
+        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash B(x) \Rightarrow s_2}
+        \infer3{\Gamma \vdash \Pi_{x : A}B(x) \Rightarrow s_2}
       \end{prooftree}
     \]
+    Note that this is a rule schema with the metavariables 
+    $s_1, \, s_2 \in \{\Type, \, \Kind\}$
+
+    % \[
+    %   \begin{prooftree}
+    %     \hypo{\Gamma \vdash A \Leftarrow \Type}
+    %     \hypo{\Gamma \vdash A \Downarrow \tau}
+    %     \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash B(x) \Leftarrow \Type}
+    %     \infer3{\Gamma \vdash \Pi_{x : A}B(x) \Rightarrow \Type}
+    %   \end{prooftree}
+    % \]
 
   \item \textbf{Pi introduction} \\
     \[
@@ -554,9 +606,10 @@ typechecking.
     for inferring the type of a lambda abstraction. 
 
     TODO: Say something about alpha renaming.
+
     \[
       \begin{prooftree}
-        \hypo{\Gamma \vdash T \Leftarrow \Type}
+        \hypo{\Gamma \vdash T \Rightarrow s}
         \hypo{\Gamma \vdash T \Downarrow \tau}
         \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E \Rightarrow \tau'(x)}
         \infer3{\Gamma \vdash \lambda \, (x : T), \, E \Rightarrow \Pi_{x : \tau}\tau'(x)}
@@ -680,12 +733,12 @@ the following \textit{conversion rule} is a theorem:
 \begin{align*}
   \begin{prooftree}
     \hypo{\Gamma \vdash E \Leftarrow \tau}
-    \hypo{\tau =_\beta \tau'}
+    \hypo{\tau \equiv_\beta \tau'}
     \infer2[\text{Conv}]{\Gamma \vdash E \Leftarrow \tau'}
   \end{prooftree}
 \end{align*}
 
-where we use $\tau =_\beta \tau'$ to mean that we may obtain one from the other
+where we use $\tau \equiv_\beta \tau'$ to mean that we may obtain one from the other
 through a sequence of beta reductions. In this case, we say that $\tau$ and
 $\tau'$ are beta equivalent to each other.
 
@@ -695,11 +748,11 @@ always be deemed equal up to alpha renaming, so we actually have
 \begin{align*}
   \begin{prooftree}
     \hypo{\Gamma \vdash E \Leftarrow \tau}
-    \hypo{\tau =_{\alpha \beta} \tau'}
+    \hypo{\tau \equiv_{\alpha \beta} \tau'}
     \infer2[\text{Conv}]{\Gamma \vdash E \Leftarrow \tau'}
   \end{prooftree}
 \end{align*}
-Note the extra $\alpha$ in the subscript for $=$ next to the $\beta$.
+Note the extra $\alpha$ in the subscript for $\equiv$ next to the $\beta$.
 
 Another kind of equivalence is \textit{eta equivalence}. To explain this,
 consider the terms $\lambda x, \, B \, x$ and $B$. Both of them have exactly the
