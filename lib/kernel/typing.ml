@@ -38,6 +38,7 @@ let rec infer ctx (expr : Ast.expr) =
     let input_ty = Norm.normalize ctx input_ty in
     let ctx = Context.add_binding input_var ~var_type:input_ty ctx in
     let output_type = infer ctx body in
+    (* What source location info should be used here? *)
     Loc.locate @@ Ast.Pi {input_var; input_type=input_ty; output_type}
  | _ -> assert false
 

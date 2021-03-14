@@ -8,11 +8,12 @@ simple function type.
 ### Specs
 Refer to the `latex` directory.
 
-## New features
+## Changes
 ### 2021-03-14
 - Implement optional type annotations for input arguments to functions
   - For instance, we can now write `fun (T : Type) (x : T) => x`.
   - The semantics of this have been documented in the specs.
+- Fix and optimize context management.
 
 ## Current status
 ### What seems to work
@@ -61,7 +62,7 @@ using for testing and experimentation.
         - `context.ml` is the module implementing the context/environment.
         The level of abstraction is controlled via the module signature found in
         `context.mli`.
-        This functions like a list of triples of triples of the form
+        Contexts function like a list of triples of triples of the form
                 (var name string, type of var, binding)
         - `normalization.ml` currently contains the `shift` and `subst`
         functions for working with our AST using de bruijn indices.
@@ -71,10 +72,9 @@ using for testing and experimentation.
         This will include the 2 key functions `check` and `infer`, where `infer`
         involves synthesizing the type, while `check` involves verifying if an
         expression has a given type.
-        - `debruijn.ml` contains facilities for converting the parser's AST to 
-        the internal AST and vice versa. For an overview of the key functions,
-        refer to its module signature, `debruijn.mli`.
-        - `statements.ml` contains functions for evaluating statements.
+        - `ast_conversion.ml` contains facilities for converting the parser's AST to 
+        the internal AST and vice versa.
+        - `eval_statements.ml` contains functions for evaluating statements.
     - `utils` contains utilities used in all parts of the project.
 
 ## Usage

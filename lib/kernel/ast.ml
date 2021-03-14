@@ -40,6 +40,39 @@ let rec equal (expr1 : expr) (expr2 : expr) =
 
   | _, _ -> assert false
 
+let shift shift_by (expr : expr) =
+  let rec shift_raw_expr cutoff raw_expr =
+    match raw_expr with
+    | Type -> Type
+
+    | Var index as var ->
+      if index >= cutoff then Var (index + shift_by) else var
+
+    | Pi {input_var; input_type; output_type} ->
+      let input_type = shift_expr cutoff input_type in
+      let output_type = shift_expr (cutoff + 1) output_type in
+      Pi {input_var; input_type; output_type}
+
+    | Fun {input_var; input_type; body} ->
+      let input_type = CCOpt.map (shift_expr cutoff) input_type in
+      let body = shift_expr (cutoff + 1) body in
+      Fun {input_var; input_type; body}
+
+    | App {fn; arg} ->
+      let fn = shift_expr cutoff fn in
+      let arg = shift_expr cutoff arg in
+      App {fn; arg}
+
+    | Ascription {expr; expr_type} ->
+      let expr = shift_expr cutoff expr in
+      let expr_type = shift_expr cutoff expr_type in
+      Ascription {expr; expr_type}
+
+  and shift_expr cutoff expr =
+    Loc.update_data expr @@ shift_raw_expr cutoff
+
+  in shift_expr 0 expr
+
 type list_of_exprs = expr list
 [@@deriving show]
 

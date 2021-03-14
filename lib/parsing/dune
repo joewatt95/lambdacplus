@@ -3,6 +3,6 @@
 
 (library
  (name parsing)
- (preprocess (pps sedlex.ppx ppx_deriving.show))
+ (preprocess (pps sedlex.ppx ppx_deriving.show ppx_fields_conv))
  (libraries containers sedlex menhirLib ppx_deriving)
 )

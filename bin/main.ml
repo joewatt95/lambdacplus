@@ -1,7 +1,7 @@
 open Containers
 
 open Kernel.Ast
-open Kernel.Debruijn
+open Kernel.Ast_conversion
 open Kernel
 
 let internal_stmt_to_parser_expr ctx ({data=stmt; _} : stmt) =

@@ -1,6 +1,6 @@
 (library
  (name kernel)
- (preprocess (pps ppx_deriving.show ppx_deriving.make))
+ (preprocess (pps ppx_deriving.show ppx_fields_conv))
  (libraries containers batteries ppx_deriving
             parsing utils)
 )
