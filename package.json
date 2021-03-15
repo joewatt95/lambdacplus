@@ -8,9 +8,10 @@
   "dependencies": {
     "@opam/batteries": "~3.3.0",
     "@opam/containers": ">= 3.2 < 4.0",
-    "@opam/menhir": ">= 20201216",
+    "@opam/menhir": ">= 20210310",
     "@opam/ppx_deriving": "~5.2.1",
-    "@opam/sedlex": ">= 2.3 < 3.0",
+    "@opam/ppx_fields_conv":  ">= v0.14.2",
+    "@opam/sedlex": ">= 2.3",
     "ocaml": "~4.11.2"
   },
   "devDependencies": {
