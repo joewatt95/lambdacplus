@@ -488,7 +488,7 @@ typechecking.
     \[
       \begin{prooftree}
         \hypo{\wf(\Gamma)}
-        \hypo{\Gamma \vdash \tau \Leftarrow \Type}
+        \hypo{\Gamma \vdash \tau \Rightarrow s}
         \infer2{\wf ((x, \, \tau, \, \nu) :: \Gamma)}
       \end{prooftree}
     \]
@@ -496,7 +496,7 @@ typechecking.
     \[
       \begin{prooftree}
         \hypo{\wf(\Gamma)}
-        \hypo{\Gamma \vdash \tau \Leftarrow \Type}
+        \hypo{\Gamma \vdash \tau \Rightarrow s}
         \infer2{\wf ((x, \, \tau, \, \text{undefined}) :: \Gamma)}
       \end{prooftree}
     \]
@@ -534,6 +534,13 @@ typechecking.
    expression. This is useful for lambda abstractions in particular because it's
    kinda hard to infer the type of a function like $\lambda x, \, x$ without any
    further contextual information.
+
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E \Leftarrow \Kind}
+        \infer1{\Gamma \vdash (E : \Kind) \Rightarrow \Kind}
+      \end{prooftree}
+    \]
     
   \item \textbf{Var} \\
     \[
@@ -848,7 +855,7 @@ afterwards.
 \item \textbf{Axiom} \\
   \[
     \begin{prooftree}
-      \hypo{\Gamma \vdash T \Leftarrow \Type}
+      \hypo{\Gamma \vdash T \Rightarrow s}
       \hypo{\Gamma \vdash T \Downarrow \tau}
       \infer2{(\Gamma, \, \langle \axiom x : T \rangle, \, E') \Downarrow
         ((x, \, \tau, \, \text{undefined}) :: \Gamma, \, \langle \rangle, \, \tau)}
