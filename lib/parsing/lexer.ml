@@ -10,6 +10,7 @@ let name =
 module Encoding = Sedlexing.Utf8
 
 module G = Grammar
+
 let reserved_keywords = [
   (["fun"; "λ"; "lambda"], G.FUN);
   (["Pi"; "Π"; "∏"; "∀"; "forall"], G.PI);
