@@ -12,9 +12,19 @@ let internal_stmt_to_parser_expr ctx ({data=stmt; _} : stmt) =
   | Eval expr -> internal_to_parser_expr expr ctx
 
 let () =
-  print_endline "Enter input for parsing:";
-  let stmts = Parsing.Parser.parse_channel stdin in
-  let stmt = stmts |> List.hd in
+  print_endline "Enter input:";
+  let stmts, ctx = 
+    stdin |> Parsing.Parser.parse_channel 
+          |> Fun.flip Ast_conversion.parser_to_internal_stmts 
+                      Context.empty 
+  in
+  let expr, _ = Eval_statements.eval_stmts stmts ctx in
+  expr |> Fun.flip Ast_conversion.internal_to_parser_expr ctx
+       |> Unparsing.Unparser.unparse
+       (* |> Parsing.Ast.show_expr *)
+       |> fun str -> print_endline @@ "\nHere's the output:\n" ^ str;
+  flush stdout
+  (* let stmt = stmts |> List.hd in
   match stmt.data with
   | Eval expr ->
     print_endline "\nNormalizing input...";
@@ -30,9 +40,8 @@ let () =
          |> Typing.infer Context.empty
          |> Fun.flip internal_to_parser_expr Context.empty
          |> Parsing.Ast.show_expr
-         |> print_endline;
-    flush stdout
-  | _ -> assert false
+         |> print_endline; *)
+
 
   (* print_endline "\nParser AST: ";
   print_endline @@ Parsing.Ast.show_list_of_stmts stmts;

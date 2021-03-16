@@ -3,6 +3,7 @@
 type expr = raw_expr Location.located
 and raw_expr =
   | Type
+  | Kind
   | Pi of {input_var : string;
            input_type : expr;
            output_type : expr}
@@ -14,7 +15,7 @@ and raw_expr =
             arg : expr}
   | Ascription of {expr : expr;
                    expr_type : expr}
-  | Let of {var_name : string; 
+  | Let of {var_name : string;
             binding : expr;
             body : expr}
 [@@deriving show]

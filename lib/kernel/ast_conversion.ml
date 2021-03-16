@@ -59,6 +59,7 @@ let rec parser_to_internal_raw_expr raw_expr ctx =
     Ast.Let {var_name; binding; body}
 
   | PAst.Type -> Ast.Type
+  | PAst.Kind -> Ast.Kind
 
 and parser_to_internal_expr expr ctx =
   update_data_with_ctx expr parser_to_internal_raw_expr ctx
@@ -150,6 +151,8 @@ let rec internal_to_parser_raw_expr raw_expr ctx =
     PAst.Ascription {expr; expr_type}
 
   | Type -> PAst.Type
+
+  | Kind -> PAst.Kind
   
   | Ast.Let _ -> assert false
 

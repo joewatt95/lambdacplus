@@ -7,6 +7,7 @@ module Loc = Parsing.Location
 type expr = raw_expr Loc.located
 and raw_expr =
   | Type
+  | Kind
   | Pi of {input_var : string;
            input_type : expr;
            output_type : expr}
@@ -23,10 +24,12 @@ and raw_expr =
             body : expr}
 [@@deriving show]
 
+let located_kind = Loc.locate Kind
+
 (* Check if 2 expressions are structurally equal. *)
 let rec equal (expr1 : expr) (expr2 : expr) =
   match expr1.data, expr2.data with
-  | Type, Type -> true
+  | Type, Type | Kind, Kind -> true
 
   | Var index1, Var index2 -> index1 = index2 
     (* print_endline @@ "Checking" ^ (string_of_int index1) ^ (string_of_int index2); *)
@@ -50,7 +53,7 @@ let rec equal (expr1 : expr) (expr2 : expr) =
 let shift shift_by (expr : expr) =
   let rec shift_raw_expr cutoff raw_expr =
     match raw_expr with
-    | Type -> Type
+    | Type | Kind -> raw_expr
 
     | Var index as var ->
       if index >= cutoff then Var (index + shift_by) else var
@@ -98,5 +101,3 @@ and raw_stmt =
 
 type list_of_stmts = stmt list
 [@@deriving show]
-
-let located_type = Loc.locate Type

@@ -10,7 +10,7 @@ https://ptival.github.io/2017/05/16/parser-generators-and-function-application/
 %token APP
 
 (* Types and expressions *)
-%token TYPE PI FUN LET IN
+%token TYPE KIND PI FUN LET IN
 
 (* Misc punctuation *)
 %token LPAREN RPAREN COLON_EQ COLON COMMA DOUBLE_ARROW
@@ -25,7 +25,7 @@ https://ptival.github.io/2017/05/16/parser-generators-and-function-application/
 %token EOF
 
 (* Lowest precedence *)
-%nonassoc LPAREN VAR_NAME FUN PI TYPE LET
+%nonassoc LPAREN VAR_NAME FUN PI TYPE LET KIND
 (* Highest precedence *)
 %nonassoc APP
 
@@ -58,6 +58,7 @@ let raw_expr :=
   (* This let rule is also causing shift/reduce conflicts. *)
   | let_expr
   | TYPE;                                        { Ast.Type }
+  | KIND;                                        { Ast.Kind }
   | ~ = var_name;                                { Ast.Var var_name }
   | ascription
 

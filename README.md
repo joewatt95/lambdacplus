@@ -1,23 +1,13 @@
 # CS4215 dependent types
 ## Overview
-CS4215 project on dependent types.
-This is a strongly normalizing lambda calculus with dependent types.
-The main focus is to implement the dependent Pi type, which generalizes the
-simple function type.
+This is a dependently typed lambda calculus based on the pure type system (PTS)
+that is the Calculus of Constructions (CC).
+Like all the other PTSes in Barendregt's lambda cube, CC is strongly normalizing
+and serves as a consistent foundation for theorem proving in higher order
+intuitionistic logic.
 
 ### Specs
 Refer to the `latex` directory.
-
-## Changes
-### 2021-03-14
-### New features
-- Optional type annotations for input arguments to functions
-  - eg: `fun (T : Type) (x : T) => x`.
-- Local let bindings
-  - eg: `let f := fun (T : Type) (x : T) => x in f Type`
-  - For some reason, Menhir complains that the grammar rule for let bindings causes a shift/reduce conflict.
-
-The specs have been updated with these new features.
 
 ### Fixes
 - Fix and optimize context management.
@@ -41,13 +31,13 @@ The specs have been updated with these new features.
 - Theory side
   - What theoretical properties does our language possess?
     - ie is type checking decidable? will our bidirectional algorithm always terminate?
-  - Add Sigma types, binary product, binary coproduct
-  - Stratify universe into 2 levels, like 2 sorted set theories, to avoid Girard's paradox, ie Burali-Forti.
-  - Local let bindings would be nice too.
+  - Add new types:
+    - Sigma aka existential quantifier
+    - Binary product aka conjunction
+    - Binary coproduct aka disjunction
+    - Unit, aka the singleton type, aka logical truth
+    - Void, aka the empty type, aka logical falsity
 
-## Project structure
-- `bin` is where all the driver code for the compiled
-executable can be found. Currently it only contains `main.ml`, which we are
 using for testing and experimentation.
 - `lib` is our library which contains all the code making our language work.
     - `parsing` contains all the functions we use for parsing.
@@ -124,3 +114,30 @@ $ esy ./_esy/default/build/default/bin/main.bc.js
 
 To ease testing, the `run_main.sh` script has been provided with the command
 `esy ./_esy/default/build/default/bin/main.bc`.
+
+## Sample execution
+```shell
+$ ./run_main.sh
+// Assume that T is a type and that P is some unary predicate.
+constant T : Type
+constant P : ∏ (_ : T), Prop
+
+// Further assume that the predicate P holds for every x of type T.
+// This behaves like a lambda abstraction that returns a proof of (P x) for
+// any input x of type T.
+axiom ax : ∀ (x : T), P x
+
+// Now suppose y is an element of type T.
+constant y : T
+
+// hPy is a proof that (P y) holds.
+def hPy := (ax y : P y)
+
+// Let's try to normalize a funny looking expression.
+eval let id := λ (T : Type) (x : T) => x in id (P y) hPy
+
+Here's the output:
+(ax y)
+```
+
+More sample programs can be found in the `sample_programs` directory.

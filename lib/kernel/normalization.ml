@@ -12,7 +12,7 @@ module Loc = Parsing.Location
 
 let rec subst_raw_expr from_index to_expr raw_expr =
   match raw_expr with
-  | Ast.Type -> Ast.Type
+  | Ast.Type | Ast.Kind -> raw_expr
   (* | Var index as var ->
    *   let open Loc in
    *   if index = from_index then to_expr.data else var *)
@@ -60,7 +60,7 @@ let beta_reduce body arg =
 
 let rec normalize ctx (expr : Ast.expr) =
   match expr.data with
-  | Ast.Type -> expr
+  | Ast.Type | Ast.Kind -> expr
   | Ast.Var index -> 
       let binding = Context.get_binding index ctx in
       CCOpt.get_or binding ~default:expr
@@ -68,22 +68,24 @@ let rec normalize ctx (expr : Ast.expr) =
   | Ast.Ascription {expr; _} -> normalize ctx expr
 
   | Ast.App {fn; arg} ->
-      begin
-        match (normalize ctx fn).data with
-        | Ast.Fun {body; _} ->
-          let arg = normalize ctx arg in
-          let body = beta_reduce body arg in
-          normalize ctx body
-        | _ -> expr
-      end
+    begin
+      match (normalize ctx fn).data with
+      | Ast.Fun {body; _} ->
+        let arg = normalize ctx arg in
+        let body = beta_reduce body arg in
+        normalize ctx body
+      | _ -> expr
+    end
 
-  | Ast.Fun {input_var; body; _} ->
-      let expr = 
-        Loc.set_data expr @@ Ast.Fun {input_var; input_type=None; body} in
-      normalize ctx expr
-      (* let ctx = Context.add_binding input_var ctx in
-      let body = normalize ctx body in
-      Loc.set_data expr @@ Ast.Fun {input_var; input_type=None; body} *)
+  | Ast.Fun {input_type=Some _; input_var; body} ->
+    let expr = 
+      Loc.set_data expr @@ Ast.Fun {input_type=None; input_var; body} in
+    normalize ctx expr
+
+   | Ast.Fun {input_type=None; input_var; body} ->
+    let ctx = Context.add_binding input_var ctx in
+    let body = normalize ctx body in
+    Loc.set_data expr @@ Ast.Fun {input_type=None; input_var; body}
 
   | Ast.Pi {input_var; input_type; output_type} ->
     let input_type = normalize ctx input_type in

@@ -11,13 +11,14 @@ module Encoding = Sedlexing.Utf8
 
 module G = Grammar
 let reserved_keywords = [
-  (["fun"; "λ"], G.FUN);
-  (["Pi"; "Π"; "∏"; "∀"], G.PI);
-  (["Type"], G.TYPE);
+  (["fun"; "λ"; "lambda"], G.FUN);
+  (["Pi"; "Π"; "∏"; "∀"; "forall"], G.PI);
+  (["Type"; "Prop"], G.TYPE);
+  (["Kind"], G.KIND);
   (["let"], G.LET);
   (["in"], G.IN);
   (["def"], G.DEF);
-  (["axiom"], G.AXIOM);
+  (["axiom"; "constant"], G.AXIOM);
   (["check"], G.CHECK);
   (["eval"], G.EVAL);
 ]
@@ -25,7 +26,11 @@ let reserved_keywords = [
 (* Create a hash table mapping strings to tokens out of the above associative
 list defining reserved keywords.
 *)
-let reserved_keywords' = Hashtbl.create @@ List.length reserved_keywords;;
+let reserved_keywords' = reserved_keywords 
+                         |> List.flat_map (fun (x, _) -> x)
+                         |> List.length
+                         |> Hashtbl.create;;
+
 List.iter
   (fun (lst, token) ->
     List.iter (fun str -> Hashtbl.add reserved_keywords' str token) lst)

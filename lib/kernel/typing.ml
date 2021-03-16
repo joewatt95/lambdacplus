@@ -1,27 +1,30 @@
- (*
-https://github.com/andrejbauer/spartan-type-theory/blob/master/src/typecheck.ml
- *)
+open Containers
 
 module Loc = Parsing.Location
 module Norm = Normalization
 
 let rec infer ctx (expr : Ast.expr) =
  match expr.data with
- | Ast.Type -> expr
+ | Ast.Type -> Loc.set_data expr Ast.Kind 
  | Ast.Var index -> Context.get_type index ctx
 
+ (* Do we want to allow users to assert that the type of Type is Kind? *)
  | Ast.Ascription {expr; expr_type} ->
-   check_type ctx expr_type;
-   let expr_type = Norm.normalize ctx expr_type in
-   check ctx expr expr_type;
-   expr_type
+  begin
+    match expr_type.data with
+    | Ast.Kind -> check ctx expr Ast.located_kind; expr_type
+    | _ ->
+      check_well_formed_type ctx expr_type;
+      let expr_type = Norm.normalize ctx expr_type in
+      check ctx expr expr_type;
+      expr_type
+  end
 
  | Ast.Pi {input_var; input_type; output_type} ->
-  check_type ctx input_type;
+  check_well_formed_type ctx input_type;
   let input_type = Norm.normalize ctx input_type in
   let ctx = Context.add_binding input_var ~var_type:input_type ctx in
-  check_type ctx output_type;
-  Ast.located_type
+  get_well_formed_type ctx output_type
 
  | Ast.App {fn; arg} ->
   let fn_type = infer ctx fn in
@@ -34,20 +37,21 @@ let rec infer ctx (expr : Ast.expr) =
   end 
 
  | Ast.Fun {input_var; input_type=Some input_ty; body} ->
-    check_type ctx input_ty;
-    let input_ty = Norm.normalize ctx input_ty in
-    let ctx = Context.add_binding input_var ~var_type:input_ty ctx in
-    let output_type = infer ctx body in
-    (* What source location info should be used here? *)
-    Loc.locate @@ Ast.Pi {input_var; input_type=input_ty; output_type}
+  check_well_formed_type ctx input_ty;
+  let input_ty = Norm.normalize ctx input_ty in
+  let ctx = Context.add_binding input_var ~var_type:input_ty ctx in
+  let output_type = infer ctx body in
+  (* What source location info should be used here? *)
+  Loc.set_data expr @@ Ast.Pi {input_var; input_type=input_ty; output_type}
 
  | Ast.Let {var_name; binding; body} ->
-   let var_type = infer ctx binding in
-   let ctx = Context.add_binding var_name ~var_type:var_type ctx in
-   body |> infer ctx
-        |> Fun.flip Norm.beta_reduce binding
-        |> Norm.normalize ctx
+  let var_type = infer ctx binding in
+  let ctx = Context.add_binding var_name ~var_type:var_type ctx in
+  body |> infer ctx
+       |> Fun.flip Norm.beta_reduce binding
+       |> Norm.normalize ctx
 
+ | Ast.Kind -> print_endline "Kind doesn't have a type!"; assert false
  | _ -> assert false
 
 and check ctx expr expr_type =
@@ -65,8 +69,17 @@ and check ctx expr expr_type =
   | _, _ -> 
     let inferred_expr_type = infer ctx expr in
     (* Here we need to check if the inferred type and expr_type are equal *)
-    if Ast.equal inferred_expr_type expr_type
-    then ()
-    else assert false
+    if not @@Ast.equal inferred_expr_type expr_type
+    then assert false
 
-and check_type ctx expr = check ctx expr Ast.located_type
+and get_well_formed_type ctx expr = 
+  let inferred_type = infer ctx expr in
+  match inferred_type.data with
+  | Ast.Type | Ast.Kind -> inferred_type
+  | _ -> assert false
+
+and check_well_formed_type ctx expr = 
+  ignore @@ get_well_formed_type ctx expr 
+  (* match expr.data with
+  | Ast.Kind -> ()
+  | _ -> ignore @@ get_well_formed_type ctx expr *)
