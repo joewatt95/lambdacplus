@@ -25,7 +25,7 @@ val add_binding : string -> ?var_type:Ast.expr -> ?binding:Ast.expr -> t -> t
 
 (* Given a variable name and a context, find the first index corresponding to
 the variable. *)
-val var_name_to_index : string -> t -> int
+val var_name_to_index : string -> t -> int option
 
 (* Given an index and a context, return the variable name. *)
 val index_to_var_name : int -> t -> string

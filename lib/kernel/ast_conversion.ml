@@ -25,8 +25,10 @@ let update_data_with_ctx (located : 'a Loc.located) f ctx =
 let rec parser_to_internal_raw_expr raw_expr ctx =
   match raw_expr with
   | PAst.Var var_name ->
-    let var_index = Context.var_name_to_index var_name ctx in
-    Ast.Var var_index
+    var_name
+    |> Fun.flip Context.var_name_to_index ctx
+    |> CCOpt.get_lazy (fun () -> raise Not_found)
+    |> fun index -> Ast.Var index
 
   (* For Fun and Pi, we add the input var to the context to get a new one, which
      we then use to convert the body. *)

@@ -29,7 +29,7 @@ let rec unparse (expr : expr) =
  | Pi {input_var; input_type; output_type} ->
   "∏ (" ^ input_var ^ " : " ^ unparse input_type ^ "), " ^ unparse output_type
  | Fun {input_var; body; _} ->
-  "λ " ^ input_var ^ " => " ^ unparse body
+  "λ " ^ input_var ^ " ⇒ " ^ unparse body
  | App {fn; arg} ->
   "(" ^ unparse fn ^ " " ^ unparse arg ^")"
 

@@ -17,9 +17,6 @@ type entry = {
   binding  : Ast.expr option (* The binding of the varaiable *)
 } [@@deriving show, fields]
 
-exception UnknownIndex
-exception UnknownTypeBinding
-
 type t = entry BFT.t
 
 let show =
@@ -40,10 +37,10 @@ let add_binding var_name ?var_type ?binding =
 let var_name_to_index string ctx =
   let rec find_index current_index ctx =
     match BFT.front ctx with
-    | None -> raise UnknownIndex
+    | None -> None
     | Some (tail, {var_name; _}) ->
       if Stdlib.(=) var_name string
-      then current_index
+      then Some current_index
       else find_index (current_index + 1) tail
   in find_index 0 ctx
 
@@ -89,7 +86,7 @@ let get_binding = get_and_shift_indices binding
 
 let get_type index =
   get_and_shift_indices var_type index %>
-    CCOpt.get_lazy (fun () -> raise UnknownTypeBinding)
+    CCOpt.get_lazy (fun () -> raise Not_found)
 
 let is_var_name_bound var_name ctx =
   try

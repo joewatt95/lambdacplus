@@ -47,7 +47,7 @@ let rec tokenize lexbuf =
   | ',' -> G.COMMA
   | ':' -> G.COLON
   | ":=" -> G.COLON_EQ
-  | "=>" -> G.DOUBLE_ARROW
+  | "=>"  | "⇒" -> G.DOUBLE_ARROW
   | newline -> Sedlexing.new_line lexbuf; tokenize lexbuf
   | name -> 
     let str = Encoding.lexeme lexbuf in

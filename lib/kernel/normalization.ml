@@ -52,7 +52,8 @@ and subst from_index to_expr expr =
   | _ ->
     Loc.update_data expr @@ subst_raw_expr from_index to_expr
 
-and subst_under_binder from_index to_expr = subst (from_index + 1) (Ast.shift 1 to_expr)
+and subst_under_binder from_index to_expr = 
+  subst (from_index + 1) @@ Ast.shift 1 to_expr
 
 let beta_reduce body arg =
     let arg = Ast.shift 1 arg in
