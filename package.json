@@ -8,6 +8,7 @@
   "dependencies": {
     "@opam/batteries": "~3.3.0",
     "@opam/containers": ">= 3.2 < 4.0",
+    "@opam/iter": "~1.2.1",
     "@opam/menhir": ">= 20210310",
     "@opam/ppx_deriving": "~5.2.1",
     "@opam/ppx_fields_conv":  ">= v0.14.2",

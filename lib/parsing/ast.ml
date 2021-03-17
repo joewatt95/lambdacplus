@@ -32,6 +32,9 @@ let rec unparse (expr : expr) =
   "λ " ^ input_var ^ " => " ^ unparse body
  | App {fn; arg} ->
   "(" ^ unparse fn ^ " " ^ unparse arg ^")"
+
+ (* No other cases are possible since all expressions are type checked and then
+  eagerly normalized to one of the above forms. *)
  | _ -> assert false
 
 type list_of_exprs = expr list
