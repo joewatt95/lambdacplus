@@ -9,20 +9,24 @@ open Cs4215_dependent_types
 
 let () =
   print_endline "Enter input:";
-  try
-    let stmts, ctx = 
-      stdin 
+  let stmts, naming_ctx = 
+    try
+      stdin
       |> Parser.parse_channel
       |> Fun.flip Ast_conv.parser_to_internal_stmts 
          Kernel.Context.empty 
-    in
+    with exc ->
+      Error_handling.handle_parsing_error exc;
+      exit 1
+  in
+  try
     stmts
-    |> Fun.flip Kernel.Eval_statements.eval_stmts ctx
+    |> Fun.flip Kernel.Eval_statements.eval_stmts naming_ctx
     |> fun (expr, _) -> expr
-    |> Ast_conv.internal_to_parser_expr ctx
+    |> Ast_conv.internal_to_parser_expr naming_ctx
     |> PAst.unparse
     (* |> Parsing.Ast.show_expr *)
     |> fun str -> print_endline @@ "\nHere's the output:\n" ^ str;
     flush stdout
   with exc ->
-    Error_handling.pretty_print_err exc
+    Error_handling.handle_eval_error naming_ctx exc

@@ -1,3 +1,5 @@
+(* TODO: Implement error reporting *)
+
 open Containers
 
 let whitesp = [%sedlex.regexp? ' ' | '\t']

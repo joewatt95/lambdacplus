@@ -5,14 +5,16 @@ open Containers
 type source_loc = Lexing.position * Lexing.position
 
 let show_source_loc ((startpos, endpos) : source_loc) =
-  let startchar = startpos.pos_cnum - startpos.pos_bol in
-  let endchar = endpos.pos_cnum - endpos.pos_bol in
-  let s = if startchar = endchar 
-                 then "line " ^ string_of_int endpos.pos_lnum ^ ", char"
-                 else "char "
+  let startchar = string_of_int @@ startpos.pos_cnum - startpos.pos_bol + 1 in
+  let endchar = string_of_int @@ endpos.pos_cnum - endpos.pos_bol in
+  let startline = startpos.pos_lnum in
+  let endline = endpos.pos_lnum in
+  let s = if startline = endline
+          then ""
+          else "line " ^ string_of_int endpos.pos_lnum ^ ", char "
   in
   "line " ^ (string_of_int startpos.pos_lnum) ^ ", char " ^
-  (string_of_int startchar) ^ " to " ^ s ^ (string_of_int endchar) 
+  startchar ^ " to " ^ s ^ endchar
 
 type 'a located = {
   data : 'a;

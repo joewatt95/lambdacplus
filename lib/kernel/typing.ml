@@ -3,7 +3,11 @@ open Containers
 module Loc = Common.Location
 module Norm = Normalization
 
-exception Pi_expected of {fn: Ast.expr; inferred_type : Ast.expr}
+exception Pi_expected of {
+  app : Ast.expr; 
+  fn: Ast.expr; 
+  inferred_type : Ast.expr
+}
 
 (* let () = Printexc.register_printer @@
   function
@@ -44,7 +48,7 @@ let rec infer ctx (expr : Ast.expr) =
     | Ast.Pi {input_type; output_type; _} ->
       check ctx arg input_type;
       Norm.beta_reduce output_type arg 
-    | _ -> raise @@ Pi_expected {fn; inferred_type}
+    | _ -> raise @@ Pi_expected {app=expr; fn; inferred_type}
   end 
 
  | Ast.Fun {input_var; input_type=Some input_ty; body} ->

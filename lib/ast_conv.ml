@@ -93,13 +93,9 @@ let rec parser_to_internal_raw_stmt raw_stmt ctx =
     let expr = parser_to_internal_expr ctx expr in
     KAst.Check expr, ctx
 
-and parser_to_internal_stmt stmt ctx =
-  (* Here we need to open the Syntax.Location module so that Ocaml can infer
-     the type of stmt properly. Otherwise, it complains that data is an unbound
-     field of stmt *)
-  let open Common.Location in
+and parser_to_internal_stmt (stmt : PAst.stmt) ctx =
   let internal_raw_stmt, new_ctx = parser_to_internal_raw_stmt stmt.data ctx in
-  set_data stmt internal_raw_stmt, new_ctx
+  Loc.set_data stmt internal_raw_stmt, new_ctx
 
 (*
 This converts a list of parser statements to our internal AST.
@@ -169,6 +165,11 @@ let rec internal_to_parser_raw_expr ctx raw_expr =
 
 and internal_to_parser_expr ctx expr =
   Loc.update_data expr @@ internal_to_parser_raw_expr ctx
+
+let unparse_internal_expr naming_ctx expr =
+  expr
+  |> internal_to_parser_expr naming_ctx
+  |> PAst.unparse 
 
 (* let stmt_to_parser_ast ctx stmt =
  *   let open Parsing.Ast in

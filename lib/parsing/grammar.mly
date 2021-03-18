@@ -6,10 +6,14 @@ https://gitlab.inria.fr/fpottier/menhir/blob/master/doc/new-rule-syntax-summary.
 Dummy token and some precedence rules to make function application left
 associative. See:
 https://ptival.github.io/2017/05/16/parser-generators-and-function-application/
+
+TODO: Implement error reporting
+https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
  *)
- %{
-   module Loc = Common.Location
- %}
+%{
+  module Loc = Common.Location
+%}
+
 %token APP
 
 (* Types and expressions *)
@@ -35,7 +39,6 @@ https://ptival.github.io/2017/05/16/parser-generators-and-function-application/
 %start <Ast.list_of_stmts> main
 
 %%
-
 
 let main := terminated(nonempty_list(stmt), EOF)
 
