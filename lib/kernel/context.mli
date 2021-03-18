@@ -25,21 +25,21 @@ val add_binding : string -> ?var_type:Ast.expr -> ?binding:Ast.expr -> t -> t
 
 (* Given a variable name and a context, find the first index corresponding to
 the variable. *)
-val var_name_to_index : string -> t -> int option
+val var_name_to_index : t -> string -> int option
 
 (* Given an index and a context, return the variable name. *)
-val index_to_var_name : int -> t -> string
+val index_to_var_name : t -> int -> string
 
 (* Get the binding corresponding to a variable identified by its de bruijn 
 index. *)
-val get_binding : int -> t -> Ast.expr option
+val get_binding : t -> int -> Ast.expr option
 
 (* Get the type corresponding to a variable identified by its de bruijn 
 index. *)
-val get_type : int -> t -> Ast.expr
+val get_type : t -> int -> Ast.expr
 
 (* Check if a variable name is bound in a context. *)
-val is_var_name_bound : string -> t -> bool
+val is_var_name_bound : t -> string -> bool
 
 (* Convert a context to a string for printing. *)
 val show : t -> string

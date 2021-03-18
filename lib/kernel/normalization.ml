@@ -8,7 +8,7 @@ open Containers
    binder, so we don't Ast.shift when we handle the input_type in Pi.
 *)
 
-module Loc = Parsing.Location
+module Loc = Common.Location
 
 let rec subst_raw_expr from_index to_expr raw_expr =
   match raw_expr with
@@ -53,18 +53,23 @@ and subst from_index to_expr expr =
     Loc.update_data expr @@ subst_raw_expr from_index to_expr
 
 and subst_under_binder from_index to_expr = 
-  subst (from_index + 1) @@ Ast.shift 1 to_expr
+  to_expr
+  |> Ast.shift 1
+  |> subst @@ from_index + 1
 
 let beta_reduce body arg =
     let arg = Ast.shift 1 arg in
-    body |> subst 0 arg |> Ast.shift (-1)
+    body 
+    |> subst 0 arg 
+    |> Ast.shift (-1)
 
 let rec normalize ctx (expr : Ast.expr) =
   match expr.data with
   | Ast.Type | Ast.Kind -> expr
   | Ast.Var index -> 
-      let binding = Context.get_binding index ctx in
-      CCOpt.get_or binding ~default:expr
+    index
+    |> Context.get_binding ctx
+    |> CCOpt.get_or ~default:expr
   
   | Ast.Ascription {expr; _} -> normalize ctx expr
 

@@ -1,14 +1,25 @@
 open Containers
 
-module Loc = Parsing.Location
+module Loc = Common.Location
 module Norm = Normalization
+
+exception Pi_expected of {fn: Ast.expr; inferred_type : Ast.expr}
+
+(* let () = Printexc.register_printer @@
+  function
+  | Pi_expected {fn={source_loc; _}; _} ->
+    Some ("Error typechecking expression at " ^ 
+          (Loc.show_source_loc source_loc) ^ ".\n" ^
+           "Its type should be a Pi.")
+  | _ -> None *)
 
 let rec infer ctx (expr : Ast.expr) =
  match expr.data with
  | Ast.Type -> Loc.set_data expr Ast.Kind 
- | Ast.Var index -> Context.get_type index ctx
+ | Ast.Var index -> Context.get_type ctx index
 
- (* Do we want to allow users to assert that the type of Type is Kind? *)
+ (* Do we want to allow users to assert that the type of Type, and type
+    constructors is Kind? *)
  | Ast.Ascription {expr; expr_type} ->
   begin
     match expr_type.data with
@@ -27,13 +38,13 @@ let rec infer ctx (expr : Ast.expr) =
   get_well_formed_type ctx output_type
 
  | Ast.App {fn; arg} ->
-  let fn_type = infer ctx fn in
+  let inferred_type = infer ctx fn in
   begin
-    match fn_type.data with
+    match inferred_type.data with
     | Ast.Pi {input_type; output_type; _} ->
       check ctx arg input_type;
       Norm.beta_reduce output_type arg 
-    | _ -> assert false
+    | _ -> raise @@ Pi_expected {fn; inferred_type}
   end 
 
  | Ast.Fun {input_var; input_type=Some input_ty; body} ->
@@ -47,9 +58,10 @@ let rec infer ctx (expr : Ast.expr) =
  | Ast.Let {var_name; binding; body} ->
   let var_type = infer ctx binding in
   let ctx = Context.add_binding var_name ~var_type:var_type ctx in
-  body |> infer ctx
-       |> Fun.flip Norm.beta_reduce binding
-       |> Norm.normalize ctx
+  body 
+  |> infer ctx
+  |> Fun.flip Norm.beta_reduce binding
+  |> Norm.normalize ctx
 
  | Ast.Kind -> print_endline "Kind doesn't have a type!"; assert false
  | _ -> assert false
@@ -58,8 +70,9 @@ and check ctx expr expr_type =
   match expr.data, expr_type.data with
   | Ast.Fun {input_var; input_type=None; body}, 
     Ast.Pi {input_type; output_type; _} ->
-    ctx |> Context.add_binding input_var ~var_type:input_type
-        |> fun ctx -> check ctx body output_type
+    ctx 
+    |> Context.add_binding input_var ~var_type:input_type
+    |> fun ctx -> check ctx body output_type
     (* print_string "Context: ";
     print_endline @@ Context.show ctx;
     print_string "Expr: ";
@@ -69,7 +82,7 @@ and check ctx expr expr_type =
   | _, _ -> 
     let inferred_expr_type = infer ctx expr in
     (* Here we need to check if the inferred type and expr_type are equal *)
-    if not @@Ast.equal inferred_expr_type expr_type
+    if not @@ Ast.equal inferred_expr_type expr_type
     then assert false
 
 and get_well_formed_type ctx expr = 

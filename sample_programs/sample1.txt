@@ -10,8 +10,9 @@ axiom ax : ∀ (x : T), P x
 // Now suppose y is an element of type T.
 constant y : T
 
-// hPy is a proof that (P y) holds.
-def hPy := (ax y : P y)
+// Py is a proof that (P y) holds.
+def Py := (ax y : P y)
 
-// Let's try to normalize a funny looking expression.
-eval let id := λ (T : Type) (x : T) => x in id (P y) hPy
+// Let's try to apply the polymorphic identity function to Py and get the
+// interpreter to normalize it.
+eval let id := λ (T : Type) (x : T) => x in id (P y) Py

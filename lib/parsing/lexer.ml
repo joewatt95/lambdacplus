@@ -41,16 +41,16 @@ let rec tokenize lexbuf =
   | eof -> G.EOF
   (* Support single-line comments. Idea taken from
   https://github.com/vshaxe/hxparser/blob/master/src/syntax/lexing/lexer.ml *)
-  | "//", Star (Compl ('\r' | '\n')) -> Sedlexing.new_line lexbuf; tokenize lexbuf 
   | '(' -> G.LPAREN
   | ')' -> G.RPAREN
   | ',' -> G.COMMA
   | ':' -> G.COLON
   | ":=" -> G.COLON_EQ
-  | "=>"  | "⇒" -> G.DOUBLE_ARROW
-  | newline -> Sedlexing.new_line lexbuf; tokenize lexbuf
+  | "=>" -> G.DOUBLE_ARROW
   | name -> 
     let str = Encoding.lexeme lexbuf in
     Hashtbl.get_or reserved_keywords str ~default:(G.VAR_NAME str)
+  | newline
+  | "//", Star (Compl ('\r' | '\n')) 
   | Plus whitesp -> tokenize lexbuf
   | _ -> assert false

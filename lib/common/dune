@@ -1,0 +1,5 @@
+(library
+ (name common)
+ (preprocess (pps ppx_deriving.show ppx_fields_conv))
+ (libraries containers)
+ )

@@ -2,7 +2,7 @@
 parser, except that variables are given by de bruijn indices.
 *)
 
-module Loc = Parsing.Location
+module Loc = Common.Location
 
 type expr = raw_expr Loc.located
 and raw_expr =

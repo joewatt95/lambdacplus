@@ -1,10 +1,14 @@
+type source_loc = Lexing.position * Lexing.position
+
+val show_source_loc : source_loc -> string
+
 type 'a located = {
   data: 'a;
-  source_loc : Lexing.position * Lexing.position;
+  source_loc : source_loc;
 }
 
 (* Given some data and a source location, wrap them up in the located type. *)
-val locate : ?source_loc:Lexing.position * Lexing.position -> 'a -> 'a located 
+val locate : ?source_loc:source_loc -> 'a -> 'a located 
 
 (* Update the data in a located type using a function f which takes as input the
    old data and outputs the new one.*)

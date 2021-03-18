@@ -3,4 +3,5 @@
  (libraries
   (re_export parsing)
   (re_export kernel)
+  (re_export common)
 ))

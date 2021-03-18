@@ -9,7 +9,6 @@ open Containers
 
 (* For convenience *)
 module BFT = BatFingerTree
-let (%>) = Fun.(%>)
 
 type entry = {
   var_name : string; (* The name of the variable*)
@@ -19,9 +18,10 @@ type entry = {
 
 type t = entry BFT.t
 
-let show =
-  BFT.to_list %>
-    List.to_string show_entry ~start:"[" ~stop:"]" ~sep:";" 
+let show ctx =
+  ctx
+  |> BFT.to_list
+  |> List.to_string show_entry ~start:"[" ~stop:"]" ~sep:";" 
 
 let empty = BFT.empty
 
@@ -34,22 +34,24 @@ let add_binding var_name ?var_type ?binding =
   (* Fun.flip BFT.cons {var_name; var_type; binding} %>
     incr_indices *)
 
-let var_name_to_index string ctx =
-  let rec find_index current_index ctx =
+let var_name_to_index ctx string =
+  let rec find_index ctx current_index =
     match BFT.front ctx with
     | None -> None
     | Some (tail, {var_name; _}) ->
       if Stdlib.(=) var_name string
       then Some current_index
-      else find_index (current_index + 1) tail
-  in find_index 0 ctx
+      else find_index tail @@ current_index + 1 
+  in find_index ctx 0
 
 (* Uses accessor_fn to access a property of the entry record at a given
    index of a context. *)
-let get_from_index (accessor_fn : entry -> 'a) (index : int) : t -> 'a= 
-  Fun.flip BFT.get index %> accessor_fn
+let get_from_index (ctx : t) (accessor_fn : entry -> 'a) (index : int) : 'a = 
+  index
+  |> BFT.get ctx
+  |> accessor_fn
 
-let index_to_var_name = get_from_index var_name
+let index_to_var_name ctx = get_from_index ctx var_name 
 
 (* Taken from:
   https://github.com/minad/andromeda.hs/blob/master/Andromeda/Context.hs
@@ -78,19 +80,20 @@ let index_to_var_name = get_from_index var_name
   We need to shift by (k + 1) since that is 1 + the number of times we cons'd
   onto the context since then.
 *)
-let get_and_shift_indices accessor_fn index =
-  get_from_index accessor_fn index %>
-    CCOpt.map (Ast.shift @@ index + 1)
+let get_and_shift_indices ctx accessor_fn index =
+  index
+  |> BFT.get ctx
+  |> accessor_fn
+  |> CCOpt.map @@ Ast.shift @@ index + 1
 
-let get_binding = get_and_shift_indices binding
+let get_binding ctx = get_and_shift_indices ctx binding
 
-let get_type index =
-  get_and_shift_indices var_type index %>
-    CCOpt.get_lazy (fun () -> raise Not_found)
+let get_type ctx index =
+  index
+  |> get_and_shift_indices ctx var_type 
+  |> CCOpt.get_lazy @@ fun () -> raise Not_found
 
 let is_var_name_bound var_name ctx =
-  try
-    ignore @@ var_name_to_index var_name ctx;
-    true
-  with _ ->
-    false
+    ctx 
+    |> var_name_to_index var_name
+    |> CCOpt.is_some 

@@ -1,6 +1,8 @@
 (* This is the AST that the parser generates from the concrete syntax. *)
 
-type expr = raw_expr Location.located
+module Loc = Common.Location
+
+type expr = raw_expr Loc.located
 and raw_expr =
   | Type
   | Kind
@@ -40,7 +42,7 @@ let rec unparse (expr : expr) =
 type list_of_exprs = expr list
 [@@deriving show]
 
-type stmt = raw_stmt Location.located
+type stmt = raw_stmt Loc.located
 and raw_stmt =
   | Def of {var_name : string; binding : expr}
   | Axiom of {var_name : string; var_type : expr}

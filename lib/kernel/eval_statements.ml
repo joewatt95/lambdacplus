@@ -28,5 +28,5 @@ let eval_stmt (stmt : Ast.stmt) ctx =
 let eval_stmts stmts ctx =
   List.fold_left 
     (fun (_, ctx) stmt -> eval_stmt stmt ctx)
-    (Parsing.Location.locate Ast.Kind, ctx)
+    (Common.Location.locate Ast.Kind, ctx)
     stmts

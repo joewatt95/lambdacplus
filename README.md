@@ -112,10 +112,6 @@ using for testing and experimentation.
         - `parser.ml` contains some functions and boilerplate code tying the
         lexer and grammar together. This provides an interface which we use to
         parse our language.
-        - `location.ml` contains a `located` datatype and other stuff which we use
-        to decorate our ASTs as found in `lib/parsing/ast.ml` and 
-        `lib/kernel/ast.ml` with source locations. This info will be used for
-        error reporting.
     - `kernel` contains all the important stuff, like normalization and type
     checking. Basically everything that happens after parsing can be found here.
         - `ast.ml` contains our internal AST. Unlike the one in `lib/parsing`,
@@ -134,7 +130,13 @@ using for testing and experimentation.
         This will include the 2 key functions `check` and `infer`, where `infer`
         involves synthesizing the type, while `check` involves verifying if an
         expression has a given type.
-        - `ast_conversion.ml` contains facilities for converting the parser's AST to 
-        the internal AST and vice versa.
         - `eval_statements.ml` contains functions for evaluating statements.
-    - `utils` contains utilities used in all parts of the project.
+    - `common` contains code that is shared between both `kernel` and `parsing`.
+       - `location.ml` contains a `located` datatype and other stuff which we use
+       to decorate our ASTs as found in `lib/parsing/ast.ml` and 
+       `lib/kernel/ast.ml` with source locations. This info will be used for
+       error reporting.
+   - `ast_conv.ml` contains facilities for converting the parser's AST to 
+   the internal AST and vice versa.
+   - `error_handling.ml` contains functions for handling errors that occur while
+   running programs in our language. These include pretty printing of errors.
