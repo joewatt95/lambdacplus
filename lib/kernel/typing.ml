@@ -18,6 +18,7 @@ exception Ill_formed_type of {
 }
 
 exception Type_mismatch of {
+  outer_expr : Ast.expr;
   expr : Ast.expr;
   inferred_type : Ast.expr;
   expected_type : Ast.expr
@@ -30,14 +31,14 @@ let rec infer ctx (expr : Ast.expr) =
 
  (* Do we want to allow users to assert that the type of Type, and type
     constructors is Kind? *)
- | Ast.Ascription {expr; expr_type} ->
+ | Ast.Ascription {expr=expr'; expr_type} ->
   begin
     match expr_type.data with
-    | Ast.Kind -> check ctx expr Ast.located_kind; expr_type
+    | Ast.Kind -> check ~outer_expr:expr ctx Ast.located_kind expr'; expr_type
     | _ ->
       check_well_formed_type ctx expr_type;
       let expr_type = Norm.normalize ctx expr_type in
-      check ctx expr expr_type;
+      check ~outer_expr:expr ctx expr_type expr';
       expr_type
   end
 
@@ -52,10 +53,10 @@ let rec infer ctx (expr : Ast.expr) =
   begin
     match inferred_type.data with
     | Ast.Pi {input_type; output_type; _} ->
-      check ctx arg input_type;
+      check ~outer_expr:expr ctx arg input_type;
       Norm.beta_reduce output_type arg 
     | _ -> raise @@ Pi_expected {app=expr; fn; inferred_type}
-  end 
+  end
 
  | Ast.Fun {input_var; input_type=Some input_ty; body} ->
   check_well_formed_type ctx input_ty;
@@ -76,19 +77,18 @@ let rec infer ctx (expr : Ast.expr) =
  | Ast.Kind -> raise @@ Cannot_infer_type_of_kind expr.source_loc
  | Ast.Fun {input_type=None; _} -> raise @@ Cannot_infer_type_of_fn expr
 
-and check ctx expr expected_type =
+and check ~outer_expr ctx expr expected_type =
   match expr.data, expected_type.data with
-  | Ast.Fun {input_var; input_type=None; body}, 
+  | Ast.Fun {input_var; input_type=None; body},
     Ast.Pi {input_type; output_type; _} ->
     ctx 
     |> Context.add_binding input_var ~var_type:input_type
-    |> fun ctx -> check ctx body output_type
-
-  | _, _ -> 
+    |> fun ctx -> check ~outer_expr ctx body output_type
+  | _, _ ->
     let inferred_type = infer ctx expr in
     (* Here we need to check if the inferred type and expr_type are equal *)
     if not @@ Ast.equal_expr inferred_type expected_type
-    then raise @@ Type_mismatch {expr; inferred_type; expected_type}
+    then raise @@ Type_mismatch {expr; inferred_type; expected_type; outer_expr}
 
 (* Check if expr is a well-formed type wrt ctx. In other words, this checks
   if the type of expr is Type or Kind. If so, we return it. Otherwise, we throw

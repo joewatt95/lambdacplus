@@ -22,22 +22,28 @@ exception Ill_formed_type of {
 }
 
 (* The user has ascribed `expected_type` to `expr` but we instead inferred the
-   type of `expr` to be `inferred_type`. *)
+   type of `expr` to be `inferred_type`.
+   The `outer_expr` parameter indicates the surrounding expression containing the
+   erraneous one. This provides contextual information for error reporting. *)
 exception Type_mismatch of {
+  outer_expr : Ast.expr;
   expr : Ast.expr;
   inferred_type : Ast.expr;
   expected_type : Ast.expr
 }
 
 (* Given a context, expression and the expected type, check if the expression
-   has the expected type. This function throws an exception if something goes
-   wrong, otherwise it just returns (). *)
-val check : Context.t -> Ast.expr -> Ast.expr -> unit
+   has the expected type. This function throws a Type_mismatch exception if 
+   something goes wrong, otherwise it just returns (). 
+
+   The `outer_expr` argument is used in the creation of the Type_mismatch
+   exception should anything go wrong. *)
+val check : outer_expr:Ast.expr -> Context.t -> Ast.expr -> Ast.expr -> unit
 
 (* Given a context and expression, compute the type of the expression.
    An exception is thrown if we have insufficient information to compute the type. *)
 val infer : Context.t -> Ast.expr -> Ast.expr
 
 (* Check if expr is a well formed type (ie it has type Type or Kind) wrt to
-   a given context *)
+   a given context. *)
 val check_well_formed_type : Context.t -> Ast.expr -> unit

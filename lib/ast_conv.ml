@@ -143,13 +143,15 @@ let rec internal_to_parser_raw_expr ctx raw_expr =
     let fn = internal_to_parser_expr ctx fn in
     let arg = internal_to_parser_expr ctx arg in
     PAst.App {fn; arg}
+  
+  | KAst.Ascription {expr; expr_type} ->
+    let expr = internal_to_parser_expr ctx expr in
+    let expr_type = internal_to_parser_expr ctx expr_type in
+    PAst.Ascription {expr; expr_type}
 
   | Type -> PAst.Type
   | Kind -> PAst.Kind
   
-  (* These cases should never occur since we would have gotten rid of them
-     during normalization. *)
-  | KAst.Ascription _
   | KAst.Let _ -> assert false
 
 and internal_to_parser_expr ctx expr =

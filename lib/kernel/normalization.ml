@@ -40,7 +40,7 @@ let rec subst_raw_expr from_index to_expr raw_expr =
     Ast.Let {var_name; binding; body}
 
   (* This case should never happen because it's already taken care of
-  in subst*)
+     in subst*)
   | Ast.Var _ -> assert false
 
 and subst from_index to_expr expr =
