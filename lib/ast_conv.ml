@@ -12,15 +12,7 @@ module KAst = Kernel.Ast
 (* Functions to convert from the parser's AST to our internal AST *)
 
 exception Unknown_var_name of PAst.expr
-exception Underscore_var_name of PAst.expr
-
-(* let () = Printexc.register_printer @@
-  function
-  | Unknown_var_name {data=PAst.Var var_name; source_loc} ->
-    Some ("Unknown variable name " ^ var_name ^ " at " ^ Loc.show_source_loc source_loc)
-  | Underscore_var_name {data=PAst.Var _; _} ->
-    Some ("Underscore is not a valid var name.")
-  | _ -> None *)
+exception Underscore_var_name of Loc.source_loc
 
 let rec parser_to_internal_raw_expr ctx (expr : PAst.expr) =
   match expr.data with
@@ -28,7 +20,7 @@ let rec parser_to_internal_raw_expr ctx (expr : PAst.expr) =
     var_name
     |> begin 
         function
-        | "_" -> raise @@ Underscore_var_name expr
+        | "_" -> raise @@ Underscore_var_name expr.source_loc
         | var_name -> var_name 
        end
     |> Kernel.Context.var_name_to_index ctx
@@ -152,27 +144,13 @@ let rec internal_to_parser_raw_expr ctx raw_expr =
     let arg = internal_to_parser_expr ctx arg in
     PAst.App {fn; arg}
 
-  | KAst.Ascription {expr; expr_type} ->
-    let expr = internal_to_parser_expr ctx expr  in
-    let expr_type = internal_to_parser_expr ctx expr_type in
-    PAst.Ascription {expr; expr_type}
-
   | Type -> PAst.Type
-
   | Kind -> PAst.Kind
   
+  (* These cases should never occur since we would have gotten rid of them
+     during normalization. *)
+  | KAst.Ascription _
   | KAst.Let _ -> assert false
 
 and internal_to_parser_expr ctx expr =
   Loc.update_data expr @@ internal_to_parser_raw_expr ctx
-
-(* let stmt_to_parser_ast ctx stmt =
- *   let open Parsing.Ast in
- *   match stmt with
- *   | Ast.Def (index, expr) -> assert false
- *   | Ast.Axiom (index, declared_type) -> assert false
- *     Context.add_name_binding ctx var_name
- *   | Ast.Eval expr -> Eval (stmt_to_parser_ast ctx stmt), ctx
- *   | Ast.Check expr -> Check (parser_to_internal_expr ctx expr), ctx *)
-
-(******************************************************************************)

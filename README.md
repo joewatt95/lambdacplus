@@ -9,6 +9,47 @@ intuitionistic logic.
 ### Specs
 Refer to the `latex` directory.
 
+### What this branch is about
+The aim of this branch is to improve error reporting, aside from the on-going
+work of improving documentation and cleaning up the code.
+
+#### Sample of current error reporting
+```shell
+$ ./run_main.sh 
+Enter input:
+check (Type : Type)
+
+Error encountered at line 1, col 8 to 11
+'Type' was inferred to have type 'Kind'.
+This doesn't match the expected type of 'Type'.
+
+$ ./run_main.sh 
+Enter input:
+//
+//
+def x := T
+
+Error encountered at line 3, col 10 to 10
+Unknown variable name 'T'.
+[joe@Albatross cs4215_dependent_types]$ ./run_main.sh 
+Enter input:
+check fun x => x
+
+Error encountered at line 1, col 7 to 16
+Unable to infer the type of the function 'λ x ⇒ x'.
+Please either annotate the inputs or ascribe a type to the whole function.
+
+$ ./run_main.sh 
+Enter input:
+constant T : Type
+def f := fun (x : T) => x
+check (f T : Kind)
+
+Error encountered at line 3, col 10 to 10
+'T' was inferred to have type 'Type'.
+This doesn't match the expected type of 'T'.
+```
+
 ## Usage
 This section is heavily based on [this example](https://github.com/esy-ocaml/hello-ocaml).
 
@@ -112,8 +153,9 @@ using for testing and experimentation.
         - `parser.ml` contains some functions and boilerplate code tying the
         lexer and grammar together. This provides an interface which we use to
         parse our language.
-    - `kernel` contains all the important stuff, like normalization and type
-    checking. Basically everything that happens after parsing can be found here.
+    - `kernel` contains all the important stuff for evaluating expressions and
+    statements. These include normalization, type checking and context management
+    using de bruijn indices.
         - `ast.ml` contains our internal AST. Unlike the one in `lib/parsing`,
         this uses de bruijn indices for variables, rather than strings. It also
         has some utilities, like for comparing equality of beta normal forms.
@@ -138,5 +180,5 @@ using for testing and experimentation.
        error reporting.
    - `ast_conv.ml` contains facilities for converting the parser's AST to 
    the internal AST and vice versa.
-   - `error_handling.ml` contains functions for handling errors that occur while
+   - `error_reporting.ml` contains functions for handling errors that occur while
    running programs in our language. These include pretty printing of errors.

@@ -16,7 +16,7 @@ let () =
       |> Fun.flip Ast_conv.parser_to_internal_stmts 
          Kernel.Context.empty 
     with exc ->
-      print_endline @@ Error_reporting.fmt_parsing_err_str exc;
+      print_endline @@ Error_reporting.fmt_parse_err_str exc;
       exit 1
   in
   try

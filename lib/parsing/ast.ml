@@ -1,26 +1,27 @@
 (* This is the AST that the parser generates from the concrete syntax. *)
-
 module Loc = Common.Location
 
 type expr = raw_expr Loc.located
 and raw_expr =
   | Type
   | Kind
-  | Pi of {input_var : string;
+  | Pi of {input_var : (string [@visitors.opaque]);
            input_type : expr;
            output_type : expr}
-  | Var of string
-  | Fun of {input_var : string;
-            input_type : expr option;
+  | Var of (string [@visitors.opaque])
+  | Fun of {input_var : (string [@visitors.opaque]);
+            input_type : (expr option [@visitors.opaque]);
             body : expr}
   | App of {fn : expr;
             arg : expr}
   | Ascription of {expr : expr;
                    expr_type : expr}
-  | Let of {var_name : string;
+  | Let of {var_name : (string [@visitors.opaque]);
             binding : expr;
             body : expr}
-[@@deriving show, fold]
+[@@deriving show,
+  visitors {variety="fold"; ancestors=["Loc.fold"]},
+  visitors {variety="map"; ancestors=["Loc.fold"]}]
 
 type list_of_exprs = expr list
 [@@deriving show]

@@ -1,6 +1,6 @@
 (library
  (name common)
  (preprocess 
-  (pps ppx_deriving.show ppx_deriving.eq ppx_fields_conv))
+  (staged_pps ppx_deriving.show ppx_deriving.eq visitors.ppx ppx_fields_conv))
  (libraries containers)
  )

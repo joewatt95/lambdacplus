@@ -13,9 +13,7 @@ module Loc = Common.Location
 let rec subst_raw_expr from_index to_expr raw_expr =
   match raw_expr with
   | Ast.Type | Ast.Kind -> raw_expr
-  (* | Var index as var ->
-   *   let open Loc in
-   *   if index = from_index then to_expr.data else var *)
+
   | Ast.Pi {input_var; input_type; output_type} ->
     let input_type = subst from_index to_expr input_type in
     let output_type = subst_under_binder from_index to_expr output_type in
@@ -52,6 +50,8 @@ and subst from_index to_expr expr =
   | _ ->
     Loc.update_data expr @@ subst_raw_expr from_index to_expr
 
+(* Handy helper function for performing substitutions under binders.
+   These include lambda and Pi. *)
 and subst_under_binder from_index to_expr = 
   to_expr
   |> Ast.shift 1

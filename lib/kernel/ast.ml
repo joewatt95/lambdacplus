@@ -10,49 +10,73 @@ type expr = raw_expr Loc.located
 and raw_expr =
   | Type
   | Kind
-  | Pi of {input_var : string [@equal always_true];
+  | Pi of {input_var : (string [@visitors.opaque] [@equal always_true]);
            input_type : expr;
            output_type : expr}
-  | Var of int (* This int is the de bruijn index of the variable. *)
-  | Fun of {input_var : string [@equal always_true];
-            input_type : expr option [@equal always_true];
+  | Var of (int [@visitors.opaque])
+  | Fun of {input_var : (string [@visitors.opaque] [@equal always_true]);
+            input_type : (expr option [@visitors.opaque]);
             body : expr}
   | App of {fn : expr;
             arg : expr}
   | Ascription of {expr : expr;
                    expr_type : expr}
-  | Let of {var_name : string [@equal always_true]; 
+  | Let of {var_name : (string [@visitors.opaque] [@equal always_true]);
             binding : expr;
             body : expr}
-[@@deriving show, eq]
+[@@deriving show, eq, 
+  visitors {variety="fold"; ancestors=["Loc.fold"]},
+  visitors {variety="map"; ancestors=["Loc.fold"]}]
 
 let located_kind = Loc.locate Kind
 
-(* Check if 2 expressions are structurally equal. *)
-(* let rec equal (expr1 : expr) (expr2 : expr) =
-  match expr1.data, expr2.data with
-  | Type, Type | Kind, Kind -> true
+(* Shift operation for de bruijn ASTs. *)
+let shift shift_by =
+  let v = 
+    object (self) 
+      inherit [_] map as super
 
-  | Var index1, Var index2 -> index1 = index2 
-    (* print_endline @@ "Checking" ^ (string_of_int index1) ^ (string_of_int index2); *)
+      method! visit_Type _ = Type 
+      method! visit_Kind _ = Kind
 
-  | App {fn=fn1; arg=arg1}, App {fn=fn2; arg=arg2} ->
-    equal fn1 fn2 && equal arg1 arg2
+      method! visit_Var {data=cutoff; _} index =
+        if index >= cutoff then Var (index + shift_by) else Var index 
 
-  | Pi {input_type=in1; output_type=out1; _},
-    Pi {input_type=in2; output_type=out2; _} ->
-    equal in1 in2 && equal out1 out2
+      method! visit_Pi ({data; _} as cutoff) input_var input_type output_type =
+        let input_type = self#visit_expr cutoff input_type in
+        let output_type = self#visit_expr (Loc.locate @@ data + 1) output_type in
+        Pi {input_var; input_type; output_type}
 
-  | Fun {body=body1; _}, Fun {body=body2; _} ->
-    equal body1 body2
+      method! visit_Fun ({data; _} as cutoff) input_var input_type body =
+        let input_type = CCOpt.map (self#visit_expr cutoff) input_type in
+        let body = self#visit_expr (Loc.locate @@ data + 1) body in
+        Fun {input_var; input_type; body}
 
-  | Let {binding=binding1; body=body1; _},
-    Let {binding=binding2; body=body2; _} ->
-      equal binding1 binding2 && equal body1 body2
+      method! visit_App cutoff fn arg =
+        let fn = self#visit_expr cutoff fn in
+        let arg = self#visit_expr cutoff arg in
+        App {fn; arg}
 
-  | _, _ -> assert false *)
+      method! visit_Ascription cutoff expr expr_type =
+        let expr = self#visit_expr cutoff expr in
+        let expr_type = self#visit_expr cutoff expr_type in
+        Ascription {expr; expr_type}
+      
+      method! visit_Let ({data; _} as cutoff) var_name binding body =
+        let binding = self#visit_expr cutoff binding in
+        let body = self#visit_expr (Loc.locate @@ data + 1) body in
+        Let {var_name; binding; body}
 
-let shift shift_by (expr : expr) =
+      method! visit_expr cutoff ({data; _} as expr) = 
+        data
+        |> super#visit_raw_expr cutoff
+        |> Loc.set_data expr
+
+      method visit_'a _ _ = located_kind
+      method build_located _ _ _ _ = located_kind
+  end in v#visit_expr @@ Loc.locate 0
+
+(* let shift shift_by (expr : expr) =
   let rec shift_raw_expr cutoff raw_expr =
     match raw_expr with
     | Type | Kind -> raw_expr
@@ -88,7 +112,7 @@ let shift shift_by (expr : expr) =
   and shift_expr cutoff expr =
     Loc.update_data expr @@ shift_raw_expr cutoff
 
-  in shift_expr 0 expr
+  in shift_expr 0 expr *)
 
 type list_of_exprs = expr list
 [@@deriving show]

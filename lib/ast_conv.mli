@@ -1,5 +1,6 @@
+(* This exception is thrown when *)
 exception Unknown_var_name of Parsing.Ast.expr
-exception Underscore_var_name of Parsing.Ast.expr
+exception Underscore_var_name of Common.Location.source_loc
 
 (* Convert a parsed expression to our internal AST. *)
 val parser_to_internal_expr : Kernel.Context.t -> Parsing.Ast.expr -> Kernel.Ast.expr
@@ -15,5 +16,6 @@ val parser_to_internal_stmt : Parsing.Ast.stmt -> Kernel.Context.t -> Kernel.Ast
 (* This converts a list of parser statements to our internal AST. *)
 val parser_to_internal_stmts : Parsing.Ast.list_of_stmts -> Kernel.Context.t -> Kernel.Ast.list_of_stmts * Kernel.Context.t
 
-(* Convert an expression from our internal AST back to the parser's AST *)
+(* Convert an expression from our internal AST back to the parser's AST.
+   This is called after an expression has been typechecked and fully normalized. *)
 val internal_to_parser_expr : Kernel.Context.t -> Kernel.Ast.expr -> Parsing.Ast.expr
