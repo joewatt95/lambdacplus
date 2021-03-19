@@ -1,11 +1,13 @@
 type source_loc = Lexing.position * Lexing.position
 
-val show_source_loc : source_loc -> string
-
 type 'a located = {
   data: 'a;
   source_loc : source_loc;
 }
+
+val equal_located : ('a -> 'a -> bool) -> 'a located -> 'a located -> bool
+
+(* val fold_located : ('a -> 'b -> 'c) -> 'a -> 'b located -> 'c *)
 
 (* Given some data and a source location, wrap them up in the located type. *)
 val locate : ?source_loc:source_loc -> 'a -> 'a located 

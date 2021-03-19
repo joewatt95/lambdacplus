@@ -86,7 +86,7 @@ and check ctx expr expr_type =
   | _, _ -> 
     let inferred_expr_type = infer ctx expr in
     (* Here we need to check if the inferred type and expr_type are equal *)
-    if not @@ Ast.equal inferred_expr_type expr_type
+    if not @@ Ast.equal_expr inferred_expr_type expr_type
     then assert false
 
 and get_well_formed_type ctx expr = 

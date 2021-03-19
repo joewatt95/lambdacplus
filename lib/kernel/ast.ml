@@ -4,30 +4,32 @@ parser, except that variables are given by de bruijn indices.
 
 module Loc = Common.Location
 
+let always_true = fun _ _ -> true
+
 type expr = raw_expr Loc.located
 and raw_expr =
   | Type
   | Kind
-  | Pi of {input_var : string;
+  | Pi of {input_var : string [@equal always_true];
            input_type : expr;
            output_type : expr}
   | Var of int (* This int is the de bruijn index of the variable. *)
-  | Fun of {input_var : string;
-            input_type : expr option;
+  | Fun of {input_var : string [@equal always_true];
+            input_type : expr option [@equal always_true];
             body : expr}
   | App of {fn : expr;
             arg : expr}
   | Ascription of {expr : expr;
                    expr_type : expr}
-  | Let of {var_name : string; 
+  | Let of {var_name : string [@equal always_true]; 
             binding : expr;
             body : expr}
-[@@deriving show]
+[@@deriving show, eq]
 
 let located_kind = Loc.locate Kind
 
 (* Check if 2 expressions are structurally equal. *)
-let rec equal (expr1 : expr) (expr2 : expr) =
+(* let rec equal (expr1 : expr) (expr2 : expr) =
   match expr1.data, expr2.data with
   | Type, Type | Kind, Kind -> true
 
@@ -48,7 +50,7 @@ let rec equal (expr1 : expr) (expr2 : expr) =
     Let {binding=binding2; body=body2; _} ->
       equal binding1 binding2 && equal body1 body2
 
-  | _, _ -> assert false
+  | _, _ -> assert false *)
 
 let shift shift_by (expr : expr) =
   let rec shift_raw_expr cutoff raw_expr =

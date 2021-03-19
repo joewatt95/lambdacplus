@@ -16,17 +16,16 @@ let () =
       |> Fun.flip Ast_conv.parser_to_internal_stmts 
          Kernel.Context.empty 
     with exc ->
-      Error_handling.handle_parsing_error exc;
+      print_endline @@ Error_reporting.fmt_parsing_err_str exc;
       exit 1
   in
   try
     stmts
     |> Fun.flip Kernel.Eval_statements.eval_stmts naming_ctx
     |> fun (expr, _) -> expr
-    |> Ast_conv.internal_to_parser_expr naming_ctx
-    |> PAst.unparse
+    |> Pretty_print.unparse_internal_expr naming_ctx
     (* |> Parsing.Ast.show_expr *)
     |> fun str -> print_endline @@ "\nHere's the output:\n" ^ str;
     flush stdout
   with exc ->
-    Error_handling.handle_eval_error naming_ctx exc
+    print_endline @@ Error_reporting.fmt_eval_err_str naming_ctx exc

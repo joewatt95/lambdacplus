@@ -17,5 +17,3 @@ val parser_to_internal_stmts : Parsing.Ast.list_of_stmts -> Kernel.Context.t -> 
 
 (* Convert an expression from our internal AST back to the parser's AST *)
 val internal_to_parser_expr : Kernel.Context.t -> Kernel.Ast.expr -> Parsing.Ast.expr
-
-val unparse_internal_expr : Kernel.Context.t -> Kernel.Ast.expr -> string

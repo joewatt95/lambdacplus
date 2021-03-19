@@ -166,11 +166,6 @@ let rec internal_to_parser_raw_expr ctx raw_expr =
 and internal_to_parser_expr ctx expr =
   Loc.update_data expr @@ internal_to_parser_raw_expr ctx
 
-let unparse_internal_expr naming_ctx expr =
-  expr
-  |> internal_to_parser_expr naming_ctx
-  |> PAst.unparse 
-
 (* let stmt_to_parser_ast ctx stmt =
  *   let open Parsing.Ast in
  *   match stmt with

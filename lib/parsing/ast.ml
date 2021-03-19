@@ -20,24 +20,7 @@ and raw_expr =
   | Let of {var_name : string;
             binding : expr;
             body : expr}
-[@@deriving show]
-
-(* Unparses an expression back to a string for printing. *)
-let rec unparse (expr : expr) =
- match expr.data with
- | Type -> "Type"
- | Kind -> "Kind"
- | Var var_name -> var_name 
- | Pi {input_var; input_type; output_type} ->
-  "∏ (" ^ input_var ^ " : " ^ unparse input_type ^ "), " ^ unparse output_type
- | Fun {input_var; body; _} ->
-  "λ " ^ input_var ^ " ⇒ " ^ unparse body
- | App {fn; arg} ->
-  "(" ^ unparse fn ^ " " ^ unparse arg ^")"
-
- (* No other cases are possible since all expressions are type checked and then
-  eagerly normalized to one of the above forms. *)
- | _ -> assert false
+[@@deriving show, fold]
 
 type list_of_exprs = expr list
 [@@deriving show]
