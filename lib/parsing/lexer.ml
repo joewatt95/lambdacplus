@@ -66,4 +66,8 @@ let rec tokenize lexbuf =
   | Plus whitesp -> tokenize lexbuf
 
   (* For catching errorneous tokens. *)
-  | _ -> raise_syntax_err lexbuf
+  | Compl ('\r' | '\n') -> raise_syntax_err lexbuf
+
+  (* This case should not happen since all problematic tokens would have been
+     caught by the above case. *)
+  | _ -> assert false
