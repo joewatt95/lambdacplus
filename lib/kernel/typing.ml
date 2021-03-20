@@ -34,7 +34,9 @@ let rec infer ctx (expr : Ast.expr) =
  | Ast.Ascription {expr=expr'; expr_type} ->
   begin
     match expr_type.data with
-    | Ast.Kind -> check ~outer_expr:expr ctx Ast.located_kind expr'; expr_type
+    | Ast.Kind -> 
+      check ~outer_expr:expr ctx expr' Ast.located_kind; 
+      expr_type
     | _ ->
       check_well_formed_type ctx expr_type;
       let expr_type = Norm.normalize ctx expr_type in

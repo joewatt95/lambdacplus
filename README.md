@@ -31,23 +31,23 @@ def x := T
 
 Error encountered at line 3, col 10 to 10
 Unknown variable name 'T'.
-[joe@Albatross cs4215_dependent_types]$ ./run_main.sh 
+$ ./run_main.sh 
 Enter input:
 check fun x => x
 
 Error encountered at line 1, col 7 to 16
-Unable to infer the type of the function 'λ x ⇒ x'.
+Unable to infer the type of the function '(λ x ⇒ x)'.
 Please either annotate the inputs or ascribe a type to the whole function.
 
 $ ./run_main.sh 
 Enter input:
 constant T : Type
 def f := fun (x : T) => x
-check (f T : Kind)
+check f T
 
-Error encountered at line 3, col 10 to 10
-'T' was inferred to have type 'Type'.
-This doesn't match the expected type of 'T'.
+Error encountered at line 3, col 7 to 10.
+While typechecking '(f T)', 'T' was inferred to have type 'Type' but this doesn't
+match the expected type of 'T'.
 ```
 
 ## Usage
