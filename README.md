@@ -9,47 +9,6 @@ intuitionistic logic.
 ### Specs
 Refer to the `latex` directory.
 
-### What this branch is about
-The aim of this branch is to improve error reporting, aside from the on-going
-work of improving documentation and cleaning up the code.
-
-#### Sample of current error reporting
-```shell
-$ ./run_main.sh 
-Enter input:
-check (Type : Type)
-
-Error encountered at line 1, col 8 to 11
-'Type' was inferred to have type 'Kind'.
-This doesn't match the expected type of 'Type'.
-
-$ ./run_main.sh 
-Enter input:
-//
-//
-def x := T
-
-Error encountered at line 3, col 10 to 10
-Unknown variable name 'T'.
-$ ./run_main.sh 
-Enter input:
-check fun x => x
-
-Error encountered at line 1, col 7 to 16
-Unable to infer the type of the function '(λ x ⇒ x)'.
-Please either annotate the inputs or ascribe a type to the whole function.
-
-$ ./run_main.sh 
-Enter input:
-constant T : Type
-def f := fun (x : T) => x
-check f T
-
-Error encountered at line 3, col 7 to 10.
-While typechecking '(f T)', 'T' was inferred to have type 'Type' but this doesn't
-match the expected type of 'T'.
-```
-
 ## Usage
 This section is heavily based on [this example](https://github.com/esy-ocaml/hello-ocaml).
 
@@ -127,20 +86,19 @@ More sample programs can be found in the `sample_programs` directory.
 ### What needs working on
 - Practical side
   - More testing
-  - Better error reporting and error messages
-    - At the moment we simply `assert false` whenever we encounter an error
-  - Better pretty printing
-  - Glue code for tying everything together
-  - REPL environment
-  - Tie our code into Typescript frontend
+  -  [x] Better error reporting and error messages
+  - [x] Better pretty printing
+  - [ ] Glue code for tying everything together
+  - [ ]REPL environment
+  - [ ] Tie our code into Typescript frontend
 
 - Theory side
   - Add new types:
-    - Sigma aka existential quantifier
-    - Binary product aka conjunction
-    - Binary coproduct aka disjunction
-    - Unit, aka the singleton type, aka logical truth
-    - Void, aka the empty type, aka logical falsity
+    - [ ] Sigma aka existential quantifier
+    - [ ] Binary product aka conjunction
+    - [ ] Binary coproduct aka disjunction
+    - [ ] Unit, aka the singleton type, aka logical truth
+    - [ ] Void, aka the empty type, aka logical falsity
 
 using for testing and experimentation.
 - `lib` is our library which contains all the code making our language work.
