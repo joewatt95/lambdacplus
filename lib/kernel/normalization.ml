@@ -8,62 +8,102 @@ open Containers
    binder, so we don't Ast.shift when we handle the input_type in Pi.
 *)
 
-module Loc = Parsing.Location
+module Loc = Common.Location
 
-let rec subst_raw_expr from_index to_expr raw_expr =
-  match raw_expr with
-  | Ast.Type | Ast.Kind -> raw_expr
-  (* | Var index as var ->
-   *   let open Loc in
-   *   if index = from_index then to_expr.data else var *)
-  | Ast.Pi {input_var; input_type; output_type} ->
-    let input_type = subst from_index to_expr input_type in
-    let output_type = subst_under_binder from_index to_expr output_type in
-    Ast.Pi {input_var; input_type; output_type}
+let subst from_index to_expr =
+  let v =
+    let open Loc in
+    object (self)
+      inherit [_] Ast.ast_mapper
+      
+      method! visit_Var {data=(from_index, to_expr); _} index =
+        if index = from_index then to_expr.data else Var index
 
-  | Ast.Fun {input_var; input_type; body} ->
-    let input_type = CCOpt.map (subst from_index to_expr) input_type in
-    let body = subst_under_binder from_index to_expr body in
-    Ast.Fun {input_var; input_type; body}
+      method! visit_Pi from_to input_var input_type output_type =
+        let input_type = self#visit_expr from_to input_type in
+        let output_type = self#subst_under_binder from_to output_type in
+        Ast.Pi {input_var; input_type; output_type}
 
-  | Ast.App {fn; arg} ->
-    let fn = subst from_index to_expr fn in
-    let arg = subst from_index to_expr arg in
-    Ast.App {fn; arg}
+      method! visit_Fun from_to input_var input_type body =
+        let input_type = CCOpt.map (self#visit_expr from_to) input_type in
+        let body = self#subst_under_binder from_to body in
+        Ast.Fun {input_var; input_type; body}
 
-  | Ast.Ascription {expr; expr_type} ->
-    let expr = subst from_index to_expr expr in
-    let expr_type = subst from_index to_expr expr_type in
-    Ast.Ascription {expr; expr_type}
+      method! visit_Let from_to var_name binding body =
+        let binding = self#visit_expr from_to binding in
+        let body = self#subst_under_binder from_to body in
+        Ast.Let {var_name; binding; body}
+      
+      (* Handy helper function for performing substitutions under binders.
+         These include lambda and Pi. *)
+      method subst_under_binder {data=(from_index, to_expr); _} = 
+        to_expr
+        |> Ast.shift 1
+        |> fun to_expr -> self#visit_expr @@ Loc.locate (from_index + 1, to_expr)
 
-  | Ast.Let {var_name; binding; body} ->
-    let binding = subst from_index to_expr binding in
-    let body = subst_under_binder from_index to_expr body in
-    Ast.Let {var_name; binding; body}
+      (* Note that we don't need to override the default methods that the Visitors
+         package generates for visit_Type, visit_Kind, visit_App and 
+         visit_Ascription since we only need special rules for handle variables 
+         and substituing under binders differently. *)
 
-  (* This case should never happen because it's already taken care of
-  in subst*)
-  | Ast.Var _ -> assert false
-
-and subst from_index to_expr expr =
-  match expr.data with
-  | Ast.Var index ->
-    if index = from_index then to_expr else expr
-  | _ ->
-    Loc.update_data expr @@ subst_raw_expr from_index to_expr
-
-and subst_under_binder from_index to_expr = subst (from_index + 1) (Ast.shift 1 to_expr)
+  end in v#visit_expr @@ Loc.locate (from_index, to_expr)
 
 let beta_reduce body arg =
     let arg = Ast.shift 1 arg in
-    body |> subst 0 arg |> Ast.shift (-1)
+    body 
+    |> subst 0 arg 
+    |> Ast.shift (-1)
+
+(* let normalize ctx =
+  let v =
+    object (self)
+      inherit [_] Ast.ast_mapper
+
+      method! visit_Var {data=ctx; _} index =
+        index
+        |> Context.get_binding ctx
+        |> CCOpt.map Loc.data
+        |> CCOpt.get_or ~default:(Ast.Var index)
+
+      method! visit_Ascription ctx expr _ =
+        self#visit_raw_expr ctx expr.data
+
+      method! visit_App ctx fn arg =
+        match self#visit_raw_expr ctx fn.data with
+        | Ast.Fun {body; _} ->
+          let arg = self#visit_expr ctx arg in
+          let body = beta_reduce body arg in
+          self#visit_raw_expr ctx body.data
+        | _ -> Ast.App {fn; arg} 
+
+      method! visit_Fun ctx input_var _ body =
+        let ctx =  self#add_binding input_var ctx in
+        let body = self#visit_expr ctx body in
+        Ast.Fun {input_type=None; input_var; body}
+
+      method! visit_Pi ctx input_var input_type output_type =
+        let input_type = self#visit_expr ctx input_type in
+        let ctx = self#add_binding input_var ctx in 
+        let output_type = self#visit_expr ctx output_type in
+        Ast.Pi {input_var; input_type; output_type}
+
+      method add_binding input_var ctx =
+          Loc.update_data ctx @@ fun ctx -> Context.add_binding input_var ctx
+
+      method! visit_Let ctx _ binding body =
+        let binding = self#visit_expr ctx binding in
+        let body = beta_reduce body binding in
+        self#visit_raw_expr ctx body.data
+
+  end in v#visit_expr @@ Loc.locate ctx *)
 
 let rec normalize ctx (expr : Ast.expr) =
   match expr.data with
   | Ast.Type | Ast.Kind -> expr
   | Ast.Var index -> 
-      let binding = Context.get_binding index ctx in
-      CCOpt.get_or binding ~default:expr
+    index
+    |> Context.get_binding ctx
+    |> CCOpt.get_or ~default:expr
   
   | Ast.Ascription {expr; _} -> normalize ctx expr
 
@@ -74,15 +114,11 @@ let rec normalize ctx (expr : Ast.expr) =
         let arg = normalize ctx arg in
         let body = beta_reduce body arg in
         normalize ctx body
-      | _ -> expr
+      | Var _ -> expr
+      | _ -> assert false
     end
 
-  | Ast.Fun {input_type=Some _; input_var; body} ->
-    let expr = 
-      Loc.set_data expr @@ Ast.Fun {input_type=None; input_var; body} in
-    normalize ctx expr
-
-   | Ast.Fun {input_type=None; input_var; body} ->
+  | Ast.Fun {input_var; body; _} ->
     let ctx = Context.add_binding input_var ctx in
     let body = normalize ctx body in
     Loc.set_data expr @@ Ast.Fun {input_type=None; input_var; body}

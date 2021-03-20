@@ -1,5 +1,5 @@
 (executable
  (name main)
  (libraries containers
-            parsing kernel)
+            cs4215_dependent_types)
  (modes js))

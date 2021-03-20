@@ -1,22 +1,46 @@
 open Containers
 
-module Loc = Parsing.Location
+module Loc = Common.Location
 module Norm = Normalization
+
+exception Pi_expected of {
+  app : Ast.expr; 
+  fn : Ast.expr; 
+  inferred_type : Ast.expr
+}
+
+exception Cannot_infer_type_of_fn of Ast.expr
+exception Cannot_infer_type_of_kind of Loc.source_loc
+
+exception Ill_formed_type of {
+  expr : Ast.expr;
+  inferred_type : Ast.expr;
+}
+
+exception Type_mismatch of {
+  outer_expr : Ast.expr;
+  expr : Ast.expr;
+  inferred_type : Ast.expr;
+  expected_type : Ast.expr
+}
 
 let rec infer ctx (expr : Ast.expr) =
  match expr.data with
- | Ast.Type -> Loc.set_data expr Ast.Kind 
- | Ast.Var index -> Context.get_type index ctx
+ | Ast.Type -> Loc.set_data expr Ast.Kind
+ | Ast.Var index -> Context.get_type ctx index
 
- (* Do we want to allow users to assert that the type of Type is Kind? *)
- | Ast.Ascription {expr; expr_type} ->
+ (* Do we want to allow users to assert that the type of Type, and type
+    constructors is Kind? *)
+ | Ast.Ascription {expr=expr'; expr_type} ->
   begin
     match expr_type.data with
-    | Ast.Kind -> check ctx expr Ast.located_kind; expr_type
+    | Ast.Kind -> 
+      check ~outer_expr:expr ctx expr' Ast.located_kind; 
+      expr_type
     | _ ->
       check_well_formed_type ctx expr_type;
       let expr_type = Norm.normalize ctx expr_type in
-      check ctx expr expr_type;
+      check ~outer_expr:expr ctx expr' expr_type;
       expr_type
   end
 
@@ -27,14 +51,14 @@ let rec infer ctx (expr : Ast.expr) =
   get_well_formed_type ctx output_type
 
  | Ast.App {fn; arg} ->
-  let fn_type = infer ctx fn in
+  let inferred_type = infer ctx fn in
   begin
-    match fn_type.data with
+    match inferred_type.data with
     | Ast.Pi {input_type; output_type; _} ->
-      check ctx arg input_type;
-      Norm.beta_reduce output_type arg 
-    | _ -> assert false
-  end 
+      check ~outer_expr:expr ctx arg input_type;
+      Norm.beta_reduce output_type arg
+    | _ -> raise @@ Pi_expected {app=expr; fn; inferred_type}
+  end
 
  | Ast.Fun {input_var; input_type=Some input_ty; body} ->
   check_well_formed_type ctx input_ty;
@@ -47,36 +71,35 @@ let rec infer ctx (expr : Ast.expr) =
  | Ast.Let {var_name; binding; body} ->
   let var_type = infer ctx binding in
   let ctx = Context.add_binding var_name ~var_type:var_type ctx in
-  body |> infer ctx
-       |> Fun.flip Norm.beta_reduce binding
-       |> Norm.normalize ctx
+  body 
+  |> infer ctx
+  |> Fun.flip Norm.beta_reduce binding
+  |> Norm.normalize ctx
 
- | Ast.Kind -> print_endline "Kind doesn't have a type!"; assert false
- | _ -> assert false
+ | Ast.Kind -> raise @@ Cannot_infer_type_of_kind expr.source_loc
+ | Ast.Fun {input_type=None; _} -> raise @@ Cannot_infer_type_of_fn expr
 
-and check ctx expr expr_type =
-  match expr.data, expr_type.data with
-  | Ast.Fun {input_var; input_type=None; body}, 
+and check ~outer_expr ctx expr expected_type =
+  match expr.data, expected_type.data with
+  | Ast.Fun {input_var; input_type=None; body},
     Ast.Pi {input_type; output_type; _} ->
-    ctx |> Context.add_binding input_var ~var_type:input_type
-        |> fun ctx -> check ctx body output_type
-    (* print_string "Context: ";
-    print_endline @@ Context.show ctx;
-    print_string "Expr: ";
-    print_endline @@ Ast.show_expr expr;
-    print_string "Checking against: ";
-    print_endline @@ Ast.show_expr expr_type; *)
-  | _, _ -> 
-    let inferred_expr_type = infer ctx expr in
+    ctx 
+    |> Context.add_binding input_var ~var_type:input_type
+    |> fun ctx -> check ~outer_expr ctx body output_type
+  | _, _ ->
+    let inferred_type = infer ctx expr in
     (* Here we need to check if the inferred type and expr_type are equal *)
-    if not @@Ast.equal inferred_expr_type expr_type
-    then assert false
+    if not @@ Ast.equal_expr inferred_type expected_type
+    then raise @@ Type_mismatch {expr; inferred_type; expected_type; outer_expr}
 
+(* Check if expr is a well-formed type wrt ctx. In other words, this checks
+  if the type of expr is Type or Kind. If so, we return it. Otherwise, we throw
+  an exception. *)
 and get_well_formed_type ctx expr = 
   let inferred_type = infer ctx expr in
   match inferred_type.data with
   | Ast.Type | Ast.Kind -> inferred_type
-  | _ -> assert false
+  | _ -> raise @@ Ill_formed_type {expr; inferred_type}
 
 and check_well_formed_type ctx expr = 
   ignore @@ get_well_formed_type ctx expr 

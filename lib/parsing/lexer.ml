@@ -1,15 +1,27 @@
+(* TODO: Implement error reporting *)
+
 open Containers
+
+(* Change this to change the encoding. *)
+module Encoding = Sedlexing.Utf8
+
+module G = Grammar
+
+exception Syntax_error of {
+  lexeme : string;
+  source_loc : Common.Location.source_loc;
+}
+
+let raise_syntax_err lexbuf =
+  let lexeme = Encoding.lexeme lexbuf in
+  let source_loc = Sedlexing.lexing_positions lexbuf in
+  raise @@ Syntax_error {lexeme; source_loc}
 
 let whitesp = [%sedlex.regexp? ' ' | '\t']
 let newline = [%sedlex.regexp? ('\r' | '\n' | "\r\n")]
 let name = 
   [%sedlex.regexp? ((alphabetic |  '_'), Star (alphabetic | '_' | '0' .. '9')) 
                    | math]
-
-(* Change this to change the encoding. *)
-module Encoding = Sedlexing.Utf8
-
-module G = Grammar
 
 (* Create a hash table mapping strings to tokens out of the above associative
 list defining reserved keywords.
@@ -25,32 +37,37 @@ let reserved_keywords =
    (["axiom"; "constant"], G.AXIOM);
    (["check"], G.CHECK);
    (["eval"], G.EVAL)]
+   (* Fancy stream fusion stuff *)
   |> Iter.of_list
   |> Iter.flat_map_l
       (fun (strings, token) ->
         List.map (fun str -> (str, token)) strings)
   |> Iter.to_hashtbl;;
 
-(* List.iter
-  (fun (lst, token) ->
-    List.iter (fun str -> Hashtbl.add reserved_keywords' str token) lst)
-  reserved_keywords *)
-
 let rec tokenize lexbuf =
   match%sedlex lexbuf with
   | eof -> G.EOF
   (* Support single-line comments. Idea taken from
   https://github.com/vshaxe/hxparser/blob/master/src/syntax/lexing/lexer.ml *)
-  | "//", Star (Compl ('\r' | '\n')) -> Sedlexing.new_line lexbuf; tokenize lexbuf 
   | '(' -> G.LPAREN
   | ')' -> G.RPAREN
   | ',' -> G.COMMA
   | ':' -> G.COLON
   | ":=" -> G.COLON_EQ
   | "=>" -> G.DOUBLE_ARROW
-  | newline -> Sedlexing.new_line lexbuf; tokenize lexbuf
+
   | name -> 
-    let str = Encoding.lexeme lexbuf in
-    Hashtbl.get_or reserved_keywords str ~default:(G.VAR_NAME str)
+    let lexeme = Encoding.lexeme lexbuf in
+    Hashtbl.get_or reserved_keywords lexeme ~default:(G.VAR_NAME lexeme)
+  | newline
+
+  | "//", Star (Compl ('\r' | '\n')) 
+
   | Plus whitesp -> tokenize lexbuf
+
+  (* For catching errorneous tokens. *)
+  | Compl ('\r' | '\n') -> raise_syntax_err lexbuf
+
+  (* This case should not happen since all problematic tokens would have been
+     caught by the above case. *)
   | _ -> assert false

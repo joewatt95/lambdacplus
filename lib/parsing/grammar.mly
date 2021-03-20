@@ -6,7 +6,14 @@ https://gitlab.inria.fr/fpottier/menhir/blob/master/doc/new-rule-syntax-summary.
 Dummy token and some precedence rules to make function application left
 associative. See:
 https://ptival.github.io/2017/05/16/parser-generators-and-function-application/
+
+TODO: Implement error reporting
+https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
  *)
+%{
+  module Loc = Common.Location
+%}
+
 %token APP
 
 (* Types and expressions *)
@@ -33,10 +40,9 @@ https://ptival.github.io/2017/05/16/parser-generators-and-function-application/
 
 %%
 
-
 let main := terminated(nonempty_list(stmt), EOF)
 
-let located(x) == ~ = x; { Location.locate x ~source_loc:$loc }
+let located(x) == ~ = x; { Loc.locate x ~source_loc:$loc }
 
 let stmt := located(
   | DEF; ~ = var_name; COLON_EQ; binding = expr;  { Ast.Def {var_name; binding}}
@@ -74,7 +80,7 @@ let ascription :=
 let fun_expr := FUN; ~ = fun_arg_list; DOUBLE_ARROW; body=expr;
     { List.fold_right
         (fun (input_var, input_type) body ->
-          Location.locate (Ast.Fun {input_var; input_type; body}) ~source_loc:$loc)
+          Loc.locate (Ast.Fun {input_var; input_type; body}) ~source_loc:$loc)
       fun_arg_list body}
 
 let fun_arg_list := nonempty_list(fun_arg)
@@ -88,7 +94,7 @@ let fun_arg :=
 let pi_expr := PI; ~ = pi_arg_list; COMMA; output_type=expr;
   { List.fold_right
     (fun (input_var, input_type) output_type ->
-       Location.locate
+       Loc.locate
          (Ast.Pi {input_var; input_type; output_type}) ~source_loc:$loc)
     pi_arg_list output_type}
 

@@ -2,55 +2,82 @@
 parser, except that variables are given by de bruijn indices.
 *)
 
-module Loc = Parsing.Location
+module Loc = Common.Location
+
+let always_true = fun _ _ -> true
 
 type expr = raw_expr Loc.located
 and raw_expr =
   | Type
   | Kind
-  | Pi of {input_var : string;
+  | Pi of {input_var : (string [@visitors.opaque] [@equal always_true]);
            input_type : expr;
            output_type : expr}
-  | Var of int (* This int is the de bruijn index of the variable. *)
-  | Fun of {input_var : string;
-            input_type : expr option;
+  | Var of (int [@visitors.opaque])
+  | Fun of {input_var : (string [@visitors.opaque] [@equal always_true]);
+            input_type : (expr option [@visitors.opaque]);
             body : expr}
   | App of {fn : expr;
             arg : expr}
   | Ascription of {expr : expr;
                    expr_type : expr}
-  | Let of {var_name : string; 
+  | Let of {var_name : (string [@visitors.opaque] [@equal always_true]);
             binding : expr;
             body : expr}
-[@@deriving show]
+[@@deriving show, eq, 
+  visitors {variety="map"; ancestors=["Loc.fold"]}]
 
 let located_kind = Loc.locate Kind
 
-(* Check if 2 expressions are structurally equal. *)
-let rec equal (expr1 : expr) (expr2 : expr) =
-  match expr1.data, expr2.data with
-  | Type, Type | Kind, Kind -> true
+(* Template for defining functions that map over the AST while preserving source
+   locations. *)
+class virtual ['self] ast_mapper =
+  object (_ : 'self)
+    inherit [_] map as super
 
-  | Var index1, Var index2 -> index1 = index2 
-    (* print_endline @@ "Checking" ^ (string_of_int index1) ^ (string_of_int index2); *)
+    method! visit_expr env ({data; _} as expr) = 
+      data
+      |> super#visit_raw_expr env
+      |> Loc.set_data expr
 
-  | App {fn=fn1; arg=arg1}, App {fn=fn2; arg=arg2} ->
-    equal fn1 fn2 && equal arg1 arg2
+    (* These are never called. *)
+    method visit_'a _ _ = located_kind
+    method build_located _ _ _ _ = located_kind
+  end
 
-  | Pi {input_type=in1; output_type=out1; _},
-    Pi {input_type=in2; output_type=out2; _} ->
-    equal in1 in2 && equal out1 out2
+(* Shift operation for de bruijn ASTs. *)
+let shift shift_by =
+  let v = 
+    object (self) 
+      inherit [_] ast_mapper
 
-  | Fun {body=body1; _}, Fun {body=body2; _} ->
-    equal body1 body2
+      method! visit_Var {data=cutoff; _} index =
+        if index >= cutoff then Var (index + shift_by) else Var index 
 
-  | Let {binding=binding1; body=body1; _},
-    Let {binding=binding2; body=body2; _} ->
-      equal binding1 binding2 && equal body1 body2
+      method! visit_Pi cutoff input_var input_type output_type =
+        let input_type = self#visit_expr cutoff input_type in
+        let output_type = self#visit_expr (self#incr_cutoff cutoff) output_type in
+        Pi {input_var; input_type; output_type}
 
-  | _, _ -> assert false
+      method! visit_Fun cutoff input_var input_type body =
+        let input_type = CCOpt.map (self#visit_expr cutoff) input_type in
+        let body = self#visit_expr (self#incr_cutoff cutoff) body in
+        Fun {input_var; input_type; body}
+      
+      method! visit_Let cutoff var_name binding body =
+        let binding = self#visit_expr cutoff binding in
+        let body = self#visit_expr (self#incr_cutoff cutoff) body in
+        Let {var_name; binding; body}
 
-let shift shift_by (expr : expr) =
+      (* Increment the cutoff. Used whenever we go under a binder. *)
+      method incr_cutoff {data=cutoff; _} = Loc.locate @@ cutoff + 1
+
+      (* Note that we don't need to impement the visit_App, visit_Type,
+         visit_Kind and visit_Ascription methods since the Visitors package
+         automatically handles all that boilerplate for us. *)
+  end in v#visit_expr @@ Loc.locate 0
+
+(* let shift shift_by (expr : expr) =
   let rec shift_raw_expr cutoff raw_expr =
     match raw_expr with
     | Type | Kind -> raw_expr
@@ -86,7 +113,7 @@ let shift shift_by (expr : expr) =
   and shift_expr cutoff expr =
     Loc.update_data expr @@ shift_raw_expr cutoff
 
-  in shift_expr 0 expr
+  in shift_expr 0 expr *)
 
 type list_of_exprs = expr list
 [@@deriving show]

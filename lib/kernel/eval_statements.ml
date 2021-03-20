@@ -4,7 +4,7 @@ let eval_stmt (stmt : Ast.stmt) ctx =
   match stmt.data with
   | Ast.Check expr -> Typing.infer ctx expr, ctx
 
-  | Ast.Eval expr -> 
+  | Ast.Eval expr ->
     ignore @@ Typing.infer ctx expr;
     Norm.normalize ctx expr, ctx
 
@@ -20,7 +20,7 @@ let eval_stmt (stmt : Ast.stmt) ctx =
     (* let return_val = 
       Parsing.Location.locate @@
         Ast.Ascription {expr=binding; expr_type=inferred_type} in *)
-    let ctx = 
+    let ctx =
       Context.add_binding var_name ~var_type:inferred_type ~binding:binding ctx 
     in
     binding, ctx
@@ -28,5 +28,5 @@ let eval_stmt (stmt : Ast.stmt) ctx =
 let eval_stmts stmts ctx =
   List.fold_left 
     (fun (_, ctx) stmt -> eval_stmt stmt ctx)
-    (Parsing.Location.locate Ast.Kind, ctx)
+    (Ast.located_kind, ctx)
     stmts

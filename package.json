@@ -9,15 +9,16 @@
     "@opam/batteries": "~3.3.0",
     "@opam/containers": ">= 3.2 < 4.0",
     "@opam/iter": "~1.2.1",
-    "@opam/menhir": ">= 20210310",
+    "@opam/visitors": ">= 20210316",
     "@opam/ppx_deriving": "~5.2.1",
     "@opam/ppx_fields_conv":  ">= v0.14.2",
     "@opam/sedlex": ">= 2.3",
+    "@opam/menhir": ">= 20210310",
     "ocaml": "~4.11.2"
   },
   "devDependencies": {
     "@opam/dune": "~2.8.4",
-    "@opam/ocaml-lsp-server": "~1.4.0",
+    "@opam/ocaml-lsp-server": "~1.4.1",
     "@opam/js_of_ocaml": "~3.9.0",
     "ocaml": "~4.11.2"
   }

@@ -86,20 +86,19 @@ More sample programs can be found in the `sample_programs` directory.
 ### What needs working on
 - Practical side
   - More testing
-  - Better error reporting and error messages
-    - At the moment we simply `assert false` whenever we encounter an error
-  - Better pretty printing
-  - Glue code for tying everything together
-  - REPL environment
-  - Tie our code into Typescript frontend
+  -  [x] Better error reporting and error messages
+  - [x] Better pretty printing
+  - [ ] Glue code for tying everything together
+  - [ ] REPL environment
+  - [ ] Tie our code into Typescript frontend
 
 - Theory side
   - Add new types:
-    - Sigma aka existential quantifier
-    - Binary product aka conjunction
-    - Binary coproduct aka disjunction
-    - Unit, aka the singleton type, aka logical truth
-    - Void, aka the empty type, aka logical falsity
+    - [ ] Sigma aka existential quantifier
+    - [ ] Binary product aka conjunction
+    - [ ] Binary coproduct aka disjunction
+    - [ ] Unit, aka the singleton type, aka logical truth
+    - [ ] Void, aka the empty type, aka logical falsity
 
 using for testing and experimentation.
 - `lib` is our library which contains all the code making our language work.
@@ -112,12 +111,9 @@ using for testing and experimentation.
         - `parser.ml` contains some functions and boilerplate code tying the
         lexer and grammar together. This provides an interface which we use to
         parse our language.
-        - `location.ml` contains a `located` datatype and other stuff which we use
-        to decorate our ASTs as found in `lib/parsing/ast.ml` and 
-        `lib/kernel/ast.ml` with source locations. This info will be used for
-        error reporting.
-    - `kernel` contains all the important stuff, like normalization and type
-    checking. Basically everything that happens after parsing can be found here.
+    - `kernel` contains all the important stuff for evaluating expressions and
+    statements. These include normalization, type checking and context management
+    using de bruijn indices.
         - `ast.ml` contains our internal AST. Unlike the one in `lib/parsing`,
         this uses de bruijn indices for variables, rather than strings. It also
         has some utilities, like for comparing equality of beta normal forms.
@@ -134,7 +130,13 @@ using for testing and experimentation.
         This will include the 2 key functions `check` and `infer`, where `infer`
         involves synthesizing the type, while `check` involves verifying if an
         expression has a given type.
-        - `ast_conversion.ml` contains facilities for converting the parser's AST to 
-        the internal AST and vice versa.
         - `eval_statements.ml` contains functions for evaluating statements.
-    - `utils` contains utilities used in all parts of the project.
+    - `common` contains code that is shared between both `kernel` and `parsing`.
+       - `location.ml` contains a `located` datatype and other stuff which we use
+       to decorate our ASTs as found in `lib/parsing/ast.ml` and 
+       `lib/kernel/ast.ml` with source locations. This info will be used for
+       error reporting.
+   - `ast_conv.ml` contains facilities for converting the parser's AST to 
+   the internal AST and vice versa.
+   - `error_reporting.ml` contains functions for handling errors that occur while
+   running programs in our language. These include pretty printing of errors.
