@@ -20,8 +20,16 @@ and raw_expr =
             binding : expr;
             body : expr}
 [@@deriving show,
-  visitors {variety="fold"; ancestors=["Loc.fold"]},
-  visitors {variety="map"; ancestors=["Loc.fold"]}]
+  visitors {variety="fold"; ancestors=["Loc.fold"]}]
+
+(* Template for defining catamorphisms over the AST that ignore source 
+   locations. *)
+class virtual ['self] ast_folder =
+  object (_ : 'self)
+    inherit [_] fold as super
+
+    method! visit_expr env {data; _} = super#visit_raw_expr env data
+  end
 
 type list_of_exprs = expr list
 [@@deriving show]

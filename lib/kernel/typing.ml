@@ -38,7 +38,7 @@ let rec infer ctx (expr : Ast.expr) =
     | _ ->
       check_well_formed_type ctx expr_type;
       let expr_type = Norm.normalize ctx expr_type in
-      check ~outer_expr:expr ctx expr_type expr';
+      check ~outer_expr:expr ctx expr' expr_type;
       expr_type
   end
 
@@ -54,7 +54,7 @@ let rec infer ctx (expr : Ast.expr) =
     match inferred_type.data with
     | Ast.Pi {input_type; output_type; _} ->
       check ~outer_expr:expr ctx arg input_type;
-      Norm.beta_reduce output_type arg 
+      Norm.beta_reduce output_type arg
     | _ -> raise @@ Pi_expected {app=expr; fn; inferred_type}
   end
 

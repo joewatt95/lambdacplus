@@ -4,8 +4,10 @@ module Loc = Common.Location
  let unparse =
   let v = 
     object
-      inherit [_] PAst.fold as super
-      method build_Var _ var_name = var_name
+      inherit [_] PAst.ast_folder as super
+      (* To unparse variables, simply return the variable name associated with
+         them. *)
+      method build_Var _ = Fun.id
       method build_Type _ = "Type"
       method build_Kind _ = "Kind"
 
@@ -17,7 +19,8 @@ module Loc = Common.Location
         | Some input_type ->
           input_type
           |> super#visit_expr env
-          |> fun x -> Printf.sprintf "(λ (%s : %s) ⇒ %s)" input_var x body
+          |> fun input_type -> 
+              Printf.sprintf "(λ (%s : %s) ⇒ %s)" input_var input_type body
         | None ->
           Printf.sprintf "(λ %s ⇒ %s)" input_var body
 
@@ -26,8 +29,6 @@ module Loc = Common.Location
       method build_Let _ = Printf.sprintf "(let %s := %s in %s)"
 
       method build_Ascription _ = Printf.sprintf "(%s : %s)"
-
-      method! visit_expr env {data; _} = super#visit_raw_expr env data
 
       (* These last 2 methods aren't used. *)
       method build_located _ _ _ _ = ""

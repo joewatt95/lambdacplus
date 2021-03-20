@@ -25,55 +25,56 @@ and raw_expr =
             binding : expr;
             body : expr}
 [@@deriving show, eq, 
-  visitors {variety="fold"; ancestors=["Loc.fold"]},
   visitors {variety="map"; ancestors=["Loc.fold"]}]
 
 let located_kind = Loc.locate Kind
+
+(* Template for defining functions that map over the AST while preserving source
+   locations. *)
+class virtual ['self] ast_mapper =
+  object (_ : 'self)
+    inherit [_] map as super
+
+    method! visit_expr env ({data; _} as expr) = 
+      data
+      |> super#visit_raw_expr env
+      |> Loc.set_data expr
+
+    (* These are never called. *)
+    method visit_'a _ _ = located_kind
+    method build_located _ _ _ _ = located_kind
+  end
 
 (* Shift operation for de bruijn ASTs. *)
 let shift shift_by =
   let v = 
     object (self) 
-      inherit [_] map as super
-
-      method! visit_Type _ = Type 
-      method! visit_Kind _ = Kind
+      inherit [_] ast_mapper
 
       method! visit_Var {data=cutoff; _} index =
         if index >= cutoff then Var (index + shift_by) else Var index 
 
-      method! visit_Pi ({data; _} as cutoff) input_var input_type output_type =
+      method! visit_Pi cutoff input_var input_type output_type =
         let input_type = self#visit_expr cutoff input_type in
-        let output_type = self#visit_expr (Loc.locate @@ data + 1) output_type in
+        let output_type = self#visit_expr (self#incr_cutoff cutoff) output_type in
         Pi {input_var; input_type; output_type}
 
-      method! visit_Fun ({data; _} as cutoff) input_var input_type body =
+      method! visit_Fun cutoff input_var input_type body =
         let input_type = CCOpt.map (self#visit_expr cutoff) input_type in
-        let body = self#visit_expr (Loc.locate @@ data + 1) body in
+        let body = self#visit_expr (self#incr_cutoff cutoff) body in
         Fun {input_var; input_type; body}
-
-      method! visit_App cutoff fn arg =
-        let fn = self#visit_expr cutoff fn in
-        let arg = self#visit_expr cutoff arg in
-        App {fn; arg}
-
-      method! visit_Ascription cutoff expr expr_type =
-        let expr = self#visit_expr cutoff expr in
-        let expr_type = self#visit_expr cutoff expr_type in
-        Ascription {expr; expr_type}
       
-      method! visit_Let ({data; _} as cutoff) var_name binding body =
+      method! visit_Let cutoff var_name binding body =
         let binding = self#visit_expr cutoff binding in
-        let body = self#visit_expr (Loc.locate @@ data + 1) body in
+        let body = self#visit_expr (self#incr_cutoff cutoff) body in
         Let {var_name; binding; body}
 
-      method! visit_expr cutoff ({data; _} as expr) = 
-        data
-        |> super#visit_raw_expr cutoff
-        |> Loc.set_data expr
+      (* Increment the cutoff. Used whenever we go under a binder. *)
+      method incr_cutoff {data=cutoff; _} = Loc.locate @@ cutoff + 1
 
-      method visit_'a _ _ = located_kind
-      method build_located _ _ _ _ = located_kind
+      (* Note that we don't need to impement the visit_App, visit_Type,
+         visit_Kind and visit_Ascription methods since the Visitors package
+         automatically handles all that boilerplate for us. *)
   end in v#visit_expr @@ Loc.locate 0
 
 (* let shift shift_by (expr : expr) =

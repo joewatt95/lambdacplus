@@ -67,11 +67,7 @@ let rec tokenize lexbuf =
   | Plus whitesp -> tokenize lexbuf
 
   (* For catching errorneous tokens. *)
-  | Star (Compl ('\r' | '\n')) ->
+  | _ ->
     let lexeme = Encoding.lexeme lexbuf in
     let source_loc = Sedlexing.lexing_positions lexbuf in
     raise @@ Lexing_err {lexeme; source_loc}
-
-  (* This is impossible since all errorneous tokens would have been caught by the
-     above (Star any) case. *)
-  | _ -> assert false

@@ -7,7 +7,9 @@ type 'a located = {
   data : 'a;
   source_loc : source_loc [@opaque] [@equal fun _ _ -> true];
 } 
-[@@deriving show, fields, eq, visitors {variety="fold"}]
+[@@deriving show, fields, eq, 
+  visitors {variety="fold"}, 
+  visitors {variety="map"; polymorphic=true}]
 
 (* Given some data and a source location, wrap them up in the located type. *)
 let locate ?(source_loc = (Lexing.dummy_pos, Lexing.dummy_pos)) data = 

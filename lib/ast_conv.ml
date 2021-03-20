@@ -21,7 +21,7 @@ let rec parser_to_internal_raw_expr ctx (expr : PAst.expr) =
     |> begin 
         function
         | "_" -> raise @@ Underscore_var_name expr.source_loc
-        | var_name -> var_name 
+        | var_name -> var_name
        end
     |> Kernel.Context.var_name_to_index ctx
     |> CCOpt.get_lazy (fun () -> raise @@ Unknown_var_name expr)
@@ -50,7 +50,7 @@ let rec parser_to_internal_raw_expr ctx (expr : PAst.expr) =
     let expr = parser_to_internal_expr ctx expr in
     let expr_type = parser_to_internal_expr ctx expr_type in
     KAst.Ascription {expr; expr_type}
-  
+
   | PAst.Let {var_name; binding; body} ->
     let binding = parser_to_internal_expr ctx binding in
     let new_ctx = Kernel.Context.add_binding var_name ctx in
