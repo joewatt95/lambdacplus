@@ -89,7 +89,7 @@ More sample programs can be found in the `sample_programs` directory.
   -  [x] Better error reporting and error messages
   - [x] Better pretty printing
   - [ ] Glue code for tying everything together
-  - [ ]REPL environment
+  - [ ] REPL environment
   - [ ] Tie our code into Typescript frontend
 
 - Theory side
