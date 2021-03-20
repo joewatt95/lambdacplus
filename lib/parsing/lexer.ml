@@ -2,6 +2,13 @@
 
 open Containers
 
+module Loc = Common.Location
+
+exception Lexing_err of {
+  lexeme : string;
+  source_loc : Loc.source_loc;
+}
+
 let whitesp = [%sedlex.regexp? ' ' | '\t']
 let newline = [%sedlex.regexp? ('\r' | '\n' | "\r\n")]
 let name = 
@@ -49,10 +56,22 @@ let rec tokenize lexbuf =
   | ':' -> G.COLON
   | ":=" -> G.COLON_EQ
   | "=>" -> G.DOUBLE_ARROW
+
   | name -> 
-    let str = Encoding.lexeme lexbuf in
-    Hashtbl.get_or reserved_keywords str ~default:(G.VAR_NAME str)
+    let lexeme = Encoding.lexeme lexbuf in
+    Hashtbl.get_or reserved_keywords lexeme ~default:(G.VAR_NAME lexeme)
   | newline
+
   | "//", Star (Compl ('\r' | '\n')) 
+
   | Plus whitesp -> tokenize lexbuf
+
+  (* For catching errorneous tokens. *)
+  | Star (Compl ('\r' | '\n')) ->
+    let lexeme = Encoding.lexeme lexbuf in
+    let source_loc = Sedlexing.lexing_positions lexbuf in
+    raise @@ Lexing_err {lexeme; source_loc}
+
+  (* This is impossible since all errorneous tokens would have been caught by the
+     above (Star any) case. *)
   | _ -> assert false

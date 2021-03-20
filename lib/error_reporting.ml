@@ -4,11 +4,12 @@ module Loc = Common.Location
 module PAst = Parsing.Ast
 module KAst = Kernel.Ast
 
-let fmt_err_encountered_str ((startpos, endpos) : Loc.source_loc) =
-  let start_char = startpos.pos_cnum - startpos.pos_bol + 1 in
-  let end_char = endpos.pos_cnum - endpos.pos_bol in
-  let start_line = startpos.pos_lnum in
-  let end_line = endpos.pos_lnum in
+let fmt_err_encountered_str ((start_pos, end_pos) : Loc.source_loc) =
+  let get_col (pos : Lexing.position) = pos.pos_cnum - pos.pos_bol + 1 in
+  let start_char = get_col start_pos in
+  let end_char = get_col end_pos in
+  let start_line = start_pos.pos_lnum in
+  let end_line = end_pos.pos_lnum in
   let s = if start_line = end_line
           then ""
           else Printf.sprintf "line %d, col " end_line
@@ -17,6 +18,11 @@ let fmt_err_encountered_str ((startpos, endpos) : Loc.source_loc) =
     start_line start_char s end_char
 
 let fmt_parse_err_str = function
+  | Parsing.Lexer.Lexing_err {lexeme; source_loc} ->
+    lexeme
+    |> Printf.sprintf "Invalid token '%s'"
+    |> fmt_err_encountered_str source_loc
+
   | Ast_conv.Unknown_var_name {data=PAst.Var var_name; source_loc} ->
     var_name
     |> Printf.sprintf "Unknown variable name '%s'."
