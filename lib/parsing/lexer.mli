@@ -1,8 +1,12 @@
-(* Indicates that an error was encountered while lexing the lexeme at 
+(* This indicates that a syntax error occured while parsing `lexeme` at 
    `source_loc`. *)
-exception Lexing_err of {
+exception Syntax_error of {
   lexeme : string;
   source_loc : Common.Location.source_loc;
 }
 
+(* Tokenize a lexer buffer. *)
 val tokenize : Sedlexing.lexbuf -> Grammar.token
+
+(* This constructs a Syntax_error using the given lexbuf and raises it. *)
+val raise_syntax_err : Sedlexing.lexbuf -> 'a

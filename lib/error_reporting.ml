@@ -18,9 +18,9 @@ let fmt_err_encountered_str ((start_pos, end_pos) : Loc.source_loc) =
     start_line start_char s end_char
 
 let fmt_parse_err_str = function
-  | Parsing.Lexer.Lexing_err {lexeme; source_loc} ->
+  | Parsing.Lexer.Syntax_error {lexeme; source_loc} ->
     lexeme
-    |> Printf.sprintf "Invalid token '%s'"
+    |> Printf.sprintf "Syntax error: '%s'"
     |> fmt_err_encountered_str source_loc
 
   | Ast_conv.Unknown_var_name {data=PAst.Var var_name; source_loc} ->
