@@ -8,6 +8,8 @@ module KAst = Kernel.Ast
 open Cs4215_dependent_types
 
 let () =
+  (* For debugging *)
+  Printexc.record_backtrace true;
   print_endline "Enter input:";
   let stmts, naming_ctx = 
     try

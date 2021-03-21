@@ -6,3 +6,5 @@ val normalize : Context.t -> Ast.expr -> Ast.expr
    de bruijn index 0 with arg.
    This function is also used for type checking and inference with the Pi type. *)
 val beta_reduce : Ast.expr -> Ast.expr -> Ast.expr
+
+val subst : int -> Ast.expr -> Ast.expr -> Ast.expr

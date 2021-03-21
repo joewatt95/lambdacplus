@@ -74,9 +74,9 @@ let normalize ctx =
         self#visit_raw_expr ctx expr.data
 
       method! visit_App ctx fn arg =
+        let arg = self#visit_expr ctx arg in
         match self#visit_raw_expr ctx fn.data with
         | Ast.Fun {body; _} ->
-          let arg = self#visit_expr ctx arg in
           let body = beta_reduce body arg in
           self#visit_raw_expr ctx body.data
         | _ -> Ast.App {fn; arg} 

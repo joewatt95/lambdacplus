@@ -87,13 +87,16 @@ let rec infer ctx (expr : Ast.expr) =
     | Sigma {expr=expr1_type; _} -> expr1_type
     | _ -> assert false
   end
+
+ (* This is causing problems. *)
  | Ast.Snd expr ->
   let inferred_type = infer ctx expr in
   begin
     match inferred_type.data with
-    | Sigma {expr=expr1_type; body=expr2_type; _} ->
+    | Sigma {body=expr2_type; _} ->
+      let fst_expr = Loc.locate @@ Ast.Fst expr in
       expr2_type
-      |> Fun.flip Norm.beta_reduce expr1_type
+      |> Fun.flip Norm.beta_reduce fst_expr
       |> Norm.normalize ctx
     | _ -> assert false
   end
@@ -119,7 +122,7 @@ and check ~outer_expr ctx expr expected_type =
   | Ast.Pair {expr1; expr2},  
     Ast.Sigma {expr=expr1_type; body=expr2_type; _} ->
     check ctx ~outer_expr expr1 expr1_type;
-    check ctx ~outer_expr expr2 @@ Norm.beta_reduce expr2_type expr1
+    check ctx ~outer_expr expr2 @@ Norm.normalize ctx @@ Norm.beta_reduce expr2_type expr1
 
   | _, _ ->
     let inferred_type = infer ctx expr in

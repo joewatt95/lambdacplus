@@ -876,8 +876,9 @@ typechecking.
     \[
       \begin{prooftree}
         \hypo{\Gamma \vdash E_1 \Leftarrow \tau_1}
-        \hypo{\Gamma \vdash E_2 \Leftarrow \tau_2[x \mapsto E_1]}
-        \infer2{\Gamma \vdash \langle  E_1, \, E_2 \rangle \Leftarrow 
+        \hypo{\Gamma \vdash \tau_2[x \mapsto E_1] \Downarrow \tau_2'}
+        \hypo{\Gamma \vdash E_2 \Leftarrow \tau_2'}
+        \infer3{\Gamma \vdash \langle  E_1, \, E_2 \rangle \Leftarrow 
           \Sigma_{x : \tau_1}\tau_2(x)}
       \end{prooftree}
     \]

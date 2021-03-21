@@ -181,26 +181,41 @@ let rec internal_to_parser_raw_expr ctx raw_expr =
     let body = internal_to_parser_expr new_ctx body in
     PAst.Fun {input_var; input_type; body}
 
-  | KAst.Pi {input_var; input_type; output_type} ->
+  (* | KAst.Pi {var_name=input_var; expr=input_type; body=output_type} ->
     let input_type = internal_to_parser_expr ctx input_type in
     let input_var, new_ctx = pick_fresh_name input_var ctx in
     let output_type = internal_to_parser_expr new_ctx output_type in
-    PAst.Pi {input_var; input_type; output_type}
+    PAst.Pi {var_name=input_var; expr=input_type; body=output_type} *)
 
   | KAst.App {fn; arg} ->
     let fn = internal_to_parser_expr ctx fn in
     let arg = internal_to_parser_expr ctx arg in
     PAst.App {fn; arg}
   
-  | KAst.Ascription {expr; expr_type} ->
+  | KAst.Ascription {expr; ascribed_type} ->
     let expr = internal_to_parser_expr ctx expr in
-    let expr_type = internal_to_parser_expr ctx expr_type in
-    PAst.Ascription {expr; expr_type}
+    let ascribed_type = internal_to_parser_expr ctx ascribed_type in
+    PAst.Ascription {expr; ascribed_type}
 
-  | Type -> PAst.Type
-  | Kind -> PAst.Kind
+  | KAst.Pair {expr1; expr2} ->
+    let expr1 = internal_to_parser_expr ctx expr1 in
+    let expr2 = internal_to_parser_expr ctx expr2 in
+    PAst.Pair {expr1; expr2}
+
+  | KAst.Fst expr -> PAst.Fst (internal_to_parser_expr ctx expr)
+  | KAst.Snd expr -> PAst.Snd (internal_to_parser_expr ctx expr)
+
+  | KAst.Pi abstraction -> 
+    PAst.Pi (internal_to_parser_abstraction ctx abstraction)
+  | KAst.Sigma abstraction ->
+    PAst.Sigma (internal_to_parser_abstraction ctx abstraction)
+  | KAst.Let abstraction ->
+    PAst.Let (internal_to_parser_abstraction ctx abstraction)
+
+  | KAst.Type -> PAst.Type
+  | KAst.Kind -> PAst.Kind
   
-  | KAst.Let _ -> assert false
+  (* | KAst.Let _ -> assert false *)
 
 and internal_to_parser_expr ctx expr =
   Loc.update_data expr @@ internal_to_parser_raw_expr ctx

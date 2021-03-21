@@ -18,7 +18,7 @@ module Loc = Common.Location
 
       method build_Pi _ = uncurry3_sprintf "(∏ (%s : %s), %s)"
 
-      method build_Sigma _ = uncurry3_sprintf "(Sigma (%s : %s), %s)"
+      method build_Sigma _ = uncurry3_sprintf "(Σ (%s : %s), %s)"
 
       method build_Fun env input_var input_type body = 
         match input_type with
@@ -37,8 +37,8 @@ module Loc = Common.Location
       method build_Ascription _ = Printf.sprintf "(%s : %s)"
 
       method build_Pair _ = Printf.sprintf "(%s, %s)"
-      method build_Fst _ = Printf.sprintf "fst %s"
-      method build_Snd _ = Printf.sprintf "snd %s"
+      method build_Fst _ = Printf.sprintf "(fst %s)"
+      method build_Snd _ = Printf.sprintf "(snd %s)"
 
       (* These last 2 methods aren't used. *)
       method build_located _ _ _ _ = ""
