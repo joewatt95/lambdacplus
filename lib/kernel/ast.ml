@@ -4,26 +4,29 @@ parser, except that variables are given by de bruijn indices.
 
 module Loc = Common.Location
 
-let always_true = fun _ _ -> true
-
 type expr = raw_expr Loc.located
+and abstraction = {
+  var_name : (string [@visitors.opaque] [@equal Common.Utils.always_true]);
+  expr : expr;
+  body : expr
+}
 and raw_expr =
   | Type
   | Kind
-  | Pi of {input_var : (string [@visitors.opaque] [@equal always_true]);
-           input_type : expr;
-           output_type : expr}
   | Var of (int [@visitors.opaque])
-  | Fun of {input_var : (string [@visitors.opaque] [@equal always_true]);
+  | Pi of abstraction 
+  | Sigma of abstraction
+  | Pair of {expr1 : expr; expr2 : expr}
+  | Fst of expr
+  | Snd of expr
+  | Fun of {input_var : (string [@visitors.opaque] [@equal Common.Utils.always_true]);
             input_type : (expr option [@visitors.opaque]);
             body : expr}
   | App of {fn : expr;
             arg : expr}
   | Ascription of {expr : expr;
-                   expr_type : expr}
-  | Let of {var_name : (string [@visitors.opaque] [@equal always_true]);
-            binding : expr;
-            body : expr}
+                   ascribed_type : expr}
+  | Let of abstraction
 [@@deriving show, eq, 
   visitors {variety="map"; ancestors=["Loc.fold"]}]
 
@@ -54,20 +57,25 @@ let shift shift_by =
       method! visit_Var {data=cutoff; _} index =
         if index >= cutoff then Var (index + shift_by) else Var index 
 
-      method! visit_Pi cutoff input_var input_type output_type =
-        let input_type = self#visit_expr cutoff input_type in
-        let output_type = self#visit_expr (self#incr_cutoff cutoff) output_type in
-        Pi {input_var; input_type; output_type}
-
       method! visit_Fun cutoff input_var input_type body =
         let input_type = CCOpt.map (self#visit_expr cutoff) input_type in
         let body = self#visit_expr (self#incr_cutoff cutoff) body in
         Fun {input_var; input_type; body}
+
+      method! visit_abstraction cutoff {var_name; expr; body} =
+        let expr = self#visit_expr cutoff expr in
+        let body = self#visit_expr (self#incr_cutoff cutoff) body in
+        {var_name; expr; body}
       
-      method! visit_Let cutoff var_name binding body =
+      (* method! visit_Pi cutoff {input_var; input_type; output_type} =
+      let input_type = self#visit_expr cutoff input_type in
+      let output_type = self#visit_expr (self#incr_cutoff cutoff) output_type in
+      Pi {input_var; input_type; output_type} *)
+      
+      (* method! visit_Let cutoff var_name binding body =
         let binding = self#visit_expr cutoff binding in
         let body = self#visit_expr (self#incr_cutoff cutoff) body in
-        Let {var_name; binding; body}
+        Let {var_name; binding; body} *)
 
       (* Increment the cutoff. Used whenever we go under a binder. *)
       method incr_cutoff {data=cutoff; _} = Loc.locate @@ cutoff + 1

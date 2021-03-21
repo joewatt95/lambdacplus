@@ -2,23 +2,28 @@
 module Loc = Common.Location
 
 type expr = raw_expr Loc.located
+and abstraction = {
+  var_name : (string [@visitors.opaque]);
+  expr : expr;
+  body : expr
+}
 and raw_expr =
   | Type
   | Kind
-  | Pi of {input_var : (string [@visitors.opaque]);
-           input_type : expr;
-           output_type : expr}
   | Var of (string [@visitors.opaque])
+  | Pi of abstraction 
+  | Sigma of abstraction
+  | Pair of {expr1 : expr; expr2 : expr}
+  | Fst of expr
+  | Snd of expr
   | Fun of {input_var : (string [@visitors.opaque]);
             input_type : (expr option [@visitors.opaque]);
             body : expr}
   | App of {fn : expr;
             arg : expr}
   | Ascription of {expr : expr;
-                   expr_type : expr}
-  | Let of {var_name : (string [@visitors.opaque]);
-            binding : expr;
-            body : expr}
+                   ascribed_type : expr}
+  | Let of abstraction
 [@@deriving show,
   visitors {variety="fold"; ancestors=["Loc.fold"]}]
 

@@ -10,6 +10,8 @@ exception Pi_expected of {
    it has no type annotations. *)
 exception Cannot_infer_type_of_fn of Ast.expr
 
+exception Cannot_infer_type_of_pair of Ast.expr
+
 (* This is thrown when we get a Kind expression and are thus unable to infer its
    type. *)
 exception Cannot_infer_type_of_kind of Common.Location.source_loc

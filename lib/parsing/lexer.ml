@@ -29,6 +29,9 @@ list defining reserved keywords.
 let reserved_keywords =
   [(["fun"; "λ"; "lambda"], G.FUN);
    (["Pi"; "Π"; "∏"; "∀"; "forall"], G.PI);
+   (["Sigma"], G.SIGMA);
+   (["fst"], G.FST);
+   (["snd"], G.SND);
    (["Type"; "Prop"], G.TYPE);
    (["Kind"], G.KIND);
    (["let"], G.LET);

@@ -17,7 +17,7 @@ https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
 %token APP
 
 (* Types and expressions *)
-%token TYPE KIND PI FUN LET IN
+%token TYPE KIND PI SIGMA FUN LET IN FST SND
 
 (* Misc punctuation *)
 %token LPAREN RPAREN COLON_EQ COLON COMMA DOUBLE_ARROW
@@ -32,7 +32,7 @@ https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
 %token EOF
 
 (* Lowest precedence *)
-%nonassoc LPAREN VAR_NAME FUN PI TYPE LET KIND
+%nonassoc LPAREN VAR_NAME FUN PI SIGMA TYPE LET KIND FST SND
 (* Highest precedence *)
 %nonassoc APP
 
@@ -63,9 +63,13 @@ let raw_expr :=
   | fn=expr; arg=expr;                           { Ast.App {fn; arg} } %prec APP
   (* This let rule is also causing shift/reduce conflicts. *)
   | let_expr
+  | sigma_expr
+  | pair_expr
   | TYPE;                                        { Ast.Type }
   | KIND;                                        { Ast.Kind }
-  | ~ = var_name;                                { Ast.Var var_name }
+  | FST; ~ = expr;                               <Ast.Fst>
+  | SND; ~ = expr;                               <Ast.Snd>
+  | ~ = var_name;                                <Ast.Var>
   | ascription
 
 let var_name := VAR_NAME
@@ -74,8 +78,8 @@ let annotated_expr :=
   delimited(LPAREN, separated_pair(expr, COLON, expr), RPAREN) 
 
 let ascription :=
-      (expr, expr_type) = annotated_expr;
-    { Ast.Ascription {expr; expr_type} }
+      (expr, ascribed_type) = annotated_expr;
+    { Ast.Ascription {expr; ascribed_type} }
 
 let fun_expr := FUN; ~ = fun_arg_list; DOUBLE_ARROW; body=expr;
     { List.fold_right
@@ -95,7 +99,7 @@ let pi_expr := PI; ~ = pi_arg_list; COMMA; output_type=expr;
   { List.fold_right
     (fun (input_var, input_type) output_type ->
        Loc.locate
-         (Ast.Pi {input_var; input_type; output_type}) ~source_loc:$loc)
+         (Ast.Pi {var_name=input_var; expr=input_type; body=output_type}) ~source_loc:$loc)
     pi_arg_list output_type}
 
 let pi_arg_list :=
@@ -103,4 +107,13 @@ let pi_arg_list :=
 
 let let_expr := 
   LET; ~ = var_name; COLON_EQ; binding=expr; IN; body=expr;
-  { Ast.Let {var_name; binding; body} }
+  { Ast.Let {var_name; expr=binding; body} }
+
+let sigma_expr := SIGMA; 
+  (input_var, input_type) = delimited(LPAREN, separated_pair(var_name, COLON, expr), RPAREN);
+  COMMA; output_type=expr;
+  { Ast.Sigma {var_name=input_var; expr=input_type; body=output_type} }
+
+let pair_expr := 
+  (expr1, expr2) = delimited(LPAREN, separated_pair(expr, COMMA, expr), RPAREN);
+  { Ast.Pair {expr1; expr2} }

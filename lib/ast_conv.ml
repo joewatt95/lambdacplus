@@ -13,7 +13,34 @@ module KAst = Kernel.Ast
 
 exception Unknown_var_name of PAst.expr
 exception Underscore_var_name of Loc.source_loc
+(* 
+let conv ctx : PAst.expr -> KAst.expr =
+  let v = 
+    object
+    inherit [_] PAst.ast_folder as super
 
+    method build_Var _ var_name = KAst.located_kind
+    method build_Type _ = KAst.Type
+    method build_Kind _ = KAst.Kind
+
+    method build_abstraction _ var_name expr body = assert false
+
+    method build_Pi _ = assert false
+    method build_Sigma _ = assert false
+    method build_Fun _ _ _ _ = assert false
+    method build_App _ _ = assert false
+    method build_Let _ = assert false
+    method build_Ascription _ = assert false
+    method build_Pair _ = assert false
+    method build_Fst _ = assert false
+    method build_Snd _ = assert false
+
+    method build_located _ _ _ _ = KAst.Kind
+    method visit_'a _ _ = KAst.located_kind
+    
+    end in v#visit_expr @@ Loc.locate ctx *)
+
+(* How to use Visitors package to clean up this boilerplate? *)
 let rec parser_to_internal_raw_expr ctx (expr : PAst.expr) =
   match expr.data with
   | PAst.Var var_name ->
@@ -35,30 +62,51 @@ let rec parser_to_internal_raw_expr ctx (expr : PAst.expr) =
     let body = parser_to_internal_expr new_ctx body in
     KAst.Fun {input_var; input_type; body}
 
-  | PAst.Pi {input_var; input_type; output_type} ->
+  (* | PAst.Pi {input_var; input_type; output_type} ->
     let new_ctx = Kernel.Context.add_binding input_var ctx in
     let input_type = parser_to_internal_expr ctx input_type in
     let output_type = parser_to_internal_expr new_ctx output_type in
-    KAst.Pi {input_var; input_type; output_type}
+    KAst.Pi {input_var; input_type; output_type} *)
 
   | PAst.App {fn; arg} ->
     let fn = parser_to_internal_expr ctx fn in
     let arg = parser_to_internal_expr ctx arg in
     KAst.App {fn; arg}
 
-  | PAst.Ascription {expr; expr_type} ->
+  | PAst.Ascription {expr; ascribed_type} ->
     let expr = parser_to_internal_expr ctx expr in
-    let expr_type = parser_to_internal_expr ctx expr_type in
-    KAst.Ascription {expr; expr_type}
+    let ascribed_type = parser_to_internal_expr ctx ascribed_type in
+    KAst.Ascription {expr; ascribed_type}
 
-  | PAst.Let {var_name; binding; body} ->
+    | PAst.Pair {expr1; expr2} ->
+        let expr1 = parser_to_internal_expr ctx expr1 in
+        let expr2 = parser_to_internal_expr ctx expr2 in
+        KAst.Pair {expr1; expr2}
+
+    | PAst.Fst expr -> KAst.Fst (parser_to_internal_expr ctx expr)
+    | PAst.Snd expr -> KAst.Snd (parser_to_internal_expr ctx expr)
+
+  (* | PAst.Let {var_name; binding; body} ->
     let binding = parser_to_internal_expr ctx binding in
     let new_ctx = Kernel.Context.add_binding var_name ctx in
     let body = parser_to_internal_expr new_ctx body in
-    KAst.Let {var_name; binding; body}
+    KAst.Let {var_name; binding; body} *)
 
   | PAst.Type -> KAst.Type
   | PAst.Kind -> KAst.Kind
+
+  | PAst.Pi abstraction -> 
+    KAst.Pi (parser_to_internal_abstraction ctx abstraction)
+  | PAst.Sigma abstraction ->
+    KAst.Sigma (parser_to_internal_abstraction ctx abstraction)
+  | PAst.Let abstraction ->
+    KAst.Let (parser_to_internal_abstraction ctx abstraction)
+
+and parser_to_internal_abstraction ctx ({var_name; expr; body} : PAst.abstraction) =
+    let expr = parser_to_internal_expr ctx expr in
+    let new_ctx = Kernel.Context.add_binding var_name ctx in
+    let body = parser_to_internal_expr new_ctx body in
+    ({var_name; expr; body} : KAst.abstraction)
 
 and parser_to_internal_expr ctx expr =
   expr
@@ -156,3 +204,9 @@ let rec internal_to_parser_raw_expr ctx raw_expr =
 
 and internal_to_parser_expr ctx expr =
   Loc.update_data expr @@ internal_to_parser_raw_expr ctx
+
+and internal_to_parser_abstraction ctx ({var_name; expr; body} : KAst.abstraction) =
+  let expr = internal_to_parser_expr ctx expr in
+  let new_ctx = Kernel.Context.add_binding var_name ctx in
+  let body = internal_to_parser_expr new_ctx body in
+  ({var_name; expr; body} : PAst.abstraction)
