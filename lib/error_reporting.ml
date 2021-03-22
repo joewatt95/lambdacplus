@@ -1,10 +1,7 @@
 open Containers
+open Common
 
-module Loc = Common.Location
-module PAst = Parsing.Ast
-module KAst = Kernel.Ast
-
-let fmt_err_encountered_str ((start_pos, end_pos) : Loc.source_loc) =
+let fmt_err_encountered_str ((start_pos, end_pos) : Location.source_loc) =
   let get_col (pos : Lexing.position) = pos.pos_cnum - pos.pos_bol + 1 in
   let start_char = get_col start_pos in
   let end_char = get_col end_pos in
@@ -23,7 +20,7 @@ let fmt_parse_err_str = function
     |> Printf.sprintf "Syntax error: '%s'"
     |> fmt_err_encountered_str source_loc
 
-  | Ast_conv.Unknown_var_name {data=PAst.Var var_name; source_loc} ->
+  | Ast_conv.Unknown_var_name {data=Ast.Var var_name; source_loc} ->
     var_name
     |> Printf.sprintf "Unknown variable name '%s'."
     |> fmt_err_encountered_str source_loc
@@ -35,7 +32,7 @@ let fmt_parse_err_str = function
 
 let fmt_eval_err_str naming_ctx exc =
   let unparse = Pretty_print.unparse_internal_expr naming_ctx in
-  let unparse_raw = Fun.(Loc.locate %> unparse) in
+  let unparse_raw = Fun.(Location.locate %> unparse) in
   let unparse_expected_type = function
     | Kernel.Typing.Exact expr -> unparse expr
     | Kernel.Typing.Family str -> str
@@ -46,12 +43,12 @@ let fmt_eval_err_str naming_ctx exc =
     data
     |> begin 
         function
-        | KAst.Kind -> "'Kind' does not have a type."
-        | KAst.Fun _ -> Printf.sprintf
+        | Ast.Kind -> "'Kind' does not have a type."
+        | Ast.Fun _ -> Printf.sprintf
           {|Unable to infer the type of the function '%s'.
 Please either annotate the inputs or ascribe a type to the whole function.|}
           data_str
-        | KAst.Pair _ -> Printf.sprintf
+        | Ast.Pair _ -> Printf.sprintf
           {|Unable to infer the type of the pair '%s'.contents
 Please ascribe a type to the pair constructor. |}
           data_str

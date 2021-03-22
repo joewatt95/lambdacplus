@@ -1,13 +1,11 @@
 open Containers
-
-module PAst = Parsing.Ast
-module Loc = Common.Location
+open Common
 
  let unparse =
   let uncurry3_sprintf = Fun.(Printf.sprintf %> Common.Utils.uncurry3) in
   let v = 
     object
-      inherit [_] PAst.ast_folder as super
+      inherit [_] Ast.ast_folder as super
       (* To unparse variables, simply return the variable name associated with
          them. *)
       method build_Var _ = Fun.id
@@ -40,10 +38,22 @@ module Loc = Common.Location
       method build_Fst _ = Printf.sprintf "(fst %s)"
       method build_Snd _ = Printf.sprintf "(snd %s)"
 
+      method build_Match _ =
+        Printf.sprintf 
+          {|match %s with
+            | %s
+            | %s
+            end|}
+
+      method build_match_binding _ = Printf.sprintf "%s -> %s"
+      method build_Sum _ = Printf.sprintf "(%s + %s)"
+      method build_Inl _ = Printf.sprintf "(inl %s)"
+      method build_Inr _ = Printf.sprintf "(inr %s)" 
+
       (* These last 2 methods aren't used. *)
       method build_located _ _ _ _ = ""
       method visit_'a _ _ = ""
-    end in v#visit_expr @@ Loc.locate 0
+    end in v#visit_expr @@ Location.locate 0
 
 let unparse_internal_expr naming_ctx expr =
   expr

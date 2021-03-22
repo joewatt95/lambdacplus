@@ -1,29 +1,29 @@
 open Containers
+open Common
 
-module Loc = Common.Location
 module Norm = Normalization
 
-exception Cannot_infer_type of Ast.expr
+exception Cannot_infer_type of int Ast.expr
 
 exception Ill_formed_type of {
-  expr : Ast.expr;
-  inferred_type : Ast.expr;
+  expr : int Ast.expr;
+  inferred_type : int Ast.expr;
 }
 
 type expected_type =
-  | Exact of Ast.expr
+  | Exact of int Ast.expr
   | Family of string
 
 exception Type_mismatch of {
-  outer_expr : Ast.expr;
-  expr : Ast.expr;
-  inferred_type : Ast.expr;
+  outer_expr : int Ast.expr;
+  expr : int Ast.expr;
+  inferred_type : int Ast.expr;
   expected_type : expected_type;
 }
 
-let rec infer ctx (expr : Ast.expr) =
+let rec infer ctx (expr : int Ast.expr) =
  match expr.data with
- | Ast.Type -> Loc.set_data expr Ast.Kind
+ | Ast.Type -> Location.set_data expr Ast.Kind
  | Ast.Var index -> Context.get_type ctx index
 
  (* Do we want to allow users to assert that the type of Type, and type
@@ -65,7 +65,7 @@ let rec infer ctx (expr : Ast.expr) =
   let ctx = Context.add_binding input_var ~var_type:input_ty ctx in
   let output_type = infer ctx body in
   (* What source location info should be used here? *)
-  Loc.set_data expr @@ Ast.Pi {var_name=input_var; expr=input_ty; body=output_type}
+  Location.set_data expr @@ Ast.Pi {var_name=input_var; expr=input_ty; body=output_type}
 
  | Ast.Let {var_name; expr=binding; body} ->
   let var_type = infer ctx binding in
@@ -82,26 +82,45 @@ let rec infer ctx (expr : Ast.expr) =
   |> infer_sigma_exn ctx
   |> begin
       function
-      | ({expr=expr1_type; body=expr2_type; _} : Ast.abstraction) ->
+      | ({expr=expr1_type; body=expr2_type; _} : int Ast.abstraction) ->
           match expr.data with
           | Ast.Fst _ -> expr1_type
           | Ast.Snd expr ->
             expr
             |> fun expr -> Ast.Fst expr
-            |> Loc.locate
+            |> Location.locate
             |> Norm.beta_reduce expr2_type
             |> Norm.normalize ctx
 
-            (* No other cases are possible since expr came from the outer match
-               where we already guaranteed that it will be a Ast.Fst or 
-               Ast.Snd. *)
-          | _ -> assert false
+      (* No other cases are possible since expr came from the outer match
+         where we already guaranteed that it will be a Ast.Fst or 
+         Ast.Snd. *)
+     | _ -> assert false
      end
 
- | Ast.Kind | Ast.Pair _ | Ast.Fun {input_type=None; _} -> 
-    raise @@ Cannot_infer_type expr
+ | Ast.Sum {left; right} ->
+  let check_type expr = check ~outer_expr:expr ctx expr @@ Location.locate Ast.Type in
+  check_type left; check_type right;
+  Location.set_data expr Ast.Type
 
-and infer_sigma_exn ctx (outer_expr : Ast.expr) =
+ | Ast.Match {expr; inl; inr} ->
+  let inferred_type = infer ctx expr in
+  begin
+    match inferred_type.data with
+    | Sum {left; right} ->
+      let f ({match_var; match_body} : int Ast.match_binding) ty =
+          infer (Context.add_binding match_var ~var_type:ty ctx) match_body in
+      let inl_type = f inl left in
+      let inr_type = f inr right in
+      if Ast.equal_expr (=) inl_type inr_type then inl_type else assert false
+    | _ -> raise @@ Type_mismatch
+            {expr; outer_expr=expr; inferred_type; expected_type=Family "Sum"}
+  end
+
+ | Ast.Kind | Ast.Pair _ | Ast.Fun {input_type=None; _} | Ast.Inl _ | Ast.Inr _ -> 
+  raise @@ Cannot_infer_type expr
+
+and infer_sigma_exn ctx (outer_expr : int Ast.expr) =
   match outer_expr.data with
   | Ast.Fst expr | Ast.Snd expr ->
     let inferred_type = infer ctx expr in
@@ -114,7 +133,7 @@ and infer_sigma_exn ctx (outer_expr : Ast.expr) =
     end
   | _ -> assert false
 
-and infer_pi_sigma ctx ({var_name; expr=type1; body=type2} : Ast.abstraction) =
+and infer_pi_sigma ctx ({var_name; expr=type1; body=type2} : int Ast.abstraction) =
   check_well_formed_type ctx type1;
   let type1 = Norm.normalize ctx type1 in
   let ctx = Context.add_binding var_name ~var_type:type1 ctx in
@@ -128,19 +147,22 @@ and check ~outer_expr ctx expr expected_type =
     |> Context.add_binding input_var ~var_type:input_type
     |> fun ctx -> check ~outer_expr ctx body output_type
 
-  | Ast.Pair {expr1; expr2},  
-    Ast.Sigma {expr=expr1_type; body=expr2_type; _} ->
-    check ctx ~outer_expr expr1 expr1_type;
-    expr2_type
-    |> Fun.flip Norm.beta_reduce expr1
+  | Ast.Pair {left; right},  
+    Ast.Sigma {expr=left_type; body=right_type; _} ->
+    check ctx ~outer_expr left left_type;
+    right_type
+    |> Fun.flip Norm.beta_reduce left
     |> Norm.normalize ctx
-    |> check ctx ~outer_expr expr2 
+    |> check ctx ~outer_expr right 
     (* check ctx ~outer_expr expr2 @@ Norm.normalize ctx @@ Norm.beta_reduce expr2_type expr1 *)
+
+  | Ast.Inl expr, Sum {left; _} -> check ctx ~outer_expr expr left;
+  | Ast.Inr expr, Sum {right; _} -> check ctx ~outer_expr expr right;
 
   | _, _ ->
     let inferred_type = infer ctx expr in
     (* Here we need to check if the inferred type and expr_type are equal *)
-    if not @@ Ast.equal_expr inferred_type expected_type
+    if not @@ Ast.equal_expr (=) inferred_type expected_type
     then 
       let expected_type = Exact expected_type in
       raise @@ Type_mismatch {expr; inferred_type; expected_type; outer_expr}

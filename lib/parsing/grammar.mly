@@ -11,6 +11,7 @@ TODO: Implement error reporting
 https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
  *)
 %{
+  module Ast = Common.Ast
   module Loc = Common.Location
 %}
 
@@ -18,6 +19,7 @@ https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
 
 (* Types and expressions *)
 %token TYPE KIND PI SIGMA FUN LET IN FST SND ARROW PROD
+        PLUS MATCH INL INR BAR END WITH
 
 (* Misc punctuation *)
 %token LPAREN RPAREN COLON_EQ COLON COMMA DOUBLE_ARROW
@@ -32,11 +34,11 @@ https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
 %token EOF
 
 (* Lowest precedence *)
-%nonassoc LPAREN VAR_NAME FUN PI SIGMA TYPE LET KIND FST SND
+%nonassoc LPAREN VAR_NAME FUN PI SIGMA TYPE LET KIND FST SND MATCH INL INR
 (* Highest precedence *)
 %nonassoc APP
 
-%start <Ast.list_of_stmts> main
+%start <string Common.Ast.list_of_stmts> main
 
 %%
 
@@ -73,6 +75,10 @@ let raw_expr :=
   | ascription
   | ~ = expr; ARROW; body = expr;                { Ast.Pi{var_name="_"; expr; body}}
   | ~ = expr; PROD; body = expr;                { Ast.Sigma{var_name="_"; expr; body}}
+  | INL; ~ = expr;                                  <Ast.Inl>
+  | INR; ~ = expr ;                                 <Ast.Inr>
+  | match_expr
+  | sum_expr 
 
 let var_name == VAR_NAME
 
@@ -129,5 +135,19 @@ let sigma_arg ==
   | delimited(option(LPAREN), separated_pair(var_name, COLON, expr), option(RPAREN))
 
 let pair_expr == 
-  (expr1, expr2) = delimited(LPAREN, separated_pair(expr, COMMA, expr), RPAREN);
-  { Ast.Pair {expr1; expr2} }
+  (left, right) = delimited(LPAREN, separated_pair(expr, COMMA, expr), RPAREN);
+  { Ast.Pair {left; right} }
+
+let sum_expr ==
+  (left, right) = separated_pair(expr, PLUS, expr);
+  { Ast.Sum {left; right} }
+
+let match_expr ==
+  | MATCH; ~ = expr; WITH; 
+    BAR; var_left = var_name; ARROW; body_left = expr;
+    BAR; var_right = var_name; ARROW; body_right = expr; 
+    END;
+  { Ast.Match 
+    {expr;
+     inl={match_var=var_left; match_body=body_left};
+     inr={match_var=var_right; match_body=body_right}} }

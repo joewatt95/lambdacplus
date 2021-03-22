@@ -8,12 +8,13 @@
 open Containers
 
 (* For convenience *)
+module Ast = Common.Ast
 module BFT = BatFingerTree
 
 type entry = {
   var_name : string; (* The name of the variable*)
-  var_type : Ast.expr option; (* The type of the variable*)
-  binding  : Ast.expr option (* The binding of the varaiable *)
+  var_type : int Common.Ast.expr option; (* The type of the variable*)
+  binding  : int Common.Ast.expr option (* The binding of the varaiable *)
 } [@@deriving show, fields]
 
 type t = entry BFT.t

@@ -32,6 +32,12 @@ let reserved_keywords =
    (["Sigma"; "Σ"; "∃"; "exists"], G.SIGMA);
    (["fst"], G.FST);
    (["snd"], G.SND);
+   (["+"], G.PLUS);
+   (["match"], G.MATCH);
+   (["inl"], G.INL);
+   (["inr"], G.INR);
+   (["with"], G.WITH);
+   (["end"], G.END);
    (["Type"; "Prop"], G.TYPE);
    (["Kind"], G.KIND);
    (["let"], G.LET);
@@ -60,6 +66,7 @@ let rec tokenize lexbuf =
   | "=>" | "⇒" -> G.DOUBLE_ARROW
   | "->" | "→" -> G.ARROW
   | "*" | "⨯" | "∧" -> G.PROD
+  | "|" -> G.BAR
 
   | name -> 
     let lexeme = Encoding.lexeme lexbuf in

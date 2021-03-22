@@ -7,14 +7,13 @@ open Containers
    The key idea is that Ast.shifting need only be done whenever we go underneath a
    binder, so we don't Ast.shift when we handle the input_type in Pi.
 *)
-
-module Loc = Common.Location
+open Common
 
 let subst from_index to_expr =
   let v =
-    let open Loc in
+    let open Location in
     object (self)
-      inherit [_] Ast.ast_mapper
+      inherit [_] Common.Ast.ast_mapper
       
       method! visit_Var {data=(from_index, to_expr); _} index =
         if index = from_index then to_expr.data else Var index
@@ -34,6 +33,10 @@ let subst from_index to_expr =
         let body = self#subst_under_binder from_to body in
         {var_name; expr; body}
 
+      method! visit_match_binding from_to {match_var; match_body} =
+        let match_body = self#subst_under_binder from_to match_body in
+        {match_var; match_body}
+
       (* method! visit_Let from_to var_name binding body =
         let binding = self#visit_expr from_to binding in
         let body = self#subst_under_binder from_to body in
@@ -44,14 +47,14 @@ let subst from_index to_expr =
       method subst_under_binder {data=(from_index, to_expr); _} = 
         to_expr
         |> Ast.shift 1
-        |> fun to_expr -> self#visit_expr @@ Loc.locate (from_index + 1, to_expr)
+        |> fun to_expr -> self#visit_expr @@ Location.locate (from_index + 1, to_expr)
 
       (* Note that we don't need to override the default methods that the Visitors
          package generates for visit_Type, visit_Kind, visit_App and 
          visit_Ascription since we only need special rules for handle variables 
          and substituing under binders differently. *)
 
-  end in v#visit_expr @@ Loc.locate (from_index, to_expr)
+  end in v#visit_expr @@ Location.locate (from_index, to_expr)
 
 let beta_reduce body arg =
     let arg = Ast.shift 1 arg in
@@ -67,7 +70,7 @@ let normalize ctx =
       method! visit_Var {data=ctx; _} index =
         index
         |> Context.get_binding ctx
-        |> CCOpt.map Loc.data
+        |> CCOpt.map Location.data
         |> CCOpt.get_or ~default:(Ast.Var index)
 
       method! visit_Ascription ctx expr _ =
@@ -79,7 +82,8 @@ let normalize ctx =
         | Ast.Fun {body; _} ->
           let body = beta_reduce body arg in
           self#visit_raw_expr ctx body.data
-        | _ -> Ast.App {fn; arg} 
+        | Ast.Var _ -> Ast.App {fn; arg} 
+        | _ -> assert false
 
       method! visit_Fun ctx input_var _ body =
         let ctx =  self#add_binding input_var ctx in
@@ -92,6 +96,32 @@ let normalize ctx =
         let body = self#visit_expr ctx body in
         {var_name; expr; body}
 
+      method! visit_match_binding ctx {match_var; match_body} =
+        let ctx = self#add_binding match_var ctx in
+        let match_body = self#visit_expr ctx match_body in
+        (* print_endline @@ Ast.show_expr Format.pp_print_int match_body; *)
+        {match_var; match_body}
+
+      method! visit_Match ctx expr inl inr =
+        expr
+        |> self#visit_expr ctx
+        |> Location.data
+        |> begin
+            function 
+            | Ast.Inl expr -> 
+              let inl_body = beta_reduce inl.match_body expr in
+              self#visit_raw_expr ctx inl_body.data
+            | Ast.Inr expr ->
+              let inr_body = beta_reduce inr.match_body expr in
+              self#visit_raw_expr ctx inr_body.data
+            | Ast.Var _ ->
+                let inl = self#visit_match_binding ctx inl in
+                let inr = self#visit_match_binding ctx inr in
+                (* print_endline @@ Ast.show_expr Format.pp_print_int inl.match_body; *)
+                Ast.Match {expr; inl; inr}
+            | _ -> assert false
+            end
+
       (* method! visit_Pi ctx input_var input_type output_type =
         let input_type = self#visit_expr ctx input_type in
         let ctx = self#add_binding input_var ctx in 
@@ -99,14 +129,14 @@ let normalize ctx =
         Ast.Pi {input_var; input_type; output_type} *)
 
       method add_binding input_var ctx =
-          Loc.update_data ctx @@ fun ctx -> Context.add_binding input_var ctx
+          Location.update_data ctx @@ fun ctx -> Context.add_binding input_var ctx
 
       method! visit_Let ctx {expr=binding; body; _} =
         let binding = self#visit_expr ctx binding in
         let body = beta_reduce body binding in
         self#visit_raw_expr ctx body.data
 
-  end in v#visit_expr @@ Loc.locate ctx
+  end in v#visit_expr @@ Location.locate ctx
 
 (* let rec normalize ctx (expr : Ast.expr) =
   match expr.data with

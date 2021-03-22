@@ -7,15 +7,23 @@ and abstraction = {
   expr : expr;
   body : expr
 }
+and match_binding = {
+  match_var : (string [@visitors.opaque]);
+  match_body : expr;
+}
 and raw_expr =
   | Type
   | Kind
   | Var of (string [@visitors.opaque])
   | Pi of abstraction 
   | Sigma of abstraction
-  | Pair of {expr1 : expr; expr2 : expr}
+  | Pair of {left : expr; right : expr}
   | Fst of expr
   | Snd of expr
+  | Sum of {left : expr; right : expr}
+  | Match of {expr : expr; inl : match_binding; inr : match_binding}
+  | Inl of expr
+  | Inr of expr
   | Fun of {input_var : (string [@visitors.opaque]);
             input_type : (expr option [@visitors.opaque]);
             body : expr}
@@ -24,8 +32,7 @@ and raw_expr =
   | Ascription of {expr : expr;
                    ascribed_type : expr}
   | Let of abstraction
-[@@deriving show,
-  visitors {variety="fold"; ancestors=["Loc.fold"]}]
+[@@deriving show, visitors {variety="fold"; ancestors=["Loc.fold"]}]
 
 (* Template for defining catamorphisms over the AST that ignore source 
    locations. *)
