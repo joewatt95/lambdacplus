@@ -57,7 +57,9 @@ let rec tokenize lexbuf =
   | ',' -> G.COMMA
   | ':' -> G.COLON
   | ":=" -> G.COLON_EQ
-  | "=>" -> G.DOUBLE_ARROW
+  | "=>" | "⇒" -> G.DOUBLE_ARROW
+  | "->" | "→" -> G.ARROW
+  | "*" | "⨯" | "∧" -> G.PROD
 
   | name -> 
     let lexeme = Encoding.lexeme lexbuf in

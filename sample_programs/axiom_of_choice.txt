@@ -6,9 +6,9 @@ constant A : Type
 constant B : Type
 
 // Assume that R is a binary relation on A x B.
-constant R : ∏ (_ : A) (_ : B), Prop
+constant R : A -> B -> Prop
 // Further assume that every (a : A) is related to some (b : B).
-axiom R_left_total : ∀ (a : A), ∃ (b : B), R a b
+axiom R_left_total : ∀ a : A, ∃ b : B, R a b
 
 // We define a choice function using the explicit witness provided by the
 // constructive existential quantifier.
@@ -20,4 +20,4 @@ def f := λ (a : A) =>
 def pf := λ (a : A) => snd (R_left_total a)
 
 // Use f and pf to witness the existential below.
-check ((f, pf) : ∃ (f : ∏ (_ : A), B), ∀ (a : A), R a (f a))
+check ((f, pf) : ∃ f : A -> B, ∀ a : A, R a (f a))

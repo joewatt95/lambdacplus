@@ -17,7 +17,7 @@ https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
 %token APP
 
 (* Types and expressions *)
-%token TYPE KIND PI SIGMA FUN LET IN FST SND
+%token TYPE KIND PI SIGMA FUN LET IN FST SND ARROW PROD
 
 (* Misc punctuation *)
 %token LPAREN RPAREN COLON_EQ COLON COMMA DOUBLE_ARROW
@@ -44,7 +44,7 @@ let main := terminated(nonempty_list(stmt), EOF)
 
 let located(x) == ~ = x; { Loc.locate x ~source_loc:$loc }
 
-let stmt := located(
+let stmt == located(
   | DEF; ~ = var_name; COLON_EQ; binding = expr;  { Ast.Def {var_name; binding}}
   | AXIOM; ~ = var_name; COLON; var_type = expr;  { Ast.Axiom {var_name; var_type} }
   | CHECK; ~ = expr;                              { Ast.Check expr }
@@ -71,13 +71,15 @@ let raw_expr :=
   | SND; ~ = expr;                               <Ast.Snd>
   | ~ = var_name;                                <Ast.Var>
   | ascription
+  | ~ = expr; ARROW; body = expr;                { Ast.Pi{var_name="_"; expr; body}}
+  | ~ = expr; PROD; body = expr;                { Ast.Sigma{var_name="_"; expr; body}}
 
-let var_name := VAR_NAME
+let var_name == VAR_NAME
 
-let annotated_expr := 
+let annotated_expr == 
   delimited(LPAREN, separated_pair(expr, COLON, expr), RPAREN) 
 
-let ascription :=
+let ascription ==
       (expr, ascribed_type) = annotated_expr;
     { Ast.Ascription {expr; ascribed_type} }
 
@@ -87,33 +89,45 @@ let fun_expr := FUN; ~ = fun_arg_list; DOUBLE_ARROW; body=expr;
           Loc.locate (Ast.Fun {input_var; input_type; body}) ~source_loc:$loc)
       fun_arg_list body}
 
-let fun_arg_list := nonempty_list(fun_arg)
+let fun_arg_list == nonempty_list(fun_arg)
 
-let fun_arg := 
+let annotated_name == separated_pair(var_name, COLON, expr)
+
+let bracketed_annotated_name == 
+  delimited(LPAREN, separated_pair(var_name, COLON, expr), RPAREN)
+
+let fun_arg == 
   | ~ = var_name;
     { (var_name, None) }
-  | (var_name, expr_type) = delimited(LPAREN, separated_pair(var_name, COLON, expr), RPAREN);    
+  | (var_name, expr_type) = bracketed_annotated_name;    
     { (var_name, Some expr_type) }
 
-let pi_expr := PI; ~ = pi_arg_list; COMMA; output_type=expr;
-  { List.fold_right
-    (fun (input_var, input_type) output_type ->
-       Loc.locate
-         (Ast.Pi {var_name=input_var; expr=input_type; body=output_type}) ~source_loc:$loc)
-    pi_arg_list output_type}
+let pi_expr == 
+  | PI; ~ = pi_arg_list; COMMA; output_type=expr;
+    { List.fold_right
+      (fun (input_var, input_type) output_type ->
+         Loc.locate
+           (Ast.Pi {var_name=input_var; expr=input_type; body=output_type}) ~source_loc:$loc)
+      pi_arg_list output_type}
+  (* Parens are optional in the event there's only one input variable. *)
+  | PI; (input_var, input_type) = annotated_name; COMMA; output_type=expr;
+    { Loc.locate (Ast.Pi {var_name=input_var; expr=input_type; body=output_type}) ~source_loc:$loc }
 
-let pi_arg_list :=
-      nonempty_list(delimited(LPAREN, separated_pair(var_name, COLON, expr), RPAREN))
+let pi_arg_list ==
+    | nonempty_list(bracketed_annotated_name)
 
-let let_expr := 
+let let_expr ==
   LET; ~ = var_name; COLON_EQ; binding=expr; IN; body=expr;
   { Ast.Let {var_name; expr=binding; body} }
 
-let sigma_expr := SIGMA; 
-  (input_var, input_type) = delimited(LPAREN, separated_pair(var_name, COLON, expr), RPAREN);
+let sigma_expr == SIGMA; 
+  (input_var, input_type) = sigma_arg;
   COMMA; output_type=expr;
   { Ast.Sigma {var_name=input_var; expr=input_type; body=output_type} }
 
-let pair_expr := 
+let sigma_arg == 
+  | delimited(option(LPAREN), separated_pair(var_name, COLON, expr), option(RPAREN))
+
+let pair_expr == 
   (expr1, expr2) = delimited(LPAREN, separated_pair(expr, COMMA, expr), RPAREN);
   { Ast.Pair {expr1; expr2} }

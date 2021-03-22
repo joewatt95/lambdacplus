@@ -36,26 +36,28 @@ let fmt_parse_err_str = function
 let fmt_eval_err_str naming_ctx exc =
   let unparse = Pretty_print.unparse_internal_expr naming_ctx in
   let unparse_raw = Fun.(Loc.locate %> unparse) in
+  let unparse_expected_type = function
+    | Kernel.Typing.Exact expr -> unparse expr
+    | Kernel.Typing.Family str -> str
+  in
   match exc with
-  | Kernel.Typing.Pi_expected 
-    {app={data=app_data; source_loc=app_source_loc}; 
-      fn={data=fn_data; source_loc=_}; inferred_type} -> 
-    (app_data, fn_data, inferred_type) 
-    |> fun (x, y, z) -> (unparse_raw x, unparse_raw y, unparse z)
-    |> fun (x, y, z) -> Printf.sprintf
-    {|Unable to typecheck the function application '%s'.
-The expression '%s' was inferred to have type '%s' but it should be a Pi.|} x y z
-    |> fmt_err_encountered_str app_source_loc
-
-  | Kernel.Typing.Cannot_infer_type_of_fn {data; source_loc} ->
+  | Kernel.Typing.Cannot_infer_type {data; source_loc} ->
+    let data_str = unparse_raw data in
     data
-    |> unparse_raw
-    |> Printf.sprintf {|Unable to infer the type of the function '%s'.
+    |> begin 
+        function
+        | KAst.Kind -> "'Kind' does not have a type."
+        | KAst.Fun _ -> Printf.sprintf
+          {|Unable to infer the type of the function '%s'.
 Please either annotate the inputs or ascribe a type to the whole function.|}
-    |> fmt_err_encountered_str source_loc
-
-  | Kernel.Typing.Cannot_infer_type_of_kind source_loc ->
-    fmt_err_encountered_str source_loc @@ "'Kind' does not have a type."
+          data_str
+        | KAst.Pair _ -> Printf.sprintf
+          {|Unable to infer the type of the pair '%s'.contents
+Please ascribe a type to the pair constructor. |}
+          data_str
+        | _ -> assert false
+        end
+    |> fmt_err_encountered_str source_loc 
 
   | Kernel.Typing.Ill_formed_type {expr={data; source_loc}; inferred_type} ->
     (data, inferred_type)
@@ -69,10 +71,10 @@ It should have type 'Type' or 'Kind' but we inferred the type to be '%s' instead
     {outer_expr={data=outer_expr_data; source_loc};
      expr={data=expr_data; _}; inferred_type; expected_type} ->
     (outer_expr_data, expr_data, inferred_type, expected_type)
-    |> fun (w, x, y, z) -> (unparse_raw w, unparse_raw x, unparse y, unparse z)
+    |> fun (w, x, y, z) -> (unparse_raw w, unparse_raw x, unparse y, unparse_expected_type z)
     |> fun (w, x, y, z) -> Printf.sprintf
-    {|While typechecking '%s', '%s' was inferred to have type '%s' but this doesn't
-match the expected type of '%s'.|} w x y z
+    {|While typechecking '%s', '%s' was inferred to have type '%s'.
+However, the expected type is '%s'.|} w x y z
     |> fmt_err_encountered_str source_loc
 
-| exc -> raise exc
+  | exc -> raise exc

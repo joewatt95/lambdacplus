@@ -1,0 +1,348 @@
+
+** Conflict (shift/reduce) in state 75.
+** Tokens involved: PROD ARROW
+** The following explanations concentrate on token PROD.
+** This state is reached from main after reading:
+
+EVAL SND expr
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+main 
+nonempty_list(stmt) EOF 
+stmt 
+EVAL expr 
+     raw_expr 
+     (?)
+
+** In state 75, looking ahead at PROD, reducing production
+** raw_expr -> SND expr
+** is permitted because of the following sub-derivation:
+
+expr PROD expr // lookahead token appears
+raw_expr // lookahead token is inherited
+SND expr . 
+
+** In state 75, looking ahead at PROD, shifting is permitted
+** because of the following sub-derivation:
+
+SND expr 
+    raw_expr 
+    expr . PROD expr 
+
+** Conflict (shift/reduce) in state 68.
+** Tokens involved: VAR_NAME TYPE SND SIGMA PROD PI LPAREN LET KIND FUN FST ARROW
+** The following explanations concentrate on token VAR_NAME.
+** This state is reached from main after reading:
+
+EVAL SIGMA sigma_arg COMMA expr
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+main 
+nonempty_list(stmt) EOF 
+stmt 
+EVAL expr 
+     raw_expr 
+     (?)
+
+** In state 68, looking ahead at VAR_NAME, reducing production
+** sigma_expr -> SIGMA sigma_arg COMMA expr
+** is permitted because of the following sub-derivation:
+
+expr expr // lookahead token appears because expr can begin with VAR_NAME
+raw_expr // lookahead token is inherited
+sigma_expr // lookahead token is inherited
+SIGMA sigma_arg COMMA expr . 
+
+** In state 68, looking ahead at VAR_NAME, shifting is permitted
+** because of the following sub-derivation:
+
+sigma_expr 
+SIGMA sigma_arg COMMA expr 
+                      raw_expr 
+                      expr expr 
+                           raw_expr 
+                           var_name 
+                           . VAR_NAME 
+
+** Conflict (shift/reduce) in state 67.
+** Tokens involved: VAR_NAME TYPE SND SIGMA PROD PI LPAREN LET KIND FUN FST ARROW
+** The following explanations concentrate on token VAR_NAME.
+** This state is reached from main after reading:
+
+EVAL PI annotated_name COMMA expr
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+main 
+nonempty_list(stmt) EOF 
+stmt 
+EVAL expr 
+     (?)
+
+** In state 67, looking ahead at VAR_NAME, reducing production
+** pi_expr -> PI annotated_name COMMA expr
+** is permitted because of the following sub-derivation:
+
+raw_expr 
+expr expr // lookahead token appears because expr can begin with VAR_NAME
+pi_expr // lookahead token is inherited
+PI annotated_name COMMA expr . 
+
+** In state 67, looking ahead at VAR_NAME, shifting is permitted
+** because of the following sub-derivation:
+
+pi_expr 
+PI annotated_name COMMA expr 
+                        raw_expr 
+                        expr expr 
+                             raw_expr 
+                             var_name 
+                             . VAR_NAME 
+
+** Conflict (shift/reduce) in state 61.
+** Tokens involved: VAR_NAME TYPE SND SIGMA PROD PI LPAREN LET KIND FUN FST ARROW
+** The following explanations concentrate on token VAR_NAME.
+** This state is reached from main after reading:
+
+EVAL PI pi_arg_list COMMA expr
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+main 
+nonempty_list(stmt) EOF 
+stmt 
+EVAL expr 
+     (?)
+
+** In state 61, looking ahead at VAR_NAME, reducing production
+** pi_expr -> PI pi_arg_list COMMA expr
+** is permitted because of the following sub-derivation:
+
+raw_expr 
+expr expr // lookahead token appears because expr can begin with VAR_NAME
+pi_expr // lookahead token is inherited
+PI pi_arg_list COMMA expr . 
+
+** In state 61, looking ahead at VAR_NAME, shifting is permitted
+** because of the following sub-derivation:
+
+pi_expr 
+PI pi_arg_list COMMA expr 
+                     raw_expr 
+                     expr expr 
+                          raw_expr 
+                          var_name 
+                          . VAR_NAME 
+
+** Conflict (shift/reduce) in state 45.
+** Tokens involved: VAR_NAME TYPE SND SIGMA PROD PI LPAREN LET KIND FUN FST ARROW
+** The following explanations concentrate on token VAR_NAME.
+** This state is reached from main after reading:
+
+EVAL LET var_name COLON_EQ expr IN expr
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+main 
+nonempty_list(stmt) EOF 
+stmt 
+EVAL expr 
+     raw_expr 
+     (?)
+
+** In state 45, looking ahead at VAR_NAME, reducing production
+** let_expr -> LET var_name COLON_EQ expr IN expr
+** is permitted because of the following sub-derivation:
+
+expr expr // lookahead token appears because expr can begin with VAR_NAME
+raw_expr // lookahead token is inherited
+let_expr // lookahead token is inherited
+LET var_name COLON_EQ expr IN expr . 
+
+** In state 45, looking ahead at VAR_NAME, shifting is permitted
+** because of the following sub-derivation:
+
+let_expr 
+LET var_name COLON_EQ expr IN expr 
+                              raw_expr 
+                              expr expr 
+                                   raw_expr 
+                                   var_name 
+                                   . VAR_NAME 
+
+** Conflict (shift/reduce) in state 39.
+** Tokens involved: VAR_NAME TYPE SND SIGMA PROD PI LPAREN LET KIND FUN FST ARROW
+** The following explanations concentrate on token VAR_NAME.
+** This state is reached from main after reading:
+
+EVAL FUN fun_arg_list DOUBLE_ARROW expr
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+main 
+nonempty_list(stmt) EOF 
+stmt 
+EVAL expr 
+     (?)
+
+** In state 39, looking ahead at VAR_NAME, reducing production
+** fun_expr -> FUN fun_arg_list DOUBLE_ARROW expr
+** is permitted because of the following sub-derivation:
+
+raw_expr 
+expr expr // lookahead token appears because expr can begin with VAR_NAME
+fun_expr // lookahead token is inherited
+FUN fun_arg_list DOUBLE_ARROW expr . 
+
+** In state 39, looking ahead at VAR_NAME, shifting is permitted
+** because of the following sub-derivation:
+
+fun_expr 
+FUN fun_arg_list DOUBLE_ARROW expr 
+                              raw_expr 
+                              expr expr 
+                                   raw_expr 
+                                   var_name 
+                                   . VAR_NAME 
+
+** Conflict (shift/reduce) in state 36.
+** Tokens involved: PROD ARROW
+** The following explanations concentrate on token PROD.
+** This state is reached from main after reading:
+
+EVAL expr expr
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+main 
+nonempty_list(stmt) EOF 
+stmt 
+EVAL expr 
+     raw_expr 
+     (?)
+
+** In state 36, looking ahead at PROD, reducing production
+** raw_expr -> expr expr
+** is permitted because of the following sub-derivation:
+
+expr PROD expr // lookahead token appears
+raw_expr // lookahead token is inherited
+expr expr . 
+
+** In state 36, looking ahead at PROD, shifting is permitted
+** because of the following sub-derivation:
+
+expr expr 
+     raw_expr 
+     expr . PROD expr 
+
+** Conflict (shift/reduce) in state 35.
+** Tokens involved: VAR_NAME TYPE SND SIGMA PROD PI LPAREN LET KIND FUN FST ARROW
+** The following explanations concentrate on token VAR_NAME.
+** This state is reached from main after reading:
+
+EVAL expr ARROW expr
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+main 
+nonempty_list(stmt) EOF 
+stmt 
+EVAL expr 
+     raw_expr 
+     (?)
+
+** In state 35, looking ahead at VAR_NAME, reducing production
+** raw_expr -> expr ARROW expr
+** is permitted because of the following sub-derivation:
+
+expr expr // lookahead token appears because expr can begin with VAR_NAME
+raw_expr // lookahead token is inherited
+expr ARROW expr . 
+
+** In state 35, looking ahead at VAR_NAME, shifting is permitted
+** because of the following sub-derivation:
+
+expr ARROW expr 
+           raw_expr 
+           expr expr 
+                raw_expr 
+                var_name 
+                . VAR_NAME 
+
+** Conflict (shift/reduce) in state 33.
+** Tokens involved: VAR_NAME TYPE SND SIGMA PROD PI LPAREN LET KIND FUN FST ARROW
+** The following explanations concentrate on token VAR_NAME.
+** This state is reached from main after reading:
+
+EVAL expr PROD expr
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+main 
+nonempty_list(stmt) EOF 
+stmt 
+EVAL expr 
+     raw_expr 
+     (?)
+
+** In state 33, looking ahead at VAR_NAME, reducing production
+** raw_expr -> expr PROD expr
+** is permitted because of the following sub-derivation:
+
+expr expr // lookahead token appears because expr can begin with VAR_NAME
+raw_expr // lookahead token is inherited
+expr PROD expr . 
+
+** In state 33, looking ahead at VAR_NAME, shifting is permitted
+** because of the following sub-derivation:
+
+expr PROD expr 
+          raw_expr 
+          expr expr 
+               raw_expr 
+               var_name 
+               . VAR_NAME 
+
+** Conflict (shift/reduce) in state 31.
+** Tokens involved: PROD ARROW
+** The following explanations concentrate on token PROD.
+** This state is reached from main after reading:
+
+EVAL FST expr
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+main 
+nonempty_list(stmt) EOF 
+stmt 
+EVAL expr 
+     raw_expr 
+     (?)
+
+** In state 31, looking ahead at PROD, reducing production
+** raw_expr -> FST expr
+** is permitted because of the following sub-derivation:
+
+expr PROD expr // lookahead token appears
+raw_expr // lookahead token is inherited
+FST expr . 
+
+** In state 31, looking ahead at PROD, shifting is permitted
+** because of the following sub-derivation:
+
+FST expr 
+    raw_expr 
+    expr . PROD expr 

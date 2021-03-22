@@ -3,26 +3,22 @@ open Containers
 module Loc = Common.Location
 module Norm = Normalization
 
-exception Pi_expected of {
-  app : Ast.expr; 
-  fn : Ast.expr; 
-  inferred_type : Ast.expr
-}
-
-exception Cannot_infer_type_of_fn of Ast.expr
-exception Cannot_infer_type_of_pair of Ast.expr
-exception Cannot_infer_type_of_kind of Loc.source_loc
+exception Cannot_infer_type of Ast.expr
 
 exception Ill_formed_type of {
   expr : Ast.expr;
   inferred_type : Ast.expr;
 }
 
+type expected_type =
+  | Exact of Ast.expr
+  | Family of string
+
 exception Type_mismatch of {
   outer_expr : Ast.expr;
   expr : Ast.expr;
   inferred_type : Ast.expr;
-  expected_type : Ast.expr
+  expected_type : expected_type;
 }
 
 let rec infer ctx (expr : Ast.expr) =
@@ -58,7 +54,9 @@ let rec infer ctx (expr : Ast.expr) =
     | Ast.Pi {expr=input_type; body=output_type; _} ->
       check ~outer_expr:expr ctx arg input_type;
       Norm.beta_reduce output_type arg
-    | _ -> raise @@ Pi_expected {app=expr; fn; inferred_type}
+    | _ -> 
+      raise @@ Type_mismatch
+        {expr=fn; outer_expr=expr; inferred_type; expected_type=Family "Pi"}
   end
 
  | Ast.Fun {input_var; input_type=Some input_ty; body} ->
@@ -77,33 +75,44 @@ let rec infer ctx (expr : Ast.expr) =
   |> Fun.flip Norm.beta_reduce binding
   |> Norm.normalize ctx
 
- | Ast.Pi abstraction
- | Ast.Sigma abstraction-> infer_pi_sigma ctx abstraction
+ | Ast.Pi abstraction | Ast.Sigma abstraction-> infer_pi_sigma ctx abstraction
 
- | Ast.Fst expr ->
-  let inferred_type = infer ctx expr in
-  begin
-    match inferred_type.data with
-    | Sigma {expr=expr1_type; _} -> expr1_type
-    | _ -> assert false
-  end
+ | Ast.Fst _ | Ast.Snd _ ->
+  expr
+  |> infer_sigma_exn ctx
+  |> begin
+      function
+      | ({expr=expr1_type; body=expr2_type; _} : Ast.abstraction) ->
+          match expr.data with
+          | Ast.Fst _ -> expr1_type
+          | Ast.Snd expr ->
+            expr
+            |> fun expr -> Ast.Fst expr
+            |> Loc.locate
+            |> Norm.beta_reduce expr2_type
+            |> Norm.normalize ctx
 
- (* This is causing problems. *)
- | Ast.Snd expr ->
-  let inferred_type = infer ctx expr in
-  begin
-    match inferred_type.data with
-    | Sigma {body=expr2_type; _} ->
-      let fst_expr = Loc.locate @@ Ast.Fst expr in
-      expr2_type
-      |> Fun.flip Norm.beta_reduce fst_expr
-      |> Norm.normalize ctx
-    | _ -> assert false
-  end
+            (* No other cases are possible since expr came from the outer match
+               where we already guaranteed that it will be a Ast.Fst or 
+               Ast.Snd. *)
+          | _ -> assert false
+     end
 
- | Ast.Kind -> raise @@ Cannot_infer_type_of_kind expr.source_loc
- | Ast.Pair _ -> raise @@ Cannot_infer_type_of_pair expr
- | Ast.Fun {input_type=None; _} -> raise @@ Cannot_infer_type_of_fn expr
+ | Ast.Kind | Ast.Pair _ | Ast.Fun {input_type=None; _} -> 
+    raise @@ Cannot_infer_type expr
+
+and infer_sigma_exn ctx (outer_expr : Ast.expr) =
+  match outer_expr.data with
+  | Ast.Fst expr | Ast.Snd expr ->
+    let inferred_type = infer ctx expr in
+    begin
+      match inferred_type.data with
+      |  Sigma abstraction -> abstraction
+      | _ -> 
+        raise @@ Type_mismatch 
+          {outer_expr; expr; inferred_type; expected_type=Family "Sigma"}
+    end
+  | _ -> assert false
 
 and infer_pi_sigma ctx ({var_name; expr=type1; body=type2} : Ast.abstraction) =
   check_well_formed_type ctx type1;
@@ -122,13 +131,19 @@ and check ~outer_expr ctx expr expected_type =
   | Ast.Pair {expr1; expr2},  
     Ast.Sigma {expr=expr1_type; body=expr2_type; _} ->
     check ctx ~outer_expr expr1 expr1_type;
-    check ctx ~outer_expr expr2 @@ Norm.normalize ctx @@ Norm.beta_reduce expr2_type expr1
+    expr2_type
+    |> Fun.flip Norm.beta_reduce expr1
+    |> Norm.normalize ctx
+    |> check ctx ~outer_expr expr2 
+    (* check ctx ~outer_expr expr2 @@ Norm.normalize ctx @@ Norm.beta_reduce expr2_type expr1 *)
 
   | _, _ ->
     let inferred_type = infer ctx expr in
     (* Here we need to check if the inferred type and expr_type are equal *)
     if not @@ Ast.equal_expr inferred_type expected_type
-    then raise @@ Type_mismatch {expr; inferred_type; expected_type; outer_expr}
+    then 
+      let expected_type = Exact expected_type in
+      raise @@ Type_mismatch {expr; inferred_type; expected_type; outer_expr}
 
 (* Check if expr is a well-formed type wrt ctx. In other words, this checks
   if the type of expr is Type or Kind. If so, we return it. Otherwise, we throw
