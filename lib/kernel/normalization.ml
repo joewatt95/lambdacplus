@@ -82,7 +82,7 @@ let normalize ctx =
         | Ast.Fun {body; _} ->
           let body = beta_reduce body arg in
           self#visit_raw_expr ctx body.data
-        | Ast.Var _ -> Ast.App {fn; arg} 
+        | Var _ | Ast.App _ -> Ast.App {fn; arg} 
         | _ -> assert false
 
       method! visit_Fun ctx input_var _ body =
