@@ -898,8 +898,8 @@ typechecking.
   \item \textbf{Sigma elimination} \\
     \[
       \begin{prooftree}
-        \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau}\tau'(x)}
-        \infer1{\Gamma \vdash \fst E \Rightarrow \tau}
+        \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+        \infer1{\Gamma \vdash \fst E \Rightarrow \tau_1}
       \end{prooftree}
     \]
 
@@ -909,6 +909,16 @@ typechecking.
         \hypo{\Gamma \vdash \tau_2[x \mapsto \fst E] \Downarrow \tau_2'}
         \infer2{\Gamma \vdash \snd E \Rightarrow \tau_2'}
       \end{prooftree}
+    \]
+
+    \[
+      \begin{prooftree}
+        \hypo{E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+        \hypo{\Gamma \vdash \tau_2[x \mapsto \fst E] \Downarrow \tau_2'}
+        \hypo{(y, \, \tau_2', \, \text{und}) :: (x, \, \tau_1, \, \text{und}) :: \Gamma
+              \vdash E' \rightarrow \tau}
+        \infer3{\Gamma \vdash \text{let } (x, \, y) := E \text{ in } E' \Rightarrow \tau}
+      \end{prooftree} 
     \]
 
     % \item \textbf{Pair destructuring} \\
