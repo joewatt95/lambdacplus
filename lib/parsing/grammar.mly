@@ -62,7 +62,7 @@ let expr :=
 
 let raw_expr :=
   (* This 1st rule is causing shift/reduce conflicts in menhir. *)
-  | fn=expr; arg=expr;                           { Ast.App {fn; arg} } %prec APP
+  | fn=expr; arg=expr;                           { Ast.App {left=fn; right=arg} } %prec APP
   (* This let rule is also causing shift/reduce conflicts. *)
   | let_expr
   | sigma_expr
@@ -143,11 +143,19 @@ let sum_expr ==
   { Ast.Sum {left; right} }
 
 let match_expr ==
-  | MATCH; ~ = expr; WITH; 
-    BAR; var_left = var_name; ARROW; body_left = expr;
-    BAR; var_right = var_name; ARROW; body_right = expr; 
+  | MATCH; ~ = expr; WITH;
+    BAR; INL; var_left = var_name; ARROW; body_left = expr;
+    BAR; INR; var_right = var_name; ARROW; body_right = expr;
     END;
-  { Ast.Match 
+  { Ast.Match
+    {expr;
+     inl={match_var=var_left; match_body=body_left};
+     inr={match_var=var_right; match_body=body_right}} }
+  | MATCH; ~ = expr; WITH;
+    BAR; INR; var_right = var_name; ARROW; body_right = expr;
+    BAR; INL; var_left = var_name; ARROW; body_left = expr;
+    END;
+  { Ast.Match
     {expr;
      inl={match_var=var_left; match_body=body_left};
      inr={match_var=var_right; match_body=body_right}} }

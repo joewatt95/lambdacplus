@@ -67,6 +67,8 @@ It should have type 'Type' or 'Kind' but we inferred the type to be '%s' instead
   | Kernel.Typing.Type_mismatch 
     {outer_expr={data=outer_expr_data; source_loc};
      expr={data=expr_data; _}; inferred_type; expected_type} ->
+    print_endline @@ Ast.show_expr Format.pp_print_int inferred_type;
+    print_endline @@ Kernel.Context.show naming_ctx;
     (outer_expr_data, expr_data, inferred_type, expected_type)
     |> fun (w, x, y, z) -> (unparse_raw w, unparse_raw x, unparse y, unparse_expected_type z)
     |> fun (w, x, y, z) -> Printf.sprintf

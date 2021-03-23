@@ -47,7 +47,7 @@ let rec infer ctx (expr : int Ast.expr) =
   let ctx = Context.add_binding input_var ~var_type:input_type ctx in
   get_well_formed_type ctx output_type *)
 
- | Ast.App {fn; arg} ->
+ | Ast.App {left=fn; right=arg} ->
   let inferred_type = infer ctx fn in
   begin
     match inferred_type.data with
@@ -108,11 +108,18 @@ let rec infer ctx (expr : int Ast.expr) =
   begin
     match inferred_type.data with
     | Sum {left; right} ->
-      let f ({match_var; match_body} : int Ast.match_binding) ty =
-          infer (Context.add_binding match_var ~var_type:ty ctx) match_body in
-      let inl_type = f inl left in
-      let inr_type = f inr right in
-      if Ast.equal_expr (=) inl_type inr_type then inl_type else assert false
+      let infer_match_binding ({match_var; match_body} : int Ast.match_binding) ty =
+        ctx
+        |> Context.add_binding match_var ~var_type:ty
+        |> Fun.flip infer match_body
+      in
+      let inl_type = infer_match_binding inl left in
+      let inr_type = infer_match_binding inr right in
+      if Ast.equal_expr (=) inl_type inr_type 
+        (* It's important to shift the indices by -1 here to avoid an off-by-one
+           bug. *)
+      then Ast.shift (-1) inl_type
+      else assert false
     | _ -> raise @@ Type_mismatch
             {expr; outer_expr=expr; inferred_type; expected_type=Family "Sum"}
   end

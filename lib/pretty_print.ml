@@ -28,13 +28,13 @@ open Common
         | None ->
           Printf.sprintf "(λ %s ⇒ %s)" input_var body
 
-      method build_App _ = Printf.sprintf "(%s %s)"
+      method build_App _ = Fun.uncurry @@ Printf.sprintf "(%s %s)"
 
       method build_Let _ = uncurry3_sprintf "(let %s := %s in %s)"
 
       method build_Ascription _ = Printf.sprintf "(%s : %s)"
 
-      method build_Pair _ = Printf.sprintf "(%s, %s)"
+      method build_Pair _ = Fun.uncurry @@ Printf.sprintf "(%s, %s)"
       method build_Fst _ = Printf.sprintf "(fst %s)"
       method build_Snd _ = Printf.sprintf "(snd %s)"
 
@@ -46,9 +46,11 @@ open Common
             end|}
 
       method build_match_binding _ = Printf.sprintf "%s -> %s"
-      method build_Sum _ = Printf.sprintf "(%s + %s)"
+      method build_Sum _ = Fun.uncurry @@ Printf.sprintf "(%s + %s)"
       method build_Inl _ = Printf.sprintf "(inl %s)"
       method build_Inr _ = Printf.sprintf "(inr %s)" 
+
+      method build_pair _ left right = (left, right)
 
       (* These last 2 methods aren't used. *)
       method build_located _ _ _ _ = ""

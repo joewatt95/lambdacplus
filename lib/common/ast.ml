@@ -12,26 +12,28 @@ and 'a match_binding = {
   match_var : (string [@visitors.opaque]);
   match_body : 'a expr;
 }
+and 'a pair = {
+  left : 'a expr;
+  right : 'a expr
+}
 and 'a raw_expr =
   | Type
   | Kind
   | Var of ('a [@visitors.opaque])
   | Pi of 'a abstraction 
   | Sigma of 'a  abstraction
-  | Pair of {left : 'a expr; right : 'a expr}
+  | Pair of 'a pair
   | Fst of 'a expr
   | Snd of 'a expr
-  | Sum of {left : 'a expr; right : 'a expr}
+  | Sum of 'a pair
   | Match of {expr : 'a expr; inl : 'a match_binding; inr : 'a match_binding}
   | Inl of 'a expr
   | Inr of 'a expr
   | Fun of {input_var : (string [@visitors.opaque] [@equal Utils.always_true]);
             input_type : ('a expr option [@visitors.opaque]);
             body : 'a expr}
-  | App of {fn : 'a expr;
-            arg : 'a expr}
-  | Ascription of {expr : 'a expr;
-                   ascribed_type : 'a expr}
+  | App of 'a pair
+  | Ascription of {expr : 'a expr; ascribed_type : 'a expr}
   | Let of 'a abstraction
 [@@deriving show, fields, eq,
   visitors {variety="map"; ancestors=["Location.fold"]}, 
@@ -75,14 +77,20 @@ let shift shift_by =
 
       method! visit_Fun cutoff input_var input_type body =
         let input_type = CCOpt.map (self#visit_expr cutoff) input_type in
-        let body = self#visit_expr (self#incr_cutoff cutoff) body in
+        let body = self#shift_under_binder cutoff body in
+        (* let body = self#visit_expr (self#incr_cutoff cutoff) body in *)
         Fun {input_var; input_type; body}
 
       method! visit_abstraction cutoff {var_name; expr; body} =
         let expr = self#visit_expr cutoff expr in
-        let body = self#visit_expr (self#incr_cutoff cutoff) body in
+        let body = self#shift_under_binder cutoff body in
+        (* let body = self#visit_expr (self#incr_cutoff cutoff) body in *)
         {var_name; expr; body}
-      
+
+      method! visit_match_binding cutoff {match_var; match_body} =
+        let match_body = self#shift_under_binder cutoff match_body in
+        {match_var; match_body}
+
       (* method! visit_Pi cutoff {input_var; input_type; output_type} =
       let input_type = self#visit_expr cutoff input_type in
       let output_type = self#visit_expr (self#incr_cutoff cutoff) output_type in
@@ -93,8 +101,10 @@ let shift shift_by =
         let body = self#visit_expr (self#incr_cutoff cutoff) body in
         Let {var_name; binding; body} *)
 
-      (* Increment the cutoff. Used whenever we go under a binder. *)
-      method incr_cutoff {data=cutoff; _} = Location.locate @@ cutoff + 1
+      (* Increment the cutoff whenever we go under a binder. *)
+      method shift_under_binder {data=cutoff; _} expr =
+        let new_cutoff = Location.locate @@ cutoff + 1 in
+        self#visit_expr new_cutoff expr 
 
       (* Note that we don't need to impement the visit_App, visit_Type,
          visit_Kind and visit_Ascription methods since the Visitors package

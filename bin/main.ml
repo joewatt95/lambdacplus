@@ -19,7 +19,7 @@ let () =
       exit 1
   in
   (* print_endline @@ Common.Ast.show_list_of_stmts Format.pp_print_int stmts; *)
-  try
+  (* try *)
     stmts
     |> Fun.flip Kernel.Eval_statements.eval_stmts naming_ctx
     |> fun (expr, _) -> expr
@@ -29,5 +29,5 @@ let () =
     (* |> Parsing.Ast.show_expr *)
     |> fun str -> print_endline @@ "\nHere's the output:\n" ^ str;
     flush stdout
-  with exc ->
-    print_endline @@ Error_reporting.fmt_eval_err_str naming_ctx exc
+  (* with exc ->
+    print_endline @@ Error_reporting.fmt_eval_err_str naming_ctx exc *)

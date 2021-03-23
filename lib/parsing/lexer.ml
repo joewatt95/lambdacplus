@@ -24,7 +24,10 @@ let name =
                    | math]
 
 (* Create a hash table mapping strings to tokens out of the above associative
-list defining reserved keywords.
+  list defining reserved keywords.
+
+  Unicode math characters:
+  https://unicode.org/charts/PDF/U2200.pdf
 *)
 let reserved_keywords =
   [(["fun"; "λ"; "lambda"], G.FUN);
@@ -32,7 +35,6 @@ let reserved_keywords =
    (["Sigma"; "Σ"; "∃"; "exists"], G.SIGMA);
    (["fst"], G.FST);
    (["snd"], G.SND);
-   (["+"], G.PLUS);
    (["match"], G.MATCH);
    (["inl"], G.INL);
    (["inr"], G.INR);
@@ -66,6 +68,7 @@ let rec tokenize lexbuf =
   | "=>" | "⇒" -> G.DOUBLE_ARROW
   | "->" | "→" -> G.ARROW
   | "*" | "⨯" | "∧" -> G.PROD
+  | "+" | "∨" -> G.PLUS
   | "|" -> G.BAR
 
   | name -> 

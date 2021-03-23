@@ -73,6 +73,7 @@ normalize everything all the way.
 \item $\nu, \, \tau$ range over expressions that are in \textit{full} head normal
   form.
 \item $s$ ranges over all sorts, ie $\Type$ and $\Kind$.
+\item $n$ ranges over all neutral terms.
   \begin{comment}
     We define this set of expressions inductively via:
     \[ \begin{prooftree} \infer0{\Type} \end{prooftree} \]
@@ -87,6 +88,7 @@ normalize everything all the way.
     \[ \begin{prooftree} \infer0{\Type} \end{prooftree} \]
   \end{comment}
 \end{enumerate}
+TODO: Explain head normal form and neutral terms.
 
 We often add primes and subscripts, like $E'$ or $\nu_2$ while referring to these.
 
@@ -282,10 +284,7 @@ on a sum type via the \verb|match| construct below
   end
 \end{verbatim}
 
-which is fashioned after the \verb|match| construct in functional languages like
-ocaml. Unlike Ocaml however, our syntax is significantly more rigid, though we
-allow users to swap the \verb|inl x| and \verb|inr y| clauses like so:
-
+The ordering of both clauses can be swapped so users can also enter
 \begin{verbatim}
   match E with
   | inr y -> E2
@@ -293,10 +292,18 @@ allow users to swap the \verb|inl x| and \verb|inr y| clauses like so:
   end
 \end{verbatim}
 
-Note that $x$ is bound in the expression that is $E1$, while $y$ is bound in $E2$.
+Note here that $x$ is bound in the expression that is $E1$, while $y$ is bound
+in $E2$.
+
+This \verb|match| construct is fashioned after the similarly named pattern
+matching construct in ML like languages.
+However, unlike those, we do not implement actual pattern matching since pattern
+matching for dependent types is not an easy problem.
+Our \verb|match| construct serves the sole purpose of allowing one to perform
+case analysis on sum.
 
 For convenience, we write 
-$\match(E, \, \inl x \rightarrow E_1, \, \inr y \rightarrow E_2)$ to denote this
+$\match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)$ to denote this
 construct.
 
 \end{enumerate}
@@ -524,11 +531,13 @@ typechecking.
 
   \[
     \begin{prooftree}
-      \hypo{\Gamma \vdash E_1 \Downarrow x}
+      \hypo{\Gamma \vdash E_1 \Downarrow n}
       \hypo{\Gamma \vdash E_2 \Downarrow \nu}
-      \infer2{\Gamma \vdash E_1 \,\, E_2 \Downarrow x \,\, \nu}
+      \infer2{\Gamma \vdash E_1 \,\, E_2 \Downarrow n \,\, \nu}
     \end{prooftree}
   \]
+
+  The last rule handle the cases of neutral expressions.
 
 \item \textbf{Normalizing under lambdas} \\
   \[
@@ -593,8 +602,8 @@ typechecking.
 
   \[
    \begin{prooftree}
-    \hypo{\Gamma \vdash E \Downarrow x}
-     \infer1{\Gamma \vdash \fst E \Downarrow \fst x}
+    \hypo{\Gamma \vdash E \Downarrow n}
+     \infer1{\Gamma \vdash \fst E \Downarrow \fst n}
    \end{prooftree}
   \]
 
@@ -607,8 +616,8 @@ typechecking.
 
   \[
    \begin{prooftree}
-     \hypo{\Gamma \vdash E \Downarrow x}
-     \infer1{\Gamma \vdash \snd E \Downarrow x}
+     \hypo{\Gamma \vdash E \Downarrow n}
+     \infer1{\Gamma \vdash \snd E \Downarrow \snd n}
    \end{prooftree}
   \]
 
@@ -641,7 +650,7 @@ typechecking.
       \hypo{\Gamma \vdash E \Downarrow \inl \nu}
       \hypo{\Gamma \vdash E_1[x \mapsto \nu] \Downarrow \nu_1}
       \infer2{\Gamma \vdash 
-        \match(E, \, \inl x \rightarrow E_1, \, \inr y \rightarrow E_2)
+        \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)
         \Downarrow \nu_1}
     \end{prooftree}  
   \]
@@ -651,19 +660,19 @@ typechecking.
      \hypo{\Gamma \vdash E \Downarrow \inr \nu}
      \hypo{\Gamma \vdash E_2[y \mapsto \nu] \Downarrow \nu_2}
      \infer2{\Gamma \vdash 
-       \match(E, \, \inl x \rightarrow E_1, \, \inr y \rightarrow E_2)
+       \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)
        \Downarrow E_2[y \mapsto \nu_2]}
    \end{prooftree}  
   \]
 
   \[
    \begin{prooftree}
-    \hypo{\Gamma \vdash E \Downarrow z}
+    \hypo{\Gamma \vdash E \Downarrow n}
       \hypo{\Gamma \vdash E_1 \Downarrow \nu_1}
       \hypo{\Gamma \vdash E_2 \Downarrow \nu_2}
-      \infer3{\Gamma \vdash \match(E, \, \inl x \rightarrow E_1, \, \inr y \rightarrow E_2) 
+      \infer3{\Gamma \vdash \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2) 
                \Downarrow
-               \match(E, \, \inl x \rightarrow \nu_1, \, \inr y \rightarrow \nu_2) 
+               \match(n, \, x \rightarrow \nu_1, \, y \rightarrow \nu_2) 
                }
    \end{prooftree}  
   \]
@@ -916,6 +925,15 @@ typechecking.
     %   \end{prooftree}
     % \]
 
+    \item \textbf{Sum formation} \\
+    \[
+      \begin{prooftree}
+       \hypo{\Gamma \vdash A \Leftarrow \Type} 
+       \hypo{\Gamma \vdash B \Leftarrow \Type} 
+       \infer2{\Gamma \vdash A + B \Rightarrow \Type} 
+      \end{prooftree}
+    \]
+
     \item \textbf{Sum introduction} \\
     \[
       \begin{prooftree}
@@ -935,10 +953,11 @@ typechecking.
     \[
     \begin{prooftree}
       \hypo{\Gamma \vdash E \Rightarrow \tau_1 + \tau_2}
-      \hypo{(x, \, \tau_1, \, \text{und}) :: \Gamma \vdash E_1 \Rightarrow \tau}
-      \hypo{(x, \, \tau_2, \, \text{und}) :: \Gamma \vdash E_2 \Rightarrow \tau}
-      \infer3{\Gamma \vdash \match(E, \, \inl x \rightarrow E_1, \, \inr y \rightarrow E_2)
-               \Rightarrow \tau}
+      \hypo{(x, \, \tau_1, \, \text{und}) :: \Gamma \vdash E_1 \Rightarrow \tau_1'}
+      \hypo{(y, \, \tau_2, \, \text{und}) :: \Gamma \vdash E_2 \Rightarrow \tau_2'}
+      \hypo{\tau_1' \equiv_{\alpha \beta} \tau_2'}
+      \infer4{\Gamma \vdash \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)
+               \Rightarrow \tau_1'}
     \end{prooftree}  
   \]
 

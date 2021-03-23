@@ -18,11 +18,6 @@ let subst from_index to_expr =
       method! visit_Var {data=(from_index, to_expr); _} index =
         if index = from_index then to_expr.data else Var index
 
-      (* method! visit_Pi from_to input_var input_type output_type =
-        let input_type = self#visit_expr from_to input_type in
-        let output_type = self#subst_under_binder from_to output_type in
-        Ast.Pi {input_var; input_type; output_type} *)
-
       method! visit_Fun from_to input_var input_type body =
         let input_type = CCOpt.map (self#visit_expr from_to) input_type in
         let body = self#subst_under_binder from_to body in
@@ -37,11 +32,6 @@ let subst from_index to_expr =
         let match_body = self#subst_under_binder from_to match_body in
         {match_var; match_body}
 
-      (* method! visit_Let from_to var_name binding body =
-        let binding = self#visit_expr from_to binding in
-        let body = self#subst_under_binder from_to body in
-        Ast.Let {var_name; binding; body} *)
-      
       (* Handy helper function for performing substitutions under binders.
          These include lambda and Pi. *)
       method subst_under_binder {data=(from_index, to_expr); _} = 
@@ -76,14 +66,13 @@ let normalize ctx =
       method! visit_Ascription ctx expr _ =
         self#visit_raw_expr ctx expr.data
 
-      method! visit_App ctx fn arg =
+      method! visit_App ctx {left=fn; right=arg} =
         let arg = self#visit_expr ctx arg in
         match self#visit_raw_expr ctx fn.data with
         | Ast.Fun {body; _} ->
           let body = beta_reduce body arg in
           self#visit_raw_expr ctx body.data
-        | Var _ | Ast.App _ -> Ast.App {fn; arg} 
-        | _ -> assert false
+        | _ -> Ast.App {left=fn; right=arg} 
 
       method! visit_Fun ctx input_var _ body =
         let ctx =  self#add_binding input_var ctx in
@@ -114,19 +103,11 @@ let normalize ctx =
             | Ast.Inr expr ->
               let inr_body = beta_reduce inr.match_body expr in
               self#visit_raw_expr ctx inr_body.data
-            | Ast.Var _ ->
+            | _ ->
                 let inl = self#visit_match_binding ctx inl in
                 let inr = self#visit_match_binding ctx inr in
-                (* print_endline @@ Ast.show_expr Format.pp_print_int inl.match_body; *)
                 Ast.Match {expr; inl; inr}
-            | _ -> assert false
-            end
-
-      (* method! visit_Pi ctx input_var input_type output_type =
-        let input_type = self#visit_expr ctx input_type in
-        let ctx = self#add_binding input_var ctx in 
-        let output_type = self#visit_expr ctx output_type in
-        Ast.Pi {input_var; input_type; output_type} *)
+          end
 
       method add_binding input_var ctx =
           Location.update_data ctx @@ fun ctx -> Context.add_binding input_var ctx

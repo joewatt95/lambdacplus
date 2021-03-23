@@ -68,10 +68,10 @@ let rec parser_to_internal_raw_expr ctx (expr : string Ast.expr) =
     let output_type = parser_to_internal_expr new_ctx output_type in
     KAst.Pi {input_var; input_type; output_type} *)
 
-  | Ast.App {fn; arg} ->
+  | Ast.App {left=fn; right=arg} ->
     let fn = parser_to_internal_expr ctx fn in
     let arg = parser_to_internal_expr ctx arg in
-    Ast.App {fn; arg}
+    Ast.App {left=fn; right=arg}
 
   | Ast.Ascription {expr; ascribed_type} ->
     let expr = parser_to_internal_expr ctx expr in
@@ -206,10 +206,10 @@ let rec internal_to_parser_raw_expr ctx raw_expr =
     let output_type = internal_to_parser_expr new_ctx output_type in
     PAst.Pi {var_name=input_var; expr=input_type; body=output_type} *)
 
-  | Ast.App {fn; arg} ->
+  | Ast.App {left=fn; right=arg} ->
     let fn = internal_to_parser_expr ctx fn in
     let arg = internal_to_parser_expr ctx arg in
-    Ast.App {fn; arg}
+    Ast.App {left=fn; right=arg}
   
   | Ast.Ascription {expr; ascribed_type} ->
     let expr = internal_to_parser_expr ctx expr in
