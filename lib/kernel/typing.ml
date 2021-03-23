@@ -22,7 +22,7 @@ exception Type_mismatch of {
 }
 
 (* Compare syntactic equality of de bruijn ASTs. *)
-let equal_expr = Ast.equal_expr (=)
+let equal_expr = Ast.equal_expr Stdlib.(=)
 
 let rec infer ctx (expr : int Ast.expr) =
  match expr.data with

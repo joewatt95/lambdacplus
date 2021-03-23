@@ -6,9 +6,9 @@
 *)
 
 open Containers
+open Common
 
 (* For convenience *)
-module Ast = Common.Ast
 module BFT = BatFingerTree
 
 type entry = {

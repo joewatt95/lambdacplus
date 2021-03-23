@@ -1,7 +1,7 @@
 (library
  (name kernel)
  (preprocess 
-  (staged_pps ppx_deriving.show ppx_deriving.eq visitors.ppx ppx_fields_conv))
+  (pps ppx_deriving.show ppx_fields_conv))
  (libraries containers batteries ppx_deriving
             parsing common)
 )

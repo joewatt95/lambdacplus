@@ -40,10 +40,10 @@ open Common
 
       method build_Match _ =
         Printf.sprintf 
-          {|match %s with
-            | %s
-            | %s
-            end|}
+          {|(match %s with
+ | %s
+ | %s
+ end)|}
 
       method build_match_binding _ = Printf.sprintf "%s -> %s"
       method build_Sum _ = Fun.uncurry @@ Printf.sprintf "(%s + %s)"
