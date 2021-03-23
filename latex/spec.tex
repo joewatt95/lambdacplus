@@ -439,9 +439,10 @@ Here we take the context, $\Gamma$, to be a list of triples of the form
 We will use $\emptyset$ to denote the empty context, and $::$ to refer to the
 list cons operation.
 
-The binding can be an expression or a sentinel value \verb|undefined|.
+The binding can be an expression or a special undefined value, which we denote by
+\verb|und|.
 Contexts have global scope and can be modified at the top level by \verb|def|
-and \verb|axiom| statements. This \verb|undefined| value is used for the
+and \verb|axiom| statements. This \verb|und| value is used for the
 bindings created by \verb|axiom| statements.
 
 We first give an overview of the main judgment forms which we will define in a
@@ -506,7 +507,7 @@ typechecking.
   \[
     \begin{prooftree}
       \hypo{\wf(\Gamma)}
-      \hypo{(x, \, \tau, \, \text{undefined}) \in \Gamma}
+      \hypo{(x, \, \tau, \, \text{und}) \in \Gamma}
       \infer2{\Gamma \vdash x \Downarrow x}
     \end{prooftree} 
   \]
@@ -518,7 +519,10 @@ typechecking.
       \infer1{\Gamma \vdash (E : T) \Downarrow \nu}
     \end{prooftree}
   \]
-  
+  This says type ascriptions do not play a role in computation. They're just
+  there to help the type checker figure things out and for users to communicate
+  their intentions.
+ 
 \item \textbf{Pi elimination, ie function application} \\
   \[
     \begin{prooftree}
@@ -718,7 +722,7 @@ typechecking.
       \begin{prooftree}
         \hypo{\wf(\Gamma)}
         \hypo{\Gamma \vdash \tau \Rightarrow s}
-        \infer2{\wf ((x, \, \tau, \, \text{undefined}) :: \Gamma)}
+        \infer2{\wf ((x, \, \tau, \, \text{und}) :: \Gamma)}
       \end{prooftree}
     \]
   \end{enumerate}
@@ -777,6 +781,11 @@ typechecking.
     \]
     This says that we may infer the type of a variable if the type information
     is already in our context.
+    Note that in this rule, we also allow $\nu$ to be \verb|und|.
+
+    If there are multiple occurences of the variable $x$ in $\Gamma$, as is the case
+    when there is variable shadowing, we take the first occurence of $x$ in the
+    list that is $\Gamma$.
 
   \item \textbf{Type} \\
     \[
@@ -811,7 +820,7 @@ typechecking.
       \begin{prooftree}
         \hypo{\Gamma \vdash A \Rightarrow s_1}
         \hypo{\Gamma \vdash A \Downarrow \tau}
-        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash B(x) \Rightarrow s_2}
+        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash B(x) \Rightarrow s_2}
         \infer3{\Gamma \vdash \Pi_{x : A}B(x) \Rightarrow s_2}
       \end{prooftree}
     \]
@@ -830,7 +839,7 @@ typechecking.
   \item \textbf{Pi introduction} \\
     \[
       \begin{prooftree}
-        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E \Leftarrow \tau'(x)}
+        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash E \Leftarrow \tau'(x)}
         \infer1{\Gamma \vdash \lambda x, \, E \Leftarrow \Pi_{x : \tau}\tau'(x)}
       \end{prooftree}
     \]
@@ -843,7 +852,7 @@ typechecking.
       \begin{prooftree}
         \hypo{\Gamma \vdash T \Rightarrow s}
         \hypo{\Gamma \vdash T \Downarrow \tau}
-        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E \Rightarrow \tau'(x)}
+        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash E \Rightarrow \tau'(x)}
         \infer3{\Gamma \vdash \lambda \, (x : T), \, E \Rightarrow \Pi_{x : \tau}\tau'(x)}
       \end{prooftree}
     \]
@@ -865,7 +874,7 @@ typechecking.
     \[
       \begin{prooftree}
         \hypo{\Gamma \vdash E \Rightarrow \tau}
-        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E' \Rightarrow \tau'(x)}
+        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash E' \Rightarrow \tau'(x)}
         \hypo{\Gamma \vdash \tau'[x \mapsto E] \Downarrow \tau''}
         \infer3{\Gamma \vdash \text{let } x := E \text{ in } E' \Rightarrow \tau''}
       \end{prooftree}
@@ -876,7 +885,7 @@ typechecking.
       \begin{prooftree}
         \hypo{\Gamma \vdash A \Rightarrow s_1}
         \hypo{\Gamma \vdash A \Downarrow \tau}
-        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash B(x) \Rightarrow s_2}
+        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash B(x) \Rightarrow s_2}
         \infer3{\Gamma \vdash \Sigma_{x : A}B(x) \Rightarrow s_2}
       \end{prooftree}
     \]
@@ -911,15 +920,15 @@ typechecking.
       \end{prooftree}
     \]
 
-    \[
-      \begin{prooftree}
-        \hypo{E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
-        \hypo{\Gamma \vdash \tau_2[x \mapsto \fst E] \Downarrow \tau_2'}
-        \hypo{(y, \, \tau_2', \, \text{und}) :: (x, \, \tau_1, \, \text{und}) :: \Gamma
-              \vdash E' \rightarrow \tau}
-        \infer3{\Gamma \vdash \text{let } (x, \, y) := E \text{ in } E' \Rightarrow \tau}
-      \end{prooftree} 
-    \]
+    % \[
+    %   \begin{prooftree}
+    %     \hypo{E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+    %     \hypo{\Gamma \vdash \tau_2[x \mapsto \fst E] \Downarrow \tau_2'}
+    %     \hypo{(y, \, \tau_2', \, \text{und}) :: (x, \, \tau_1, \, \text{und}) :: \Gamma
+    %           \vdash E' \rightarrow \tau}
+    %     \infer3{\Gamma \vdash \text{let } (x, \, y) := E \text{ in } E' \Rightarrow \tau}
+    %   \end{prooftree} 
+    % \]
 
     % \item \textbf{Pair destructuring} \\
     % \[
@@ -943,6 +952,8 @@ typechecking.
        \infer2{\Gamma \vdash A + B \Rightarrow \Type} 
       \end{prooftree}
     \]
+    Note that this rule says that users can only make construct a coproduct
+    out of types that live in the universe $\Type$, not $\Kind$. 
 
     \item \textbf{Sum introduction} \\
     \[
@@ -1129,7 +1140,7 @@ afterwards.
       \hypo{\Gamma \vdash T \Rightarrow s}
       \hypo{\Gamma \vdash T \Downarrow \tau}
       \infer2{(\Gamma, \, \langle \axiom x : T \rangle, \, E) \Downarrow
-        ((x, \, \tau, \, \text{undefined}) :: \Gamma, \, \langle \rangle, \, x)}
+        ((x, \, \tau, \, \text{und}) :: \Gamma, \, \langle \rangle, \, x)}
     \end{prooftree}
   \]
 
