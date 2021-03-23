@@ -1,40 +1,90 @@
 open Containers
 
-type source_loc = Lexing.position * Lexing.position
+(* This module contains the AST of our langauge. It's parameterized over 'a
+  where 'a is the type of the data stored in variable nodes.
+  In our case, this is either a string or int.
+  The former corresponds to the parser's AST, which spit out by the parser
+  after parsing the concrete syntax. Here, variable names are strings that
+  the user input.
+  For the case when 'a is int, the AST corresponds to our internal AST, where
+  the int at the variable nodes represents its de bruijn index.
+*)
 
+(* Expressions are raw expressions together with their source locations. *)
 type 'a expr = 'a raw_expr Location.located 
+
+(* This is used to represent the Pi and Sigma types as well as the local let
+  binding, since they all have similar structure:
+    Pi (`var_name` : `expr`), `body`
+    Sigma (`var_name` : `expr`), `body`
+    Let `var_name` := `expr` in `body`
+  Note that `var_name` is bound in `body` but not `expr`.
+*)
 and 'a abstraction = {
   var_name : (string [@visitors.opaque] [@equal Utils.always_true]);
   expr : 'a expr;
   body : 'a expr
 }
+
+(* Used to represent the 2 clauses of match expressions, ie: 
+   inl `match_var` -> `match_body`
+   inr `match_var` -> `match_body`
+  *)
 and 'a match_binding = {
   match_var : (string [@visitors.opaque]);
   match_body : 'a expr;
 }
+
+(* Used to represent function application, the pair constructor for Sigma types
+  and Sum type. *)
 and 'a pair = {
   left : 'a expr;
   right : 'a expr
 }
+
+(* Raw expressions *)
 and 'a raw_expr =
+  (* 2 sorted universe *)
   | Type
   | Kind
+  (* Variables *)
   | Var of ('a [@visitors.opaque])
+
+  (* Pi types *)
   | Pi of 'a abstraction 
-  | Sigma of 'a  abstraction
+  | Fun of
+    { input_var : (string [@visitors.opaque] [@equal Utils.always_true]);
+      input_type : ('a expr option [@visitors.opaque]);
+      body : 'a expr }
+  | App of 'a pair
+
+  (* Sigma types *)
+  | Sigma of 'a abstraction
   | Pair of 'a pair
   | Fst of 'a expr
   | Snd of 'a expr
+
+  (* Sum types *)
   | Sum of 'a pair
-  | Match of {expr : 'a expr; inl : 'a match_binding; inr : 'a match_binding}
   | Inl of 'a expr
   | Inr of 'a expr
-  | Fun of {input_var : (string [@visitors.opaque] [@equal Utils.always_true]);
-            input_type : ('a expr option [@visitors.opaque]);
-            body : 'a expr}
-  | App of 'a pair
-  | Ascription of {expr : 'a expr; ascribed_type : 'a expr}
+  | Match of 
+    { expr : 'a expr; 
+      inl : 'a match_binding; 
+      inr : 'a match_binding }
+ 
+  (* Optional type ascriptons *)
+  | Ascription of { expr : 'a expr; ascribed_type : 'a expr }
+
+  (* Local let binding *)
   | Let of 'a abstraction
+
+  (* | Let_pair of
+    { left_var : (string [@visitors.opaque]);
+      right_var : (string [@visitors.opaque]);
+      binding : 'a expr;
+      body : 'a expr } *)
+
 [@@deriving show, fields, eq,
   visitors {variety="map"; ancestors=["Location.fold"]}, 
   visitors {variety="fold"; ancestors=["Location.fold"]}]
@@ -91,20 +141,17 @@ let shift shift_by =
         let match_body = self#shift_under_binder cutoff match_body in
         {match_var; match_body}
 
-      (* method! visit_Pi cutoff {input_var; input_type; output_type} =
-      let input_type = self#visit_expr cutoff input_type in
-      let output_type = self#visit_expr (self#incr_cutoff cutoff) output_type in
-      Pi {input_var; input_type; output_type} *)
-      
-      (* method! visit_Let cutoff var_name binding body =
+      (* method! visit_Let_pair cutoff left_var right_var binding body = 
         let binding = self#visit_expr cutoff binding in
-        let body = self#visit_expr (self#incr_cutoff cutoff) body in
-        Let {var_name; binding; body} *)
+        let body = self#shift_under_binder 2 cutoff body in
+        Let_pair {left_var; right_var; binding; body} *)
 
       (* Increment the cutoff whenever we go under a binder. *)
       method shift_under_binder {data=cutoff; _} expr =
         let new_cutoff = Location.locate @@ cutoff + 1 in
         self#visit_expr new_cutoff expr 
+
+      (* method shift_under_single_binder = self#shift_under_binder 1 *)
 
       (* Note that we don't need to impement the visit_App, visit_Type,
          visit_Kind and visit_Ascription methods since the Visitors package

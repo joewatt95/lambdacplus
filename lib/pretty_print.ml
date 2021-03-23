@@ -52,6 +52,8 @@ open Common
 
       method build_pair _ left right = (left, right)
 
+      (* method build_Let_pair _ = Printf.sprintf "let (%s, %s) := %s in %s" *)
+
       (* These last 2 methods aren't used. *)
       method build_located _ _ _ _ = ""
       method visit_'a _ _ = ""

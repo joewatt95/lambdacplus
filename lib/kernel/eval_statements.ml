@@ -4,7 +4,8 @@ module Norm = Normalization
 
 let eval_stmt (stmt : int Ast.stmt) ctx =
   match stmt.data with
-  | Ast.Check expr -> Typing.infer ctx expr, ctx
+  | Ast.Check expr -> 
+    Typing.infer ctx expr, ctx
 
   | Ast.Eval expr ->
     ignore @@ Typing.infer ctx expr;

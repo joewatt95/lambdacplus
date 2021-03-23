@@ -1,0 +1,6 @@
+constant A : Prop
+constant B : Prop
+
+axiom a_and_b : Sigma (_ : A), B
+
+check let (a, b) := a_and_b in b

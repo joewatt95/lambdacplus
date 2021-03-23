@@ -79,6 +79,7 @@ let raw_expr :=
   | INR; ~ = expr ;                                 <Ast.Inr>
   | match_expr
   | sum_expr 
+ (* | let_pair *)
 
 let var_name == VAR_NAME
 
@@ -159,3 +160,10 @@ let match_expr ==
     {expr;
      inl={match_var=var_left; match_body=body_left};
      inr={match_var=var_right; match_body=body_right}} }
+
+(*
+let let_pair == 
+  LET; LPAREN; left_var=var_name; COMMA; right_var=var_name; RPAREN; 
+  COLON_EQ; binding=expr; IN; body=expr; 
+  { Ast.Let_pair {left_var; right_var; binding; body} }
+*)

@@ -121,6 +121,15 @@ let rec parser_to_internal_raw_expr ctx (expr : string Ast.expr) =
   | Ast.Let abstraction ->
     Ast.Let (parser_to_internal_abstraction ctx abstraction)
 
+  (* | Ast.Let_pair {left_var; right_var; binding; body} ->
+    let binding = parser_to_internal_expr ctx binding in
+    let ctx = ctx
+              |> Kernel.Context.add_binding left_var
+              |> Kernel.Context.add_binding right_var              
+    in
+    let body = parser_to_internal_expr ctx body in
+    Ast.Let_pair {left_var; right_var; binding; body} *)
+
 and parser_to_internal_abstraction ctx ({var_name; expr; body} : string Ast.abstraction) =
     let expr = parser_to_internal_expr ctx expr in
     let new_ctx = Kernel.Context.add_binding var_name ctx in
@@ -248,6 +257,13 @@ let rec internal_to_parser_raw_expr ctx raw_expr =
     Ast.Sigma (internal_to_parser_abstraction ctx abstraction)
   | Ast.Let abstraction ->
     Ast.Let (internal_to_parser_abstraction ctx abstraction)
+
+  (* | Ast.Let_pair {left_var; right_var; binding; body} ->
+    let binding = internal_to_parser_expr ctx binding in
+    let left_var, ctx = pick_fresh_name left_var ctx in
+    let right_var, ctx = pick_fresh_name right_var ctx in
+    let body = internal_to_parser_expr ctx body in
+    Ast.Let_pair {left_var; right_var; binding; body} *)
 
   | Ast.Type -> Ast.Type
   | Ast.Kind -> Ast.Kind
