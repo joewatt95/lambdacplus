@@ -191,8 +191,9 @@ and check ~outer_expr ctx expr expected_type =
     |> check ctx ~outer_expr right 
     (* check ctx ~outer_expr expr2 @@ Norm.normalize ctx @@ Norm.beta_reduce expr2_type expr1 *)
 
-  | Ast.Inl expr, Sum {left; _} -> check ctx ~outer_expr expr left;
-  | Ast.Inr expr, Sum {right; _} -> check ctx ~outer_expr expr right;
+  | Ast.Inl expr, Sum {left=expected_type; _}
+  | Ast.Inr expr, Sum {right=expected_type; _} -> 
+    check ctx ~outer_expr expr expected_type;
 
   | _, _ ->
     let inferred_type = infer ctx expr in

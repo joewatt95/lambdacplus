@@ -10,4 +10,4 @@ def q_or_p :=
     | inl p -> (inr p : Q + P)
     end
 
-eval q_or_p
+check q_or_p

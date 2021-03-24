@@ -158,6 +158,20 @@ let shift shift_by =
          automatically handles all that boilerplate for us. *)
   end in v#visit_expr @@ Location.locate 0
 
+type 'a list_of_exprs = 'a expr list
+[@@deriving show]
+
+type 'a stmt = 'a raw_stmt Location.located 
+and 'a raw_stmt =
+  | Def of {var_name : string; binding : 'a expr}
+  | Axiom of {var_name : string; var_type : 'a expr}
+  | Check of 'a expr
+  | Eval of 'a expr
+[@@deriving show]
+
+type 'a list_of_stmts = 'a stmt list
+[@@deriving show]
+
 (* let shift shift_by (expr : expr) =
   let rec shift_raw_expr cutoff raw_expr =
     match raw_expr with
@@ -195,17 +209,3 @@ let shift shift_by =
     Loc.update_data expr @@ shift_raw_expr cutoff
 
   in shift_expr 0 expr *)
-
-type 'a list_of_exprs = 'a expr list
-[@@deriving show]
-
-type 'a stmt = 'a raw_stmt Location.located 
-and 'a raw_stmt =
-  | Def of {var_name : string; binding : 'a expr}
-  | Axiom of {var_name : string; var_type : 'a expr}
-  | Check of 'a expr
-  | Eval of 'a expr
-[@@deriving show]
-
-type 'a list_of_stmts = 'a stmt list
-[@@deriving show]
