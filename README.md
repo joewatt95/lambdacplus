@@ -105,7 +105,8 @@ More sample programs can be found in the `sample_programs` directory.
   - [ ] Unit, aka the singleton type, aka logical truth
   - [ ] Void, aka the empty type, aka logical falsity
 
-using for testing and experimentation.
+- `bin` currently contains only `main.ml` which contains the main entry point to
+  interact with our language.
 - `lib` is our library which contains all the code making our language work.
     - `parsing` contains all the functions we use for parsing.
         - `lexer.ml` contains our lexer.
