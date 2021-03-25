@@ -21,7 +21,7 @@ val length : t -> int
    Here we allow var_type and binding to be optional. This is useful because
    when we convert the parser's AST to our own, we only add var names to the
    context to convert them to de bruijn indices. *)
-val add_binding : string -> ?var_type:Ast.expr -> ?binding:Ast.expr -> t -> t
+val add_binding : string -> ?var_type:int Common.Ast.expr -> ?binding:int Common.Ast.expr -> t -> t
 
 (* Given a variable name and a context, find the first index corresponding to
 the variable. *)
@@ -32,14 +32,14 @@ val index_to_var_name : t -> int -> string
 
 (* Get the binding corresponding to a variable identified by its de bruijn 
 index. *)
-val get_binding : t -> int -> Ast.expr option
+val get_binding : t -> int -> int Common.Ast.expr option
 
 (* Get the type corresponding to a variable identified by its de bruijn 
 index. *)
-val get_type : t -> int -> Ast.expr
+val get_type : t -> int -> int Common.Ast.expr
 
 (* Check if a variable name is bound in a context. *)
 val is_var_name_bound : t -> string -> bool
 
-(* Convert a context to a string for printing. *)
-val show : t -> string
+(* Pretty print a context to stdout. *)
+val pretty_print : t -> unit

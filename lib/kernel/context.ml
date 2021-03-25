@@ -1,54 +1,46 @@
 (* Concrete implementation of the Context module.
-  Concretely, contexts are finger trees, as implemented in the BFT
-  module in the Batteries library.
-  Finger trees are purely functional random access lists with logarithmic time
-  concatenation and access, and amortized constant time insertion at both ends.
-*)
+  We use the purely functional random access list implementation as found
+  in the countainers library. *)
 
 open Containers
+open Common
 
 (* For convenience *)
-module BFT = BatFingerTree
+(* module BFT = BatFingerTree *)
 
 type entry = {
   var_name : string; (* The name of the variable*)
-  var_type : Ast.expr option; (* The type of the variable*)
-  binding  : Ast.expr option (* The binding of the varaiable *)
+  var_type : int Ast.expr option; (* The type of the variable*)
+  binding  : int Ast.expr option (* The binding of the varaiable *)
 } [@@deriving show, fields]
 
-type t = entry BFT.t
+type t = entry CCRAL.t
 
-let show ctx =
-  ctx
-  |> BFT.to_list
-  |> List.to_string show_entry ~start:"[" ~stop:"]" ~sep:";" 
+let pretty_print =
+  CCRAL.pp pp_entry @@ Format.formatter_of_out_channel stdout 
 
-let empty = BFT.empty
+let empty = CCRAL.empty
 
-let is_empty = BFT.is_empty
+let is_empty = CCRAL.is_empty
 
-let length = BFT.size
+let length = CCRAL.length
 
 let add_binding var_name ?var_type ?binding =
-  Fun.flip BFT.cons {var_name; var_type; binding}
-  (* Fun.flip BFT.cons {var_name; var_type; binding} %>
-    incr_indices *)
+  CCRAL.cons {var_name; var_type; binding}
 
-let var_name_to_index ctx string =
-  let rec find_index ctx current_index =
-    match BFT.front ctx with
-    | None -> None
-    | Some (tail, {var_name; _}) ->
-      if Stdlib.(=) var_name string
-      then Some current_index
-      else find_index tail @@ current_index + 1 
-  in find_index ctx 0
-
+let var_name_to_index ctx str =
+  ctx
+  |> CCRAL.mapi 
+      ~f:(fun index {var_name; _} ->
+            if Stdlib.(var_name = str) then index else -1) 
+  |> CCRAL.filter ~f:((<=) 0)
+  |> Fun.flip CCRAL.get 0
+  
 (* Uses accessor_fn to access a property of the entry record at a given
    index of a context. *)
 let get_from_index (ctx : t) (accessor_fn : entry -> 'a) (index : int) : 'a = 
   index
-  |> BFT.get ctx
+  |> CCRAL.get_exn ctx
   |> accessor_fn
 
 let index_to_var_name ctx = get_from_index ctx var_name 
@@ -82,7 +74,7 @@ let index_to_var_name ctx = get_from_index ctx var_name
 *)
 let get_and_shift_indices ctx accessor_fn index =
   index
-  |> BFT.get ctx
+  |> CCRAL.get_exn ctx
   |> accessor_fn
   |> CCOpt.map @@ Ast.shift @@ index + 1
 
@@ -90,10 +82,10 @@ let get_binding ctx = get_and_shift_indices ctx binding
 
 let get_type ctx index =
   index
-  |> get_and_shift_indices ctx var_type 
-  |> CCOpt.get_lazy @@ fun () -> raise Not_found
+  |> get_and_shift_indices ctx var_type
+  |> CCOpt.get_lazy @@ fun _ -> raise Not_found
 
 let is_var_name_bound var_name ctx =
     ctx 
     |> var_name_to_index var_name
-    |> CCOpt.is_some 
+    |> CCOpt.is_some

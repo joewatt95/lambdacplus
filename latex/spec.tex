@@ -73,6 +73,7 @@ normalize everything all the way.
 \item $\nu, \, \tau$ range over expressions that are in \textit{full} head normal
   form.
 \item $s$ ranges over all sorts, ie $\Type$ and $\Kind$.
+\item $n$ ranges over all neutral terms.
   \begin{comment}
     We define this set of expressions inductively via:
     \[ \begin{prooftree} \infer0{\Type} \end{prooftree} \]
@@ -87,6 +88,7 @@ normalize everything all the way.
     \[ \begin{prooftree} \infer0{\Type} \end{prooftree} \]
   \end{comment}
 \end{enumerate}
+TODO: Explain head normal form and neutral terms.
 
 We often add primes and subscripts, like $E'$ or $\nu_2$ while referring to these.
 
@@ -110,6 +112,8 @@ with our language.
       \infer0{\Kind}
     \end{prooftree}
   \]
+
+  Following the Calculus of Constructions, we have 2 sorts.
 
 \item \textbf{Variables} \\
   \[
@@ -171,7 +175,7 @@ with our language.
   as syntactic sugar for
   \[ \fun \, (x_0 : T_0) => (\fun \, (x_1 : T_1) => \dots (\fun (x_n : T_n) => E)) \]
 
-\item \textbf{Pi type} \\
+\item \textbf{Pi and Sigma type} \\
   \[
     \begin{prooftree}
       \hypo{x}
@@ -191,6 +195,33 @@ with our language.
   \] 
   As with functions, this is syntactic sugar for
   \[ \Pii \, (x_0 : A_0), \, (\Pii \, (x_1 : A_1), \,  \dots \, (\Pii \, (x_n : A_n), \, B)) \]
+
+  The syntax rules for Sigma, ie $\Sigmaa\, (x : A), B$. and syntactic sugar work
+  the same as with Pi above. 
+
+  \item \textbf{Sigma constructor} \\
+  \[
+    \begin{prooftree}
+      \hypo{E_1}
+      \hypo{E_2}
+      \infer2{(E_1, \, E_2)}
+    \end{prooftree}  
+  \]
+
+  \item \textbf{Sigma eliminators} \\
+  \[
+    \begin{prooftree}
+      \hypo{E}
+      \infer1{\fst \, E}
+    \end{prooftree}
+  \]
+
+  \[
+   \begin{prooftree}
+    \hypo{E}
+    \infer1{\snd \, E}
+   \end{prooftree}
+ \]
 
 \item \textbf{Type ascriptions} \\
   \[
@@ -213,6 +244,68 @@ with our language.
     \infer3{\text{let } x := E \text{ in } E'}
   \end{prooftree}
 \]
+
+\item \textbf{Sum type} \\
+\[
+  \begin{prooftree}
+    \hypo{A}
+    \hypo{B}
+    \infer2{A + B}
+  \end{prooftree}
+\]
+
+\item \textbf{Sum type constructor} \\
+\[
+  \begin{prooftree}
+    \hypo{E}
+    \infer1{\inl E}
+  \end{prooftree}
+\]
+
+\[
+  \begin{prooftree}
+    \hypo{E}
+    \infer1{\inr E}
+  \end{prooftree}
+\]
+
+These are meant for introducing the left and right components of a disjoint sum,
+ie $\inl E$ constructs an expression of type $A + B$ given an expression $E$ of
+type $A$. Similarly, $\inr E$ constructs an $A + B$ given $E$ of type $B$.
+
+\item \textbf{Sum type eliminator} \\
+Given expressions $E$ and variables $x$ and $y$, users can perform case analysis
+on a sum type via the \verb|match| construct below
+
+\begin{verbatim}
+  match E with
+  | inl x -> E1
+  | inr y -> E2
+  end
+\end{verbatim}
+
+The ordering of both clauses can be swapped so users can also enter
+\begin{verbatim}
+  match E with
+  | inr y -> E2
+  | inl x -> E1
+  end
+\end{verbatim}
+
+Note here that $x$ is bound in the expression that is $E1$, while $y$ is bound
+in $E2$.
+
+This \verb|match| construct is fashioned after the similarly named pattern
+matching construct in ML like languages.
+However, unlike those, we do not implement actual pattern matching since pattern
+matching for dependent types is not an easy problem.
+Our \verb|match| construct serves the sole purpose of allowing one to perform
+case analysis on sum.
+
+For convenience, we write 
+$\match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)$ to denote this
+construct.
+
 \end{enumerate}
 
 \subsection{Syntax for statements}
@@ -283,7 +376,8 @@ so this formalization is for purposes of metatheory only.
   \FV (\lambda \, x, \, E(x)) &:= \FV(E) \setminus \{x\} \\
   \FV (\lambda \, (x : T), \, E(x)) &:= \FV(T) \cup (\FV(E) \setminus \{x\}) \\
   \FV (\text{let } x := E \text{ in } E') &:= \FV((\lambda x, \, E') \,\, E) \\
-  \FV (\Pi_{x : A} B(x)) &:= \FV(A) \cup (\FV(B) \setminus \{x\})
+  \FV (\Pi_{x : A} B(x)) &:= \FV(A) \cup (\FV(B) \setminus \{x\}) \\
+  \FV (\Sigma_{x : A} B(x) &:= \FV(\Pi_{x : A} B(x))
 \end{align*}
 Note that in Pi expressions, the input type $A$ is actually an expression itself
 and so may contain free variables. It's important to note that the $\Pi_{x :
@@ -303,7 +397,7 @@ occurrences of $x$ by $E'$ in the expression $E$ yields another expression $E''$
   (\lambda y, \, E) [x \mapsto E'] &:= \lambda z, E[y \mapsto z][x \mapsto E'] \\
                  &\quad \quad \quad (\text{if } z \notin FV(E) \cup FV(E') \cup \{x\}) \\
   (\text{let } y := E \text{ in } E'') [x \mapsto E'] &:= 
-    ((\lambda y, \, E) \,\, E'') [x \mapsto E'] \\
+    ((\lambda y, \, E) \,\, E'') [x \mapsto E']
 \end{align*}
 
 We also define $(\lambda \, (x : T), \, E) [x \mapsto E']$
@@ -321,6 +415,9 @@ $T$. Note that we do not treat $x$ as being bound in $T$ here.
 For Pi expressions, $A$ is an expression and thus when substituting $x$ by
 $B'$, we must also perform the substitution in the input type $A$. However, as
 $x$ is not bound there, we need not worry about capturing it when substituting there. 
+
+For Sigma expressions, we define $(\Sigma_{x : A} B(x) [x \mapsto B']$ in a
+similar fashion as with the case of Pi.
 
 \section{Big step operational semantics}
 Here we choose to use a big-step semantics for our language as it fits nicer
@@ -342,9 +439,10 @@ Here we take the context, $\Gamma$, to be a list of triples of the form
 We will use $\emptyset$ to denote the empty context, and $::$ to refer to the
 list cons operation.
 
-The binding can be an expression or a sentinel value \verb|undefined|.
+The binding can be an expression or a special undefined value, which we denote by
+\verb|und|.
 Contexts have global scope and can be modified at the top level by \verb|def|
-and \verb|axiom| statements. This \verb|undefined| value is used for the
+and \verb|axiom| statements. This \verb|und| value is used for the
 bindings created by \verb|axiom| statements.
 
 We first give an overview of the main judgment forms which we will define in a
@@ -363,7 +461,13 @@ mutually recursive fashion.
 
   On the other hand, $\Gamma \vdash E \Rightarrow T$ formalizes the notion of
   \textit{type inference}. It says that from a context $\Gamma$, we may infer
-  the type of $E$ to be $T$.
+  the type of $E$ to be $T$. 
+  
+  It should be noted here that this isn't real type
+  inference using constraint solving and unification. It's a form of lightweight
+  type inference that can infer simple stuff like the return type of a function
+  application but not the type parameter in the polymorphic identity function
+  $\lambda \, (T : \Type) (x : T), \, x$.
 
 \item $\Gamma \vdash E \Downarrow \nu$ \\
   This $\Gamma \vdash \cdot \Downarrow \cdot$ relation is used in our definition of a
@@ -403,7 +507,7 @@ typechecking.
   \[
     \begin{prooftree}
       \hypo{\wf(\Gamma)}
-      \hypo{(x, \, \tau, \, \text{undefined}) \in \Gamma}
+      \hypo{(x, \, \tau, \, \text{und}) \in \Gamma}
       \infer2{\Gamma \vdash x \Downarrow x}
     \end{prooftree} 
   \]
@@ -415,7 +519,10 @@ typechecking.
       \infer1{\Gamma \vdash (E : T) \Downarrow \nu}
     \end{prooftree}
   \]
-  
+  This says type ascriptions do not play a role in computation. They're just
+  there to help the type checker figure things out and for users to communicate
+  their intentions.
+ 
 \item \textbf{Pi elimination, ie function application} \\
   \[
     \begin{prooftree}
@@ -425,6 +532,16 @@ typechecking.
       \infer3{\Gamma \vdash E_1 \,\, E_2 \Downarrow \nu}
     \end{prooftree}
   \]
+
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E_1 \Downarrow n}
+      \hypo{\Gamma \vdash E_2 \Downarrow \nu}
+      \infer2{\Gamma \vdash E_1 \,\, E_2 \Downarrow n \,\, \nu}
+    \end{prooftree}
+  \]
+
+  The last rule handle the cases of neutral expressions.
 
 \item \textbf{Normalizing under lambdas} \\
   \[
@@ -459,17 +576,125 @@ typechecking.
         \infer2{\Gamma \vdash \text{let } x := E \text{ in } E' \Downarrow \nu'}
       \end{prooftree}
     \]
+
+\item \textbf{Normalizing under pair constructor} \\
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E_1 \Downarrow \nu_1}
+        \hypo{\Gamma \vdash E_2 \Downarrow \nu_2}
+        \infer2{\Gamma \vdash \langle E_1, \, E_2 \rangle \Downarrow \langle
+          \nu_1, \, \nu_2 \rangle}
+      \end{prooftree}
+    \]
+
+  \item \textbf{Sigma} \\
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash A \Downarrow \tau}
+        \hypo{\Gamma \vdash B \Downarrow \tau'(x)}
+        \infer2{\Gamma \vdash \Sigma_{x : A}B(x) \Downarrow \Sigma_{x : \tau}\tau'(x)}
+      \end{prooftree}
+    \]
+
+  \item \textbf{Sigma elimination} \\
+   \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Downarrow (\nu_1, \, \nu_2)}
+      \infer1{\Gamma \vdash \fst E \Downarrow \nu_1}
+    \end{prooftree}
+  \]
+
+  \[
+   \begin{prooftree}
+    \hypo{\Gamma \vdash E \Downarrow n}
+     \infer1{\Gamma \vdash \fst E \Downarrow \fst n}
+   \end{prooftree}
+  \]
+
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Downarrow (\nu_1, \, \nu_2)}
+      \infer1{\Gamma \vdash \snd E \Downarrow \nu_2}
+    \end{prooftree}
+  \]
+
+  \[
+   \begin{prooftree}
+     \hypo{\Gamma \vdash E \Downarrow n}
+     \infer1{\Gamma \vdash \snd E \Downarrow \snd n}
+   \end{prooftree}
+  \]
+
+  % \[
+  %   \begin{prooftree}
+  %     \hypo{\Gamma \vdash E \Downarrow \langle \nu_1, \, \nu_2 \rangle}
+  %     \hypo{\Gamma \vdash E'[x_1 \mapsto \nu_1][x_2 \mapsto \nu_2] \Downarrow \nu}
+  %     \infer2{\Gamma \vdash \text{let } (x_1, \, x_2) := E \text{ in } E' \Downarrow \nu}
+  %   \end{prooftree}
+  % \]
+
+  \item \textbf{Normalizing under sum data constructors}
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Downarrow \nu}
+      \infer1{\Gamma \vdash \inl \, E \Downarrow \inl \, \nu}
+    \end{prooftree}  
+  \]
+
+  \[
+    \begin{prooftree}
+     \hypo{\Gamma \vdash E \Downarrow \inl \nu}
+     \infer1{\Gamma \vdash \inr \, E \Downarrow \nu}
+    \end{prooftree}  
+  \]
+
+  \item \textbf{Normalizing sum eliminator}
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Downarrow \inl \nu}
+      \hypo{\Gamma \vdash E_1[x \mapsto \nu] \Downarrow \nu_1}
+      \infer2{\Gamma \vdash 
+        \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)
+        \Downarrow \nu_1}
+    \end{prooftree}  
+  \]
+
+  \[
+   \begin{prooftree}
+     \hypo{\Gamma \vdash E \Downarrow \inr \nu}
+     \hypo{\Gamma \vdash E_2[y \mapsto \nu] \Downarrow \nu_2}
+     \infer2{\Gamma \vdash 
+       \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)
+       \Downarrow E_2[y \mapsto \nu_2]}
+   \end{prooftree}  
+  \]
+
+  \[
+   \begin{prooftree}
+    \hypo{\Gamma \vdash E \Downarrow n}
+      \hypo{\Gamma \vdash E_1 \Downarrow \nu_1}
+      \hypo{\Gamma \vdash E_2 \Downarrow \nu_2}
+      \infer3{\Gamma \vdash \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2) 
+               \Downarrow
+               \match(n, \, x \rightarrow \nu_1, \, y \rightarrow \nu_2) 
+               }
+   \end{prooftree}  
+  \]
+
 \end{enumerate}
 
 \subsubsection{Well formed context and typing judgments}
-\begin{definition} [Well formed type]
+\begin{definition} [Well formed type and type constructor]
   An expression $T$ is said to be a well-formed type with respect to the context
   $\Gamma$ if it satisfies
-  \[ \Gamma \vdash T \Leftarrow \Type \]
+  \[ \Gamma \vdash T \Leftarrow s \]
 
-  Informally, we can think of $\Type$ as the ``type of all types'' and so all
-  all well formed types are
-  expressions which we can check to have the type $\Type$.
+  Informally, we can think of $\Type$ as the ``type of all small types'' and so
+  all small well formed types are those expressions satisfying
+  $\Gamma \vdash T \Leftarrow \Type$, ie they can be checked to have type $\Type$.
+
+  Those $T$ satisfying $\Gamma \vdash T \Leftarrow \Kind$ instead represent the
+  type of type constructors. 
 \end{definition}
 
 \begin{definition} [Well formed context]
@@ -497,7 +722,7 @@ typechecking.
       \begin{prooftree}
         \hypo{\wf(\Gamma)}
         \hypo{\Gamma \vdash \tau \Rightarrow s}
-        \infer2{\wf ((x, \, \tau, \, \text{undefined}) :: \Gamma)}
+        \infer2{\wf ((x, \, \tau, \, \text{und}) :: \Gamma)}
       \end{prooftree}
     \]
   \end{enumerate}
@@ -530,10 +755,10 @@ typechecking.
         \infer3{\Gamma \vdash (E : T) \Rightarrow \tau}
       \end{prooftree}
     \]
-   Optional type ascriptions allow the interpreter to infer the type of an
-   expression. This is useful for lambda abstractions in particular because it's
-   kinda hard to infer the type of a function like $\lambda x, \, x$ without any
-   further contextual information.
+    Optional type ascriptions allow the interpreter to infer the type of an
+    expression. This is useful for lambda abstractions in particular because it's
+    kinda hard to infer the type of a function like $\lambda x, \, x$ without any
+    further contextual information.
 
     \[
       \begin{prooftree}
@@ -541,6 +766,10 @@ typechecking.
         \infer1{\Gamma \vdash (E : \Kind) \Rightarrow \Kind}
       \end{prooftree}
     \]
+    Note that the above rule doesn't allow users to assert that $(E : \Kind)$
+    since there is no $s$ with $\Gamma \vdash \Kind \Rightarrow s$.
+    This rule allows users to assert that $\Type$ and type constructors
+    have type $\Kind$.
     
   \item \textbf{Var} \\
     \[
@@ -552,6 +781,11 @@ typechecking.
     \]
     This says that we may infer the type of a variable if the type information
     is already in our context.
+    Note that in this rule, we also allow $\nu$ to be \verb|und|.
+
+    If there are multiple occurences of the variable $x$ in $\Gamma$, as is the case
+    when there is variable shadowing, we take the first occurence of $x$ in the
+    list that is $\Gamma$.
 
   \item \textbf{Type} \\
     \[
@@ -576,16 +810,17 @@ typechecking.
         \infer2{\Gamma \vdash E \Leftarrow \tau}
       \end{prooftree}
     \]
-    Given a context $\Gamma$, if we can compute the type of an expression $E$ to
-    be $\tau$, then if we are also given $\tau$, we can verify that $E$
-    indeed has type $\tau$.
+    This says that to check if $E$ has type $\tau$ with respect to a context
+    $\Gamma$, we may first infer the type of $E$. Suppose it is $\tau'$. Then
+    if we also find that $\tau$ and $\tau'$ are $\alpha$ and $\beta$ equivalent
+    to each other, we may conclude that $E$ indeed has type $\tau$.
 
   \item \textbf{Pi formation} \\
     \[
       \begin{prooftree}
         \hypo{\Gamma \vdash A \Rightarrow s_1}
         \hypo{\Gamma \vdash A \Downarrow \tau}
-        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash B(x) \Rightarrow s_2}
+        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash B(x) \Rightarrow s_2}
         \infer3{\Gamma \vdash \Pi_{x : A}B(x) \Rightarrow s_2}
       \end{prooftree}
     \]
@@ -604,21 +839,20 @@ typechecking.
   \item \textbf{Pi introduction} \\
     \[
       \begin{prooftree}
-        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E \Leftarrow \tau'(x)}
+        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash E \Leftarrow \tau'(x)}
         \infer1{\Gamma \vdash \lambda x, \, E \Leftarrow \Pi_{x : \tau}\tau'(x)}
       \end{prooftree}
     \]
-    Note that our language (currently at least) doesn't support optional type
-    ascriptions for input parameters, and so we don't have an inference rule
-    for inferring the type of a lambda abstraction. 
-
-    TODO: Say something about alpha renaming.
+    Note that in the event that the input variable of the lambda abstraction and
+    Pi are different, then we must perform an $\alpha$ renaming so that the
+    variable being bound in $(\lambda x, \, E)$ and $\Pi_{y : \tau} \tau'(y)$
+    are the same.
 
     \[
       \begin{prooftree}
         \hypo{\Gamma \vdash T \Rightarrow s}
         \hypo{\Gamma \vdash T \Downarrow \tau}
-        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E \Rightarrow \tau'(x)}
+        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash E \Rightarrow \tau'(x)}
         \infer3{\Gamma \vdash \lambda \, (x : T), \, E \Rightarrow \Pi_{x : \tau}\tau'(x)}
       \end{prooftree}
     \]
@@ -640,49 +874,113 @@ typechecking.
     \[
       \begin{prooftree}
         \hypo{\Gamma \vdash E \Rightarrow \tau}
-        \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E' \Rightarrow \tau'(x)}
+        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash E' \Rightarrow \tau'(x)}
         \hypo{\Gamma \vdash \tau'[x \mapsto E] \Downarrow \tau''}
         \infer3{\Gamma \vdash \text{let } x := E \text{ in } E' \Rightarrow \tau''}
       \end{prooftree}
     \]
 
-  % \item \textbf{Sigma formation} \\
-  %   \[
-  %     \begin{prooftree}
-  %       \hypo{\Gamma \vdash A \Leftarrow \Type}
-  %       \hypo{\Gamma \vdash A \Downarrow \tau}
-  %       \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash B(x) \Leftarrow \Type}
-  %       \infer3{\Gamma \vdash \Sigma_{x : A}B(x) \Rightarrow \Type}
-  %     \end{prooftree}
-  %   \]
+  \item \textbf{Sigma formation} \\
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash A \Rightarrow s_1}
+        \hypo{\Gamma \vdash A \Downarrow \tau}
+        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash B(x) \Rightarrow s_2}
+        \infer3{\Gamma \vdash \Sigma_{x : A}B(x) \Rightarrow s_2}
+      \end{prooftree}
+    \]
 
-  % \item \textbf{Sigma introduction} \\
-  %   \[
-  %     \begin{prooftree}
-  %       \hypo{\Gamma \vdash E_1 \Leftarrow \tau_1}
-  %       \hypo{\Gamma \vdash E_2 \Leftarrow \tau_2[x \mapsto E_1]}
-  %       \infer2{\Gamma \vdash \langle  E_1, \, E_2 \rangle \Leftarrow \Sigma_{x : \tau_1}\tau_2(x)}
-  %     \end{prooftree}
-  %   \]
-  %   Here we don't have a type inference rule because doing so would require us
-  %   to infer that $E_2$ has type $\tau_2[x \mapsto E_1]$ and then undo the
-  %   substitution to get $\tau_2(x)$.
+  \item \textbf{Sigma introduction} \\
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E_1 \Leftarrow \tau_1}
+        \hypo{\Gamma \vdash \tau_2[x \mapsto E_1] \Downarrow \tau_2'}
+        \hypo{\Gamma \vdash E_2 \Leftarrow \tau_2'}
+        \infer3{\Gamma \vdash \langle  E_1, \, E_2 \rangle \Leftarrow 
+          \Sigma_{x : \tau_1}\tau_2(x)}
+      \end{prooftree}
+    \]
+    Here we don't have a type inference rule because doing so would require us
+    to infer that $E_2$ has type $\tau_2[x \mapsto E_1]$ and then undo the
+    substitution to get $\tau_2(x)$.
 
-  % \item \textbf{Sigma elimination} \\
-  %   \[
-  %     \begin{prooftree}
-  %       \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau}\tau'(x)}
-  %       \infer1{\Gamma \vdash \fst E \Rightarrow \tau}
-  %     \end{prooftree}
-  %   \]
+  \item \textbf{Sigma elimination} \\
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+        \infer1{\Gamma \vdash \fst E \Rightarrow \tau_1}
+      \end{prooftree}
+    \]
 
-  %   \[
-  %     \begin{prooftree}
-  %       \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
-  %       \hypo{\Gamma \vdash \tau_2[x \mapsto \fst E] \Downarrow \tau_2'}
-  %       \infer2{\Gamma \vdash \snd E \Rightarrow \tau_2'}
-  %     \end{prooftree}
-  %   \]
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+        \hypo{\Gamma \vdash \tau_2[x \mapsto \fst E] \Downarrow \tau_2'}
+        \infer2{\Gamma \vdash \snd E \Rightarrow \tau_2'}
+      \end{prooftree}
+    \]
+
+    % \[
+    %   \begin{prooftree}
+    %     \hypo{E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+    %     \hypo{\Gamma \vdash \tau_2[x \mapsto \fst E] \Downarrow \tau_2'}
+    %     \hypo{(y, \, \tau_2', \, \text{und}) :: (x, \, \tau_1, \, \text{und}) :: \Gamma
+    %           \vdash E' \rightarrow \tau}
+    %     \infer3{\Gamma \vdash \text{let } (x, \, y) := E \text{ in } E' \Rightarrow \tau}
+    %   \end{prooftree} 
+    % \]
+
+    % \item \textbf{Pair destructuring} \\
+    % \[
+    %   \begin{prooftree}
+    %     \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+    %     % \hypo{(x_2, \, \tau_2[x \mapsto x_1], \text{und}) :: 
+    %     %   (x_1, \, \tau_1, \, \text{und}) :: 
+    %     %   \Gamma \vdash E' \Rightarrow \tau(x_1, \, x_2)}
+    %     \hypo{\Gamma \vdash E' [x_1 \mapsto \fst E][x_2 \mapsto \snd E]
+    %       \Rightarrow \tau}
+    %     \infer2{\Gamma \vdash (\text{let } (x_1, \, x_2) := E
+    %       \text{ in } E') \Rightarrow \tau}
+    %   \end{prooftree}
+    % \]
+
+    \item \textbf{Sum formation} \\
+    \[
+      \begin{prooftree}
+       \hypo{\Gamma \vdash A \Leftarrow \Type} 
+       \hypo{\Gamma \vdash B \Leftarrow \Type} 
+       \infer2{\Gamma \vdash A + B \Rightarrow \Type} 
+      \end{prooftree}
+    \]
+    Note that this rule says that users can only make construct a coproduct
+    out of types that live in the universe $\Type$, not $\Kind$. 
+
+    \item \textbf{Sum introduction} \\
+    \[
+      \begin{prooftree}
+       \hypo{\Gamma \vdash E \Leftarrow \tau_1} 
+       \infer1{\Gamma \vdash \inl E \Leftarrow \tau_1 + \tau_2} 
+      \end{prooftree}
+    \]
+
+    \[
+     \begin{prooftree}
+      \hypo{\Gamma \vdash E \Leftarrow \tau_2} 
+      \infer1{\Gamma \vdash \inr E \Leftarrow \tau_1 + \tau_2} 
+     \end{prooftree}
+   \]
+
+   \item \textbf{Sum elimination} \\
+    \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Rightarrow \tau_1 + \tau_2}
+      \hypo{(x, \, \tau_1, \, \text{und}) :: \Gamma \vdash E_1 \Rightarrow \tau_1'}
+      \hypo{(y, \, \tau_2, \, \text{und}) :: \Gamma \vdash E_2 \Rightarrow \tau_2'}
+      \hypo{\tau_1' \equiv_{\alpha \beta} \tau_2'}
+      \infer4{\Gamma \vdash \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)
+               \Rightarrow \tau_1'}
+    \end{prooftree}  
+  \]
 
   % \item \textbf{Local let binding} \\
   %   \[
@@ -732,66 +1030,50 @@ the context $\Gamma$.
 In the literature, such rules are called \textit{syntax directed}, as the
 algorithm closely follows the formalization of the corresponding judgments.
 
-TODO: This next part on admissible rules could be expanded on and better
-elaborated.
-
-It's worth noting that since we normalize everything to full head normal form,
-the following \textit{conversion rule} is a theorem:
-\begin{align*}
-  \begin{prooftree}
-    \hypo{\Gamma \vdash E \Leftarrow \tau}
-    \hypo{\tau \equiv_\beta \tau'}
-    \infer2[\text{Conv}]{\Gamma \vdash E \Leftarrow \tau'}
-  \end{prooftree}
-\end{align*}
-
-where we use $\tau \equiv_\beta \tau'$ to mean that we may obtain one from the other
-through a sequence of beta reductions. In this case, we say that $\tau$ and
-$\tau'$ are beta equivalent to each other.
-
-Also, since we will be using de bruijn indices internally, lambda terms will
-always be deemed equal up to alpha renaming, so we actually have
-
-\begin{align*}
-  \begin{prooftree}
-    \hypo{\Gamma \vdash E \Leftarrow \tau}
-    \hypo{\tau \equiv_{\alpha \beta} \tau'}
-    \infer2[\text{Conv}]{\Gamma \vdash E \Leftarrow \tau'}
-  \end{prooftree}
-\end{align*}
-Note the extra $\alpha$ in the subscript for $\equiv$ next to the $\beta$.
-
-Another kind of equivalence is \textit{eta equivalence}. To explain this,
-consider the terms $\lambda x, \, B \, x$ and $B$. Both of them have exactly the
-same behavior. This is one form of eta equivalence.
-In lambda calculus terms, the latter is obtained from the former by an eta
-reduction.
-
-Now, we may view the lambda as the data constructor for
-the Pi type and function application as the eliminator.
-Then the expression $\lambda x, \, B \, x$ is obtained from $B$ by first
-eliminating $B$ to obtain $B x$ and then using the lambda
-constructor to obtain $\lambda x, \, B \, x$.
-
-More generally, we say that 2 terms are eta equivalent to each other if one can
-be obtained from the other by eliminating the term and then reconstructing the
-original term using the constructor. For instance, if we had a binary coproduct,
-we could project out both components and then recombine them to obtain the
-original sum.
-
-Unfortunately our type system is intensional rather than extensional in
-that the following rule does \textit{not} hold: 
+It's worth noting that $\eta$ equivalence is not respected by our type system.
+By that we mean that the following rule does not hold:
 \[
   \begin{prooftree}
-    \hypo{\Gamma \vdash E \Leftarrow \tau}
-    \hypo{\tau =_\eta \tau'}
-    \infer2{\Gamma \vdash E \Leftarrow \tau'}
-  \end{prooftree}
+    \hypo{\Gamma \vdash E \Rightarrow \tau'}
+    \hypo{\tau \equiv_{\eta} \tau'}
+    \infer2{\Gamma \vdash E \Leftarrow \tau}
+ \end{prooftree}
 \]
+In other words, 2 types that are $\eta$ equivalent to one another will 
+\textit{not} be judged as equal types.
 
 One way to fix this is to allow the type checker to eta expand terms, via
-eliminating and then applying the data constructor, after
-computing the beta normal form.
+eliminating and then applying the data constructor, after computing the beta
+normal form. However, for simplicity, we chose to follow the original 
+formulation of the calculus of constructions and ignore this.
+
+% Another kind of equivalence is \textit{eta equivalence}. To explain this,
+% consider the terms $\lambda x, \, B \, x$ and $B$. Both of them have exactly the
+% same behavior. This is one form of eta equivalence.
+% In lambda calculus terms, the latter is obtained from the former by an eta
+% reduction.
+
+% Now, we may view the lambda as the data constructor for
+% the Pi type and function application as the eliminator.
+% Then the expression $\lambda x, \, B \, x$ is obtained from $B$ by first
+% eliminating $B$ to obtain $B x$ and then using the lambda
+% constructor to obtain $\lambda x, \, B \, x$.
+
+% More generally, we say that 2 terms are eta equivalent to each other if one can
+% be obtained from the other by eliminating the term and then reconstructing the
+% original term using the constructor. For instance, if we had a binary coproduct,
+% we could project out both components and then recombine them to obtain the
+% original sum.
+
+% Unfortunately our type system is intensional rather than extensional in
+% that the following rule does \textit{not} hold: 
+% \[
+%   \begin{prooftree}
+%     \hypo{\Gamma \vdash E \Leftarrow \tau}
+%     \hypo{\tau =_\eta \tau'}
+%     \infer2{\Gamma \vdash E \Leftarrow \tau'}
+%   \end{prooftree}
+% \]
 
 \subsection{Programs}
 To specify the big step semantics for evaluating programs, we first define the
@@ -857,8 +1139,8 @@ afterwards.
     \begin{prooftree}
       \hypo{\Gamma \vdash T \Rightarrow s}
       \hypo{\Gamma \vdash T \Downarrow \tau}
-      \infer2{(\Gamma, \, \langle \axiom x : T \rangle, \, E') \Downarrow
-        ((x, \, \tau, \, \text{undefined}) :: \Gamma, \, \langle \rangle, \, \tau)}
+      \infer2{(\Gamma, \, \langle \axiom x : T \rangle, \, E) \Downarrow
+        ((x, \, \tau, \, \text{und}) :: \Gamma, \, \langle \rangle, \, x)}
     \end{prooftree}
   \]
 
@@ -868,7 +1150,7 @@ afterwards.
       \hypo{\Gamma \vdash E \Rightarrow \tau}
       \hypo{\Gamma \vdash E \Downarrow \nu}
       \infer2{(\Gamma, \, \langle \deff x := E \rangle, \, E') \Downarrow
-        ((x, \, \tau, \, \nu) :: \Gamma, \, \langle \rangle, \, (\nu : \tau))}
+        ((x, \, \tau, \, \nu) :: \Gamma, \, \langle \rangle, \, x)}
     \end{prooftree}
   \]
 

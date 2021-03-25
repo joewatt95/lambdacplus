@@ -1,5 +1,5 @@
-val parse : Sedlexing.lexbuf -> Ast.list_of_stmts
+val parse : Sedlexing.lexbuf -> string Common.Ast.list_of_stmts
 
-val parse_string : string -> Ast.list_of_stmts
+val parse_string : string -> string Common.Ast.list_of_stmts
 
-val parse_channel : in_channel -> Ast.list_of_stmts
+val parse_channel : in_channel -> string Common.Ast.list_of_stmts

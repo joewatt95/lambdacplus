@@ -1,11 +1,15 @@
+open Common
+
 module Norm = Normalization
 
-let eval_stmt (stmt : Ast.stmt) ctx =
+let eval_stmt (stmt : int Ast.stmt) ctx =
   match stmt.data with
-  | Ast.Check expr -> Typing.infer ctx expr, ctx
+  | Ast.Check expr -> 
+    Typing.infer ctx expr, ctx
 
   | Ast.Eval expr ->
     ignore @@ Typing.infer ctx expr;
+    (* print_endline @@ Ast.show_expr Format.pp_print_int @@ Norm.normalize ctx expr; *)
     Norm.normalize ctx expr, ctx
 
   | Ast.Axiom {var_name; var_type} ->
@@ -23,6 +27,8 @@ let eval_stmt (stmt : Ast.stmt) ctx =
     let ctx =
       Context.add_binding var_name ~var_type:inferred_type ~binding:binding ctx 
     in
+    (* print_endline @@ Context.show ctx;
+    print_endline @@ Ast.show_expr Format.pp_print_int binding; *)
     binding, ctx
 
 let eval_stmts stmts ctx =
