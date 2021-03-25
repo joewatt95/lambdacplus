@@ -6,8 +6,8 @@
     "build": [ "dune build ./bin/main.bc", "dune build ./bin/main.bc.js" ]
   },
   "dependencies": {
-    "@opam/batteries": "~3.3.0",
     "@opam/containers": ">= 3.2 < 4.0",
+    "@opam/containers-data": ">= 3.2 < 4.0",
     "@opam/iter": "~1.2.1",
     "@opam/visitors": ">= 20210316",
     "@opam/ppx_deriving": "~5.2.1",

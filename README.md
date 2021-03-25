@@ -44,7 +44,7 @@ $ esy ./_esy/default/build/default/bin/main.bc
 
 To run the compiled js:
 ```shell
-$ esy ./_esy/default/build/default/bin/main.bc.js
+$ node ./_esy/default/build/default/bin/main.bc.js
 ```
 
 To ease testing, the `run_main.sh` script has been provided with the command

@@ -1,15 +1,10 @@
-(* Concrete implementation of the Context module.
-  Concretely, contexts are finger trees, as implemented in the BFT
-  module in the Batteries library.
-  Finger trees are purely functional random access lists with logarithmic time
-  concatenation and access, and amortized constant time insertion at both ends.
-*)
+(* Concrete implementation of the Context module. *)
 
 open Containers
 open Common
 
 (* For convenience *)
-module BFT = BatFingerTree
+(* module BFT = BatFingerTree *)
 
 type entry = {
   var_name : string; (* The name of the variable*)
@@ -17,29 +12,29 @@ type entry = {
   binding  : int Ast.expr option (* The binding of the varaiable *)
 } [@@deriving show, fields]
 
-type t = entry BFT.t
+type t = entry CCRAL.t
 
 let show ctx =
   ctx
-  |> BFT.to_list
+  |> CCRAL.to_list
   |> List.to_string show_entry ~start:"[" ~stop:"]" ~sep:";" 
 
-let empty = BFT.empty
+let empty = CCRAL.empty
 
-let is_empty = BFT.is_empty
+let is_empty = CCRAL.is_empty
 
-let length = BFT.size
+let length = CCRAL.length
 
 let add_binding var_name ?var_type ?binding =
-  Fun.flip BFT.cons {var_name; var_type; binding}
+  CCRAL.cons {var_name; var_type; binding}
   (* Fun.flip BFT.cons {var_name; var_type; binding} %>
     incr_indices *)
 
 let var_name_to_index ctx string =
   let rec find_index ctx current_index =
-    match BFT.front ctx with
+    match CCRAL.front ctx with
     | None -> None
-    | Some (tail, {var_name; _}) ->
+    | Some ({var_name; _}, tail) ->
       if Stdlib.(=) var_name string
       then Some current_index
       else find_index tail @@ current_index + 1 
@@ -47,9 +42,9 @@ let var_name_to_index ctx string =
 
 (* Uses accessor_fn to access a property of the entry record at a given
    index of a context. *)
-let get_from_index (ctx : t) (accessor_fn : entry -> 'a) (index : int) : 'a = 
+let get_from_index (ctx : t) (accessor_fn : entry -> 'a) (index : int) = 
   index
-  |> BFT.get ctx
+  |> CCRAL.get_exn ctx
   |> accessor_fn
 
 let index_to_var_name ctx = get_from_index ctx var_name 
@@ -83,7 +78,7 @@ let index_to_var_name ctx = get_from_index ctx var_name
 *)
 let get_and_shift_indices ctx accessor_fn index =
   index
-  |> BFT.get ctx
+  |> CCRAL.get_exn ctx
   |> accessor_fn
   |> CCOpt.map @@ Ast.shift @@ index + 1
 
@@ -91,7 +86,7 @@ let get_binding ctx = get_and_shift_indices ctx binding
 
 let get_type ctx index =
   index
-  |> get_and_shift_indices ctx var_type 
+  |> get_and_shift_indices ctx var_type
   |> CCOpt.get_lazy @@ fun () -> raise Not_found
 
 let is_var_name_bound var_name ctx =

@@ -1,6 +1,33 @@
 open Containers
 open Cs4215_dependent_types
 
+(* let prog = {|
+// Assume that A and B are types.
+constant A : Type
+constant B : Type
+
+// Assume that R is a binary relation on A x B.
+// Technically speaking, R is a predicate symbol and these are
+// represented by type constructors in the Curry Howard interpretation of
+// logic.
+constant R : A -> B -> Prop
+
+// Further assume that every (a : A) is related to some (b : B).
+axiom R_left_total : ∀ a : A, ∃ b : B, R a b
+
+// We define a choice function using the explicit witness provided by the
+// constructive existential quantifier.
+def f := λ (a : A) =>
+  let exists_b_Rab := R_left_total a in
+  fst exists_b_Rab
+
+// pf is a proof that given an arbitrary (a : A), a is really related to (f a). 
+def pf := λ (a : A) => snd (R_left_total a)
+
+// Use f and pf to witness the existential below.
+check ((f, pf) : ∃ f : A -> B, ∀ a : A, R a (f a))
+|} *)
+
 let () =
   (* For debugging *)
   Printexc.record_backtrace true;
@@ -8,6 +35,8 @@ let () =
   print_endline "Enter input:";
   let stmts, naming_ctx = 
     try
+      (* prog
+      |> Parsing.Parser.parse_string *)
       stdin
       |> Parsing.Parser.parse_channel
       |> Fun.flip Ast_conv.parser_to_internal_stmts 
