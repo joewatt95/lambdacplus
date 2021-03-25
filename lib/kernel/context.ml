@@ -1,4 +1,6 @@
-(* Concrete implementation of the Context module. *)
+(* Concrete implementation of the Context module.
+  We use the purely functional random access list implementation as found
+  in the countainers library. *)
 
 open Containers
 open Common
@@ -14,10 +16,8 @@ type entry = {
 
 type t = entry CCRAL.t
 
-let show ctx =
-  ctx
-  |> CCRAL.to_list
-  |> List.to_string show_entry ~start:"[" ~stop:"]" ~sep:";" 
+let pretty_print =
+  CCRAL.pp pp_entry @@ Format.formatter_of_out_channel stdout 
 
 let empty = CCRAL.empty
 
@@ -27,22 +27,18 @@ let length = CCRAL.length
 
 let add_binding var_name ?var_type ?binding =
   CCRAL.cons {var_name; var_type; binding}
-  (* Fun.flip BFT.cons {var_name; var_type; binding} %>
-    incr_indices *)
 
-let var_name_to_index ctx string =
-  let rec find_index ctx current_index =
-    match CCRAL.front ctx with
-    | None -> None
-    | Some ({var_name; _}, tail) ->
-      if Stdlib.(=) var_name string
-      then Some current_index
-      else find_index tail @@ current_index + 1 
-  in find_index ctx 0
-
+let var_name_to_index ctx str =
+  ctx
+  |> CCRAL.mapi 
+      ~f:(fun index {var_name; _} ->
+            if Stdlib.(var_name = str) then index else -1) 
+  |> CCRAL.filter ~f:((<=) 0)
+  |> Fun.flip CCRAL.get 0
+  
 (* Uses accessor_fn to access a property of the entry record at a given
    index of a context. *)
-let get_from_index (ctx : t) (accessor_fn : entry -> 'a) (index : int) = 
+let get_from_index (ctx : t) (accessor_fn : entry -> 'a) (index : int) : 'a = 
   index
   |> CCRAL.get_exn ctx
   |> accessor_fn
@@ -87,9 +83,9 @@ let get_binding ctx = get_and_shift_indices ctx binding
 let get_type ctx index =
   index
   |> get_and_shift_indices ctx var_type
-  |> CCOpt.get_lazy @@ fun () -> raise Not_found
+  |> CCOpt.get_lazy @@ fun _ -> raise Not_found
 
 let is_var_name_bound var_name ctx =
     ctx 
     |> var_name_to_index var_name
-    |> CCOpt.is_some 
+    |> CCOpt.is_some

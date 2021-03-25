@@ -41,5 +41,5 @@ val get_type : t -> int -> int Common.Ast.expr
 (* Check if a variable name is bound in a context. *)
 val is_var_name_bound : t -> string -> bool
 
-(* Convert a context to a string for printing. *)
-val show : t -> string
+(* Pretty print a context to stdout. *)
+val pretty_print : t -> unit
