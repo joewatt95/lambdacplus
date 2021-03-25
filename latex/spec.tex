@@ -15,7 +15,6 @@ inference.
 
 Our language is a dependently typed lambda calculus, based on the calculus of
 constructions.
-Originally, it started as a 
 The main references which we base our language on are
 \href{https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf}{this paper on $\lambda
   \Pi$} and \href{https://github.com/andrejbauer/spartan-type-theory}{this
@@ -1122,7 +1121,8 @@ formulation of the calculus of constructions and ignore this.
 
 Programs in our language are nonempty sequences of statements, with each
 statement being built from some expression.
-Following Plotkin's approach to structural operational semantics, we formalize
+Following \href{https://web.eecs.umich.edu/~weimerw/2014-6610/reading/plotkin81structural.pdf}
+{Plotkin's approach} to structural operational semantics, we formalize
 the execution of program by defining a \textit{transition system}.
 
 Such transition systems behave like finite automata, although they aren't
@@ -1148,6 +1148,7 @@ With this view, given a program, $\langle S_0; \, \dots; \, S_n
 \begin{enumerate}
 \item \textbf{Initial configuration} \\
   $ (\emptyset, \, \langle S_0; \, \dots; \, S_n \rangle, \, \Type)$
+
   Initially, our global context is empty. Also, \verb|Type| is merely a dummy
   value and could have very well be replaced by \verb|Kind|.
 
@@ -1223,6 +1224,18 @@ afterwards.
   \]
 
 \end{enumerate}
+
+\subsubsection{Putting the transition system together}
+Letting $S$ denote the (infinite) set of all configurations, and defining
+\[ F := \{ (\Gamma, \, \langle \rangle, \, E) \in S \, | \, E \text{ expression} \} \]
+
+we obtain a transition system, given by the tuple
+\begin{align*}
+  \langle S, \, \Downarrow, \, 
+  (\emptyset, \, \langle S_0; \, \dots; \, S_n \rangle, \, \Type), \, F \rangle
+\end{align*}
+
+Notice how our formalization mimics the definition of a finite state automaton.
 
 \subsubsection{Output expression of evaluating a program}
 With these rules, given a user-entered program, say $\langle S_0;
