@@ -13,8 +13,9 @@ this language is essentially an extension of the Calculus of Constructions, with
 stuff like top level definitions and lightweight Typed Source esque type
 inference.
 
-Our language is a dependently typed lambda calculus, based on what is known in
-the literature as $\lambda P$ or $\lambda \Pi$.
+Our language is a dependently typed lambda calculus, based on the calculus of
+constructions.
+Originally, it started as a 
 The main references which we base our language on are
 \href{https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf}{this paper on $\lambda
   \Pi$} and \href{https://github.com/andrejbauer/spartan-type-theory}{this
@@ -364,26 +365,42 @@ $\fun \, (x : T) => x$.
 Finally, we use $\Pi_{x : A}B(x)$ to abbreviate $\Pii \, (x : A), \, B$.
 
 \section{Capture avoiding substitutions}
-Here we define the notion of capture avoiding substitutions. For this, we first
-formalize the notion of free variables.
-Practically, we will implement substitutions and stuff using de bruijn indices
-so this formalization is for purposes of metatheory only.
+Here we define the notion of capture avoiding substitutions. For this, we
+formalize the notion of free variables and substitution.
 
 \subsection{Free variables}
+We define the set of free variables of an expression $E$, ie $\FV(E)$ recursively.
 \begin{align*}
   \FV (x) &:= \{x\} \\
   \FV (E_1 \, E_2) &:= \FV(E_1) \cup \FV(E_2) \\
   \FV (\lambda \, x, \, E(x)) &:= \FV(E) \setminus \{x\} \\
   \FV (\lambda \, (x : T), \, E(x)) &:= \FV(T) \cup (\FV(E) \setminus \{x\}) \\
   \FV (\text{let } x := E \text{ in } E') &:= \FV((\lambda x, \, E') \,\, E) \\
-  \FV (\Pi_{x : A} B(x)) &:= \FV(A) \cup (\FV(B) \setminus \{x\}) \\
-  \FV (\Sigma_{x : A} B(x) &:= \FV(\Pi_{x : A} B(x))
+  \FV (\Pi_{x : A} B(x)) &:= \FV(A) \cup (\FV(B) \setminus \{x\})
 \end{align*}
 Note that in Pi expressions, the input type $A$ is actually an expression itself
 and so may contain free variables. It's important to note that the $\Pi_{x :
   A}$, like a lambda is a binder binding $x$ in $B$. However, this does not bind
 $x$ in the input type, $A$. If $x$ does appear in the input type $A$, then it is
 free there.
+
+\begin{align*}
+ \FV (\Sigma_{x : A} B(x) &:= \FV(\Pi_{x : A} B(x))
+\end{align*}
+
+Sigma expressions follow the same rules as with Pi expressions, with $x$ being
+bound in the output type $B$ but not in the input type $A$.
+
+\begin{align*}
+  \FV (A + B) &:= \FV(A) \cup \FV(B) \\
+  \FV (\match(E, x \rightarrow E_1, y \rightarrow E_2)) &:= 
+    E \cup (E_1 \setminus \{x\}) \cup (E_2 \setminus \{y\}))
+\end{align*}
+Note that in match expressions, $x$ is bound in $E_1$ and $y$ is bound in $E_2$.
+
+For the expressions $\fst \, E$, $\snd \, E$, $\inl \, E$ and $\inr \, E$, the
+set of free variables is precisely $\FV(E)$, since those keywords are treated
+like constants.
 
 \subsection{Substitution}
 Here we define $E [x \mapsto E'] := E''$ to mean substituting all free
@@ -401,7 +418,7 @@ occurrences of $x$ by $E'$ in the expression $E$ yields another expression $E''$
 \end{align*}
 
 We also define $(\lambda \, (x : T), \, E) [x \mapsto E']$
-similar to the case withouit the optional type annotation above. The only
+similar to the case without the optional type annotation above. The only
 difference here is we also need to substitute $x$ for $E'$ in the type annotation,
 $T$. Note that we do not treat $x$ as being bound in $T$ here.
 
@@ -419,9 +436,15 @@ $x$ is not bound there, we need not worry about capturing it when substituting t
 For Sigma expressions, we define $(\Sigma_{x : A} B(x) [x \mapsto B']$ in a
 similar fashion as with the case of Pi.
 
+The substitution rules for \verb|fst|, \verb|snd|, \verb|inl| and \verb|inr| are
+trivial and thus ommitted.
+
+Finally, we avoid specifying substitution formally for match expressions since it's
+tedious. The key thing to note is that in the expression
+$\match(E, x \rightarrow E_1, y \rightarrow E_2)$, $x$ is bound in $E_1$ and $y$
+is bound in $E_2$.
+
 \section{Big step operational semantics}
-Here we choose to use a big-step semantics for our language as it fits nicer
-with the functional style that we're using to write our recursive interpreter with.
 \begin{comment}
   https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf
   http://math.andrej.com/2012/11/08/how-to-implement-dependent-type-theory-i/
@@ -430,9 +453,16 @@ with the functional style that we're using to write our recursive interpreter wi
   https://www.cs.cornell.edu/courses/cs4110/2010fa/lectures/lecture03.pdf
 \end{comment}
 
+Here we choose to use a big-step semantics for our language as it fits nicer
+with the functional style that we're using to write our recursive interpreter with.
+We follow the approach of Plotkin, as described in his
+\href{https://web.eecs.umich.edu/~weimerw/2014-6610/reading/plotkin81structural.pdf}
+{famous technical report} on structural operational semantics.
+
 \subsection{Expressions}
-\subsubsection{Contexts and judgment forms}
-Here we take the context, $\Gamma$, to be a list of triples of the form
+\subsubsection{Contexts}
+Here we take the context, $\Gamma$, to be a list, ie a finite sequence, of triples
+of the form
 \begin{align*}
   (\text{variable name}, \, \text{type of variable}, \, \text{binding})
 \end{align*}
@@ -441,12 +471,16 @@ list cons operation.
 
 The binding can be an expression or a special undefined value, which we denote by
 \verb|und|.
-Contexts have global scope and can be modified at the top level by \verb|def|
-and \verb|axiom| statements. This \verb|und| value is used for the
-bindings created by \verb|axiom| statements.
+Contexts have global scope and the top level statements \verb|def|
+and \verb|axiom|, return new contexts with updated bindings.
+The special \verb|und| value is used for the bindings created by \verb|axiom|
+statements and when we want to add a binding for type checking purposes.
+In such scenarios, we don't particularly care about the actual binding. We're
+only interested in the type of the variable. 
 
+\subsubsection{Overview of judgement forms}
 We first give an overview of the main judgment forms which we will define in a
-mutually recursive fashion.
+mutually recursive fashion in the subsequent few sections.
 
 \begin{enumerate}
 \item $\wf(\Gamma)$ \\
@@ -470,7 +504,7 @@ mutually recursive fashion.
   $\lambda \, (T : \Type) (x : T), \, x$.
 
 \item $\Gamma \vdash E \Downarrow \nu$ \\
-  This $\Gamma \vdash \cdot \Downarrow \cdot$ relation is used in our definition of a
+  This $\cdot \vdash \cdot \Downarrow \cdot$ relation is used in our definition of a
   big-step operational semantics to normalize expressions to their full head
   normal form.
   It says that with respect to a context $\Gamma$ containing global bindings, we
@@ -481,11 +515,15 @@ mutually recursive fashion.
 
 \subsubsection{Normalizing expressions}
 Before defining our type system given by the 2 judgments,
-$\Gamma \vdash \cdot \Leftarrow \cdot$ and $\Gamma \vdash \cdot \Rightarrow
-\cdot$, we must first define $\Gamma \vdash \cdot \Downarrow \cdot$, the big
+$\cdot \vdash \cdot \Leftarrow \cdot$ and $\cdot \vdash \cdot \Rightarrow
+\cdot$, we must first define $\cdot \vdash \cdot \Downarrow \cdot$, the big
 step semantics for evaluating expressions. This is because types are now
 expression and we will actually need to perform normalization while
 typechecking.
+
+It should be noted at this poinnt that in our semantics to follow, we only normalize
+terms after we typecheck them. This means that for types, we always check that
+they are well formed before performing any computations on them.
 
 \begin{enumerate}
 \item \textbf{Type}
@@ -511,6 +549,10 @@ typechecking.
       \infer2{\Gamma \vdash x \Downarrow x}
     \end{prooftree} 
   \]
+  
+  If there are multiple occurences of the variable $x$ in the context $\Gamma$,
+  as is the case when there is variable shadowing, we take the first occurence
+  of $x$ in the list that is $\Gamma$.
 
 \item \textbf{Type ascriptions} \\
   \[
@@ -694,7 +736,8 @@ typechecking.
   $\Gamma \vdash T \Leftarrow \Type$, ie they can be checked to have type $\Type$.
 
   Those $T$ satisfying $\Gamma \vdash T \Leftarrow \Kind$ instead represent the
-  type of type constructors. 
+  type of type constructors. In other words, the type of a type constructor is a
+  Kind, just like in Haskell. 
 \end{definition}
 
 \begin{definition} [Well formed context]
@@ -731,8 +774,8 @@ typechecking.
 \begin{definition} [Bidrectional typechecking]
   Here we define the 2 \textit{mutually recursive} relations
   \begin{enumerate}
-  \item$\Gamma \vdash \cdot \Rightarrow \cdot $ which corresponds to \textit{inference}
-  \item$\Gamma \vdash \cdot \Leftarrow \cdot$ which corresponds to \textit{checking}
+  \item$\cdot \vdash \cdot \Rightarrow \cdot $ which corresponds to \textit{inference}
+  \item$\cdot \vdash \cdot \Leftarrow \cdot$ which corresponds to \textit{checking}
   \end{enumerate}
 
   The idea is that there are some expressions for which it is easier to
@@ -766,9 +809,9 @@ typechecking.
         \infer1{\Gamma \vdash (E : \Kind) \Rightarrow \Kind}
       \end{prooftree}
     \]
-    Note that the above rule doesn't allow users to assert that $(E : \Kind)$
+    Note that the first rule doesn't allow users to assert that $(E : \Kind)$
     since there is no $s$ with $\Gamma \vdash \Kind \Rightarrow s$.
-    This rule allows users to assert that $\Type$ and type constructors
+    This second rule allows users to assert that $\Type$ and type constructors
     have type $\Kind$.
     
   \item \textbf{Var} \\
@@ -782,10 +825,6 @@ typechecking.
     This says that we may infer the type of a variable if the type information
     is already in our context.
     Note that in this rule, we also allow $\nu$ to be \verb|und|.
-
-    If there are multiple occurences of the variable $x$ in $\Gamma$, as is the case
-    when there is variable shadowing, we take the first occurence of $x$ in the
-    list that is $\Gamma$.
 
   \item \textbf{Type} \\
     \[
@@ -1076,12 +1115,22 @@ formulation of the calculus of constructions and ignore this.
 % \]
 
 \subsection{Programs}
-To specify the big step semantics for evaluating programs, we first define the
-notion of a \textit{configuration}.
 \begin{comment}
   Follows this approach:
   https://www.cs.cornell.edu/courses/cs6110/2013sp/lectures/lec05-sp13.pdf
 \end{comment}
+
+Programs in our language are nonempty sequences of statements, with each
+statement being built from some expression.
+Following Plotkin's approach to structural operational semantics, we formalize
+the execution of program by defining a \textit{transition system}.
+
+Such transition systems behave like finite automata, although they aren't
+restricted to having finitely many states or transitions. In the next section,
+we define the notion of a configuration, which plays the same role
+as states in automata. Thereafter, we formalize the big-step transition relation
+for executing programs.
+
 \subsubsection{Configuration/state of program}
 A configuration has the form
 \begin{align*}
@@ -1099,18 +1148,25 @@ With this view, given a program, $\langle S_0; \, \dots; \, S_n
 \begin{enumerate}
 \item \textbf{Initial configuration} \\
   $ (\emptyset, \, \langle S_0; \, \dots; \, S_n \rangle, \, \Type)$
+  Initially, our global context is empty. Also, \verb|Type| is merely a dummy
+  value and could have very well be replaced by \verb|Kind|.
+
 \item \textbf{Final configurations} \\
   These are all configurations of the form
   $(\Gamma, \, \langle \rangle, \, E)$
 \end{enumerate}
 
-In the next section, we define the big-step relation for programs $\cdot
+In the next section, we define the big-step transition relation for programs $\cdot
 \Downarrow \cdot$ using
 this notion of a configuration.
 
 \subsubsection{Big step semantics for programs}
-We interleave type checking and evaluation, ie we type check and then evaluate
-each statement, one at a time, carrying the context along as we go.
+We define the big step transition relation, $\cdot \Downarrow \cdot$, via a
+new judgment form in our calculus.
+
+It should be noted that in the rules below, we interleave type checking and 
+evaluation, ie we type check and then evaluate each statement, one at a time,
+carrying the context along as we go.
 We do not statically type check the whole program first, then evaluate
 afterwards.
 
@@ -1178,6 +1234,6 @@ output expression of a program to be the $E$ such that
 \end{align*}
 
 In other words, the expression output to the user is the expression obtained by
-beginning with the initial configuration and then recursively evaluating it
+beginning with the initial configuration and then recursively evaluating
 until we reach a final configuration.
 \end{document}
