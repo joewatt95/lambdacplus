@@ -1386,11 +1386,9 @@ Following \href{https://web.eecs.umich.edu/~weimerw/2014-6610/reading/plotkin81s
 {Plotkin's approach} to structural operational semantics, we formalize
 the execution of program by defining a \textit{transition system}.
 
-Such transition systems behave like finite automata, although they aren't
-restricted to having finitely many states or transitions. In the next section,
-we define the notion of a configuration, which plays the same role
-as states in automata. Thereafter, we formalize the big-step transition relation
-for executing programs.
+In the next section, we define the notion of a configuration, which plays the
+same role as states in automata. Thereafter, we formalize the big-step 
+transition relation for executing programs.
 
 \subsubsection{Configuration/state of program}
 A configuration has the form
@@ -1436,7 +1434,7 @@ afterwards.
 \item \textbf{Check} \\
   \[
     \begin{prooftree}
-      \hypo{\Gamma \vdash E \Rightarrow \tau}
+      \hypo{\Gamma \vdash E \Rightarrow s}
       \infer1{(\Gamma, \, \langle \checkk \, E \rangle, \, E') \Downarrow
         (\Gamma, \, \langle \rangle, \, \tau)}
     \end{prooftree}
@@ -1445,7 +1443,7 @@ afterwards.
 \item \textbf{Eval} \\
   \[
     \begin{prooftree}
-      \hypo{\Gamma \vdash E \Rightarrow \tau}
+      \hypo{\Gamma \vdash E \Rightarrow s}
       \hypo{\Gamma \vdash E \Downarrow \nu}
       \infer2{(\Gamma, \, \langle \evall \, E \rangle, \, E') \Downarrow
         (\Gamma, \, \langle \rangle, \, \nu)}
@@ -1465,7 +1463,7 @@ afterwards.
 \item \textbf{Def} \\
   \[
     \begin{prooftree}
-      \hypo{\Gamma \vdash E \Rightarrow \tau}
+      \hypo{\Gamma \vdash E \Rightarrow s}
       \hypo{\Gamma \vdash E \Downarrow \nu}
       \infer2{(\Gamma, \, \langle \deff x := E \rangle, \, E') \Downarrow
         ((x, \, \tau, \, \nu) :: \Gamma, \, \langle \rangle, \, x)}
