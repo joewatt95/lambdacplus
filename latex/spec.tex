@@ -5,8 +5,7 @@
 
 \begin{document}
 
-\section{Preliminaries}
-\subsection{Overview}
+\section{Introduction}
 
 BIG TODO: Write something about Pure Type Systems and the lambda cube and how
 this language is essentially an extension of the Calculus of Constructions, with
@@ -66,39 +65,43 @@ normalize all terms to full head normal form.
 TODO: explain why our language is strongly normalizing and why this allows us to
 normalize everything all the way.
 
-\subsection{Metavariables}
-\begin{enumerate}
-\item $A$, $B$, $T$, $E$ range over expressions. 
-\item $x$, $y$, $z$ range over variables. 
-\item $\nu, \, \tau$ range over expressions that are in \textit{full} head normal
-  form.
-\item $s$ ranges over all sorts, ie $\Type$ and $\Kind$.
-\item $n$ ranges over all neutral terms.
-  \begin{comment}
-    We define this set of expressions inductively via:
-    \[ \begin{prooftree} \infer0{\Type} \end{prooftree} \]
-    \[ \begin{prooftree} \infer0{x} \end{prooftree} \]
-    \[ \begin{prooftree} \hypo{\nu} \infer1{x} \end{prooftree} \]
-    \[ \begin{prooftree}
-        \hypo{x}
-        \hypo{\tau}
-        \hypo{\tau'}
-        \infer3{\Pi_{x : \tau} \tau'}
-      \end{prooftree} \]
-    \[ \begin{prooftree} \infer0{\Type} \end{prooftree} \]
-  \end{comment}
-\end{enumerate}
-TODO: Explain head normal form and neutral terms.
-
-We often add primes and subscripts, like $E'$ or $\nu_2$ while referring to these.
-
 \section{Syntax}
 Here we describe the concrete ascii syntax for our language.
-We have a separate syntax for expressions and statements, the latter of which
-function like top-level commands. These will be used by the user to interact
+We also describe the syntactic sugar users can enter. This includes unicode
+symbols.
+
+Note that we have separate syntax for expressions and statements, the latter of 
+which function like top-level commands. These will be used by the user to interact
 with our language.
 
 \subsection{Syntax for expressions}
+We define the set of valid expressions of our language as the initial algebra, 
+ie least prefixed point, of the endofunctor
+\begin{align*}
+  F : X \mapsto \{ E \, | \, \{ E_0, E_1, \dots, E_n \} \subseteq X \text{ and }
+    \begin{prooftree}   
+      \hypo{E_0}
+      \hypo{E_1}
+      \hypo{\dots}
+      \hypo{E_n}
+      \infer4{E}
+    \end{prooftree}
+    \text{ is a rule instance}
+  \} 
+\end{align*}
+on some complete powerset lattice.
+Such a construction can be justified by the famous fixed point theorems of Tarski
+and Kleene.
+
+Before we list the full set of rules, we first introduce some metavariables.
+
+\subsubsection{Metavariables}
+\begin{enumerate}
+  \item $A$, $B$, $T$, $E$ range over expressions. 
+  \item $x$, $y$, $z$ range over variables.
+\end{enumerate}
+
+\subsubsection{Syntax rules}
 \begin{enumerate}
 \item \textbf{Sorts} \\
   \[
@@ -113,7 +116,18 @@ with our language.
     \end{prooftree}
   \]
 
-  Following the Calculus of Constructions, we have 2 sorts.
+  Our language has 2 sorts, just like the original CoC. In the spirit of Curry
+  Howard, our language makes no distinction between types and propositions and
+  so users can enter \verb|Prop| (short for ``proposition") in place of \verb|Type|.
+
+  This syntactix sugar has the unfortunate consequence of conflating the syntactic
+  roles of propositions and types.
+  Types which we think of as data can be used interchangeably with types which
+  we view as propositions.
+  
+  This may be counter-intuitive for users because in first (or higher) order
+  logic, there is a clear distinction between terms and well-formed formulae,
+  which belong to different syntactic categories.
 
 \item \textbf{Variables} \\
   \[
@@ -175,6 +189,9 @@ with our language.
   as syntactic sugar for
   \[ \fun \, (x_0 : T_0) => (\fun \, (x_1 : T_1) => \dots (\fun (x_n : T_n) => E)) \]
 
+  As syntactic sugar, we allow users to use \verb|lambda| and $\lambda$ in place
+  of \verb|fun|. 
+
 \item \textbf{Pi and Sigma type} \\
   \[
     \begin{prooftree}
@@ -196,8 +213,21 @@ with our language.
   As with functions, this is syntactic sugar for
   \[ \Pii \, (x_0 : A_0), \, (\Pii \, (x_1 : A_1), \,  \dots \, (\Pii \, (x_n : A_n), \, B)) \]
 
-  The syntax rules for Sigma, ie $\Sigmaa\, (x : A), B$. and syntactic sugar work
-  the same as with Pi above. 
+  If there is only one pair of input type and type annotation following the \verb|Pi|,
+  the brackets may be ommitted so users can enter \verb|Pi x : A, B| instead of
+  \verb|Pi (x : A), B|.
+
+  The syntax rules for Sigma, ie $\Sigmaa\, (x : A), B$ and the above syntactic
+  sugar work the same as with Pi above. 
+
+  We also allow users to enter, in place of \verb|Pi|, \verb|forall| or using
+  unicode, $\forall$ and $\Pi$.
+  Similarly, users can enter \verb|exists|, $\Sigma$ and $\exists$ instead of
+  \verb|Sigma|.
+
+  In the event that the output type does not depend on the input type, users
+  may enter \verb|A -> B| and \verb|A * B| in place of 
+  \verb|Pi (x : A), B| and \verb|Sigma (x : A), B|.
 
   \item \textbf{Sigma constructor} \\
   \[
@@ -232,7 +262,7 @@ with our language.
     \end{prooftree}
   \]
   This functions similarly to other functional languages in that it's used
-  mainly to provide a type annotation. For instance, it can be used to help the
+  mainly to provide type annotations. For instance, it can be used to help the
   type checker if it's unable to infer the type of an expression.
 
 \item \textbf{Local let bindings} \\
@@ -292,8 +322,8 @@ The ordering of both clauses can be swapped so users can also enter
   end
 \end{verbatim}
 
-Note here that $x$ is bound in the expression that is $E1$, while $y$ is bound
-in $E2$.
+Note here that $x$ is bound in the expression that is $E_1$, while $y$ is bound
+in $E_2$.
 
 This \verb|match| construct is fashioned after the similarly named pattern
 matching construct in ML like languages.
@@ -307,6 +337,21 @@ $\match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)$ to denote this
 construct.
 
 \end{enumerate}
+
+\subsubsection{Syntactic sugar: wildcard variables}
+In the event where the user does not intend to use the variable being bound,
+like say in a lambda expression, the underscore, \verb|_|, can be used in place
+of a variable name.
+For instance, one can enter \verb|fun _ => Type| in place of \verb|fun x => Type|.
+As in other languages, \verb|_| is not a valid identifier that can be used
+anywhere else in an expression. It can only be used in place of a variable in a
+binder.
+
+\subsubsection{A word about notation}
+Note that we often write $\lambda x, \, E$ instead of $\fun \, x => E$ as in the
+concrete syntax. Similarly, we also write $\lambda (x : T), \, E$ in place of
+$\fun \, (x : T) => x$.
+Finally, we use $\Pi_{x : A}B(x)$ to abbreviate $\Pii \, (x : A), \, B$.
 
 \subsection{Syntax for statements}
 Statements are top level commands through which users interact with our
@@ -336,6 +381,11 @@ expression given by $E$.
 This defines the variable $x$ to have a type of $T$ with an unknown binding.
 The interpreter will treat $x$ like an unknown, indeterminate constant.
 
+We also allow users to enter \verb|constant x : T| instead of \verb|axiom x : T|,
+as syntactic sugar. Note that since our system conflates the notion of types and
+propositions, introducing a constant \verb|x| of type \verb|T| is akin to
+introducing an assumption (ie axiom).
+
 \item \textbf{Check} \\
 \[
   \begin{prooftree}
@@ -353,15 +403,14 @@ output it.
     \infer1{\evall \,\, E}
   \end{prooftree}
 \]
-This instructs the interpreter to fully normalize the expression $E$ to full
-head normal form.
+This instructs the interpreter to fully normalize the expression $E$.
+
+In the next section, we will properly define the notion of normalization using a
+big step semantics. For now it suffices to say that normalizing an expression
+is the process of fully evaluating it until no more simplifications can be
+performed.
 
 \end{enumerate}
-
-Note that we often write $\lambda x, \, E$ instead of $\fun \, x => E$ as in the
-concrete syntax. Similarly, we also write $\lambda (x : T), \, E$ in place of
-$\fun \, (x : T) => x$.
-Finally, we use $\Pi_{x : A}B(x)$ to abbreviate $\Pii \, (x : A), \, B$.
 
 \section{Capture avoiding substitutions}
 Here we define the notion of capture avoiding substitutions. For this, we
@@ -380,7 +429,7 @@ We define the set of free variables of an expression $E$, ie $\FV(E)$ recursivel
 Note that in Pi expressions, the input type $A$ is actually an expression itself
 and so may contain free variables. It's important to note that the $\Pi_{x :
   A}$, like a lambda is a binder binding $x$ in $B$. However, this does not bind
-$x$ in the input type, $A$. If $x$ does appear in the input type $A$, then it is
+$x$ in the input type, $A$. If $x$ does appear in the input type $A$, it is
 free there.
 
 \begin{align*}
@@ -432,7 +481,7 @@ For Pi expressions, $A$ is an expression and thus when substituting $x$ by
 $B'$, we must also perform the substitution in the input type $A$. However, as
 $x$ is not bound there, we need not worry about capturing it when substituting there. 
 
-For Sigma expressions, we define $(\Sigma_{x : A} B(x) [x \mapsto B']$ in a
+For Sigma expressions, we define $(\Sigma_{x : A} B(x)) [x \mapsto B']$ in a
 similar fashion as with the case of Pi.
 
 The substitution rules for \verb|fst|, \verb|snd|, \verb|inl| and \verb|inr| are
@@ -452,13 +501,169 @@ is bound in $E_2$.
   https://www.cs.cornell.edu/courses/cs4110/2010fa/lectures/lecture03.pdf
 \end{comment}
 
-Here we choose to use a big-step semantics for our language as it fits nicer
-with the functional style that we're using to write our recursive interpreter with.
+In this section, we define a big-step semantics for our language.
 We follow the approach of Plotkin, as described in his
 \href{https://web.eecs.umich.edu/~weimerw/2014-6610/reading/plotkin81structural.pdf}
 {famous technical report} on structural operational semantics.
 
 \subsection{Expressions}
+\subsubsection{Head normal form, neutral expressions, beta equivalence}
+\textbf{Head normal form and neutral expressions}
+
+In the simply typed lambda calculus in which there is only the simple function 
+type and lambda abstraction, normalization is the process in which 
+expressions are simplified through repeated applications of the beta reduction rule
+into a form in which no further beta reductions can occur anywhere in the 
+expression, even underneath the outermost lambda.
+The resulting expression is said to be in \textit{head normal form}. In this
+section, we want to define similar notions for our richer language.
+
+First, note that we have more than just function types in our language. In
+particular, we have 3 main types, namely \verb|Pi|, \verb|Sigma| and \verb|Sum|.
+Also, ``types'' themselves are expressions too.
+
+Next note that we will be performing normalization and substitution with
+respect to a context, which contains definitions which the user declares
+globally, via \verb|def| and \verb|axiom| statements.
+
+Since \verb|axiom| statements introduce variables at the global level with a
+type but no binding, expressions can now contain free variables.
+Hence we need a definition of head normal form and normalization
+that takes care of expressions with free variables.
+For this, we must introduce the concept of a \textit{neutral expression}.
+
+Neutral expressions are those which cannot be reduced via one of the elimination
+rules (ie the ones for \verb|Pi|, \verb|Sigma| and \verb|Sum| types) because 
+the expression to be eliminated is a free variable rather than an expression of
+the appropriate type.
+
+With this, we generalize the notion of head normal form to be one in which
+the expression cannot be further simplified by applying any of the 3
+elimination rules corresponding to the aforementioned types.
+
+Normalization is then the process in which we repeatedly simplify an expression
+using these elimination rules, with the aim of reducing it to a head normal form.
+In the rules to follow, we shall see that this head normal form of an expression,
+should it exist, is unique, just as in the simply typed lambda calculus.
+
+\begin{definition} [Neutral expressions and head normal form]
+We now define, using mutual recursion, the subset of neutral and 
+normalized expressions via the following judgments:
+\begin{enumerate}
+  \item $\hnf(E)$
+    This asserts that $E$ is an expression that is in head normal form.
+  
+  \item $\neutral(E)$
+    This asserts that $E$ is a neutral expression.
+\end{enumerate}
+
+The rules are as follows:
+\begin{enumerate}
+  \item \[
+    \begin{prooftree}
+      \hypo{\neutral(E)}
+      \infer1{\hnf(E)}
+    \end{prooftree}
+  \]
+
+  \item \[
+    \begin{prooftree}
+      \hypo{\hnf(E)}
+      \infer1{\hnf(\lambda x, \, E)}
+    \end{prooftree}
+  \]
+
+  \item \[
+    \begin{prooftree}
+      \hypo{\hnf(E_1)}
+      \hypo{\hnf(E_2)}
+      \infer2{\hnf(\Pi_{x : E_1}, \, E_2)}
+    \end{prooftree}
+  \]
+
+ \item \[
+    \begin{prooftree}
+      \hypo{\hnf(E_1)}
+      \hypo{\hnf(E_2)}
+      \infer2{\hnf(\Sigma_{x : E_1}, \, E_2)}
+    \end{prooftree}
+  \]
+
+ \item \[
+    \begin{prooftree}
+      \hypo{\hnf(E_1)}
+      \hypo{\hnf(E_2)}
+      \infer2{\hnf(E_1 + E_2)}
+    \end{prooftree}
+  \]
+
+  \item \[
+    \begin{prooftree}
+      \infer0{\neutral(x)}
+    \end{prooftree}
+  \]
+
+  \item \[
+    \begin{prooftree}
+      \hypo{\neutral(E_1)} 
+      \hypo{\hnf(E_1)} 
+      \infer2{\neutral(E_1 \,\, E_2)}
+    \end{prooftree}
+  \]
+
+  \item \[
+    \begin{prooftree}
+      \hypo{\neutral(E)} 
+      \hypo{\hnf(E_1)} 
+      \hypo{\hnf(E_2)} 
+      \infer3{\neutral(\match(E, \, x \rightarrow E_1, \, y \rightarrow E_2))}
+    \end{prooftree}
+  \]
+
+  \item \[
+    \begin{prooftree}
+      \hypo{\neutral(E)} 
+      \infer1{\neutral(\fst \, E)}
+    \end{prooftree}
+  \]
+
+  \item \[
+    \begin{prooftree}
+      \hypo{\neutral(E)} 
+      \infer1{\neutral(\snd \, E)}
+    \end{prooftree}
+  \]
+\end{enumerate}
+\end{definition}
+
+Note that \verb|let| expressions are not considered to be in head normal form
+because we treat expressions of the form \verb|let x := E in E'| as syntactic
+sugar for the application $(\lambda x, E') \, E$ during the process of
+normalization. 
+
+In fact, we will see later that the typing rules for \verb|let|
+expressions are also derived using this syntactic trick. 
+
+\begin{definition} [Beta equivalence]
+Finally, we also define the notion of beta equivalence. We say that two expressions
+are beta equivalent to each other, written $E_1 \equiv_\beta E_2$ if they have
+the same head normal form.
+
+If both expressions are also alpha equivalent, ie
+they're equal up to renaming of bound variables, we write
+$E_1 \equiv_{\alpha \beta} E_2$.
+\end{definition}
+
+\subsubsection{Metavariables for neutral and normalized expressions}
+We now introduce 2 more types of metavariables corresponding to the new definitions
+given in the previous section. 
+
+\begin{enumerate}
+\item $\nu, \, \tau$ range over normalized expressions, ie those in head normal
+form.
+\item $n$ ranges over all neutral terms.
+\end{enumerate}
+
 \subsubsection{Contexts}
 Here we take the context, $\Gamma$, to be a list, ie a finite sequence, of triples
 of the form
@@ -476,6 +681,12 @@ The special \verb|und| value is used for the bindings created by \verb|axiom|
 statements and when we want to add a binding for type checking purposes.
 In such scenarios, we don't particularly care about the actual binding. We're
 only interested in the type of the variable. 
+
+We should mention that whenever we write, say
+$(x, \, \tau, \, \nu) \in \Gamma$, we allow the metavariable $\nu$ to be 
+\verb|und| as well. Also if there are multiple occurrences of $x$ in $\Gamma$,
+as is the case when there is variable shadowing, we refer to the first occurrence
+of $x$. 
 
 \subsubsection{Overview of judgement forms}
 We first give an overview of the main judgment forms which we will define in a
@@ -512,17 +723,25 @@ mutually recursive fashion in the subsequent few sections.
   % not contain full blown recursion and is strongly normalizing. 
 \end{enumerate}
 
-\subsubsection{Normalizing expressions}
+\subsubsection{Big step normalization}
 Before defining our type system given by the 2 judgments,
 $\cdot \vdash \cdot \Leftarrow \cdot$ and $\cdot \vdash \cdot \Rightarrow
-\cdot$, we must first define $\cdot \vdash \cdot \Downarrow \cdot$, the big
-step semantics for evaluating expressions. This is because types are now
-expression and we will actually need to perform normalization while
-typechecking.
+\cdot$, we first define $\cdot \vdash \cdot \Downarrow \cdot$, the big
+step semantics for normalizing expressions. This is because we will actually
+need to perform normalization while typechecking.
 
-It should be noted at this poinnt that in our semantics to follow, we only normalize
-terms after we typecheck them. This means that for types, we always check that
-they are well formed before performing any computations on them.
+Recall that the aim of normalization is to reduce an expression to head normal
+form, which includes neutral expressions and free variables as a subset.
+
+The rules are as follows:
+
+% It should be noted at this point that in our semantics to follow, we only 
+% normalize terms after we typecheck them. 
+% In the case of expressions that denote types, this means that we always check
+% that they are well formed before performing any computations on them.
+
+% Since \verb|Kind| has no type, we shall not need to define what it means to
+% normalize it. 
 
 \begin{enumerate}
 \item \textbf{Type}
@@ -548,10 +767,6 @@ they are well formed before performing any computations on them.
       \infer2{\Gamma \vdash x \Downarrow x}
     \end{prooftree} 
   \]
-  
-  If there are multiple occurences of the variable $x$ in the context $\Gamma$,
-  as is the case when there is variable shadowing, we take the first occurence
-  of $x$ in the list that is $\Gamma$.
 
 \item \textbf{Type ascriptions} \\
   \[
@@ -600,7 +815,7 @@ they are well formed before performing any computations on them.
   This second rule says that optional type ascriptions do not play a role in
   normalization, ie we just ignore them.
 
-\item \textbf{Pi} \\
+\item \textbf{Pi type constructor} \\
   \[
     \begin{prooftree}
       \hypo{\Gamma \vdash A \Downarrow \tau}
@@ -628,7 +843,7 @@ they are well formed before performing any computations on them.
       \end{prooftree}
     \]
 
-  \item \textbf{Sigma} \\
+  \item \textbf{Sigma type constructor} \\
     \[
       \begin{prooftree}
         \hypo{\Gamma \vdash A \Downarrow \tau}
@@ -673,6 +888,15 @@ they are well formed before performing any computations on them.
   %     \infer2{\Gamma \vdash \text{let } (x_1, \, x_2) := E \text{ in } E' \Downarrow \nu}
   %   \end{prooftree}
   % \]
+
+  \item \textbf{Sum type constructor}
+  \[
+    \begin{prooftree}
+      \hypo{E_1 \Downarrow \nu_1}
+      \hypo{E_2 \Downarrow \nu_2}
+      \infer2{E_1 + E_2 \Downarrow \nu_1 + \nu_2}
+    \end{prooftree}
+  \]
 
   \item \textbf{Normalizing under sum data constructors}
   \[
@@ -724,6 +948,11 @@ they are well formed before performing any computations on them.
 
 \end{enumerate}
 
+Note that the lack of a normalization rule for \verb|Kind| is deliberate.
+The reason is that we will ensure that we only normalize expressions after we
+typecheck them, and we will see in the next section that \verb|Kind| has no
+type. Thus we will never need to normalize it.
+
 \subsubsection{Well formed context and typing judgments}
 \begin{definition} [Well formed type and type constructor]
   An expression $T$ is said to be a well-formed type with respect to the context
@@ -741,7 +970,7 @@ they are well formed before performing any computations on them.
 
 \begin{definition} [Well formed context]
   Note that our definition below implies that expressions and types that we
-  store in our context are fully normalized to head normal form.
+  store in our context are normalized to head normal form.
 
   \begin{enumerate}
   \item \textbf{Base case} \\
@@ -782,37 +1011,11 @@ they are well formed before performing any computations on them.
   ie compute the type directly, while for others, it is easier to have the user
   supply a type annotation and then \textit{check} that it is correct.
 
-  As a rule of thumb, it is often easier to check the type for term
+  As a rule of thumb, it is often easier to check the type for
   introduction rules while for elimination rules, it is usually easier to infer
   the type.
 
   \begin{enumerate}
-
-  \item \textbf{Type ascriptions} \\
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash T \Rightarrow s}
-        \hypo{\Gamma \vdash T \Downarrow \tau}
-        \hypo{\Gamma \vdash E \Leftarrow \tau}
-        \infer3{\Gamma \vdash (E : T) \Rightarrow \tau}
-      \end{prooftree}
-    \]
-    Optional type ascriptions allow the interpreter to infer the type of an
-    expression. This is useful for lambda abstractions in particular because it's
-    kinda hard to infer the type of a function like $\lambda x, \, x$ without any
-    further contextual information.
-
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash E \Leftarrow \Kind}
-        \infer1{\Gamma \vdash (E : \Kind) \Rightarrow \Kind}
-      \end{prooftree}
-    \]
-    Note that the first rule doesn't allow users to assert that $(E : \Kind)$
-    since there is no $s$ with $\Gamma \vdash \Kind \Rightarrow s$.
-    This second rule allows users to assert that $\Type$ and type constructors
-    have type $\Kind$.
-    
   \item \textbf{Var} \\
     \[
       \begin{prooftree}
@@ -840,6 +1043,31 @@ they are well formed before performing any computations on them.
     %   \end{prooftree}
     % \]
 
+  \item \textbf{Type ascriptions} \\
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash T \Rightarrow s}
+        \hypo{\Gamma \vdash T \Downarrow \tau}
+        \hypo{\Gamma \vdash E \Leftarrow \tau}
+        \infer3{\Gamma \vdash (E : T) \Rightarrow \tau}
+      \end{prooftree}
+    \]
+    Optional type ascriptions allow the interpreter to infer the type of an
+    expression. This is useful for lambda abstractions in particular because it's
+    kinda hard to infer the type of a function like $\lambda x, \, x$ without any
+    further contextual information.
+
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E \Leftarrow \Kind}
+        \infer1{\Gamma \vdash (E : \Kind) \Rightarrow \Kind}
+      \end{prooftree}
+    \]
+    Note that the first rule doesn't allow users to assert that $(E : \Kind)$
+    since there is no $s$ with $\Gamma \vdash \Kind \Rightarrow s$.
+    This second rule allows users to assert that \verb|Type| and type constructors
+    have type \verb|Kind|.
+    
   \item \textbf{Check} \\
     \[
       \begin{prooftree}
@@ -848,10 +1076,34 @@ they are well formed before performing any computations on them.
         \infer2{\Gamma \vdash E \Leftarrow \tau}
       \end{prooftree}
     \]
+
     This says that to check if $E$ has type $\tau$ with respect to a context
     $\Gamma$, we may first infer the type of $E$. Suppose it is $\tau'$. Then
     if we also find that $\tau$ and $\tau'$ are $\alpha$ and $\beta$ equivalent
     to each other, we may conclude that $E$ indeed has type $\tau$.
+
+    \begin{remark}
+      Note that this rule, together with the one on type ascriptions, is the reason
+      why we need to perform computations on types, ie normalize them, while
+      typechecking expressions. 
+
+      To see this, suppose the user requests that we typecheck an expression
+      of the form $(x : T)$
+      where $T$ is some complicated expression entered by the user.
+      Intuitively, we want to grab the type of $x$ from the context and then
+      check that it is equal to the annotated type of $T$.
+
+      Unlike the simply typed and polymorphic lambda calculi, our type system is
+      much richer and so checking types for equality is not so simple.
+      How do we check if 2 ``types'' are equal when they are really just expressions?
+      One idea is to fully simplify them to their respective unique head normal forms,
+      via normalization, and then check if those are structurally equal.
+
+      However, it must be noted that throughout these rules, we only normalize
+      expressions after we typecheck them. We always check that a type is
+      well formed, ie that $\Gamma \vdash T \Rightarrow s$, before we try to
+      normalize $T$.
+    \end{remark}
 
   \item \textbf{Pi formation} \\
     \[
@@ -863,7 +1115,7 @@ they are well formed before performing any computations on them.
       \end{prooftree}
     \]
     Note that this is a rule schema with the metavariables 
-    $s_1, \, s_2 \in \{\Type, \, \Kind\}$
+    $s_1, \, s_2 \in \{\Type, \, \Kind\}$.
 
     % \[
     %   \begin{prooftree}
@@ -928,6 +1180,8 @@ they are well formed before performing any computations on them.
       \end{prooftree}
     \]
 
+    As with the rule for Pi formation, $s_1, \, s_2 \in \{\Type, \, \Kind\}$.
+
   \item \textbf{Sigma introduction} \\
     \[
       \begin{prooftree}
@@ -938,10 +1192,7 @@ they are well formed before performing any computations on them.
           \Sigma_{x : \tau_1}\tau_2(x)}
       \end{prooftree}
     \]
-    Here we don't have a type inference rule because doing so would require us
-    to infer that $E_2$ has type $\tau_2[x \mapsto E_1]$ and then undo the
-    substitution to get $\tau_2(x)$.
-
+   
   \item \textbf{Sigma elimination} \\
     \[
       \begin{prooftree}
@@ -990,8 +1241,18 @@ they are well formed before performing any computations on them.
        \infer2{\Gamma \vdash A + B \Rightarrow \Type} 
       \end{prooftree}
     \]
-    Note that this rule says that users can only make construct a coproduct
-    out of types that live in the universe $\Type$, not $\Kind$. 
+    Note that this rule says that users can only make construct a sum, aka 
+    coproduct, out of types that live in the universe \verb|Type|, not 
+    \verb|Kind|.
+
+    Recalling the Curry-Howard correspondence which identifies types and
+    propositions, we see sum types as a way to model disjunction. Hence we do
+    not see a need to allow users to construct sums out of large types like
+    type constructors found in \verb|Kind|.
+
+    Also we are unsure if the logical consistency of the system can be preserved
+    if we allow for $A + B$ to be formed when one is of type \verb|Type| while
+    the other has type \verb|Kind|. 
 
     \item \textbf{Sum introduction} \\
     \[
@@ -1081,9 +1342,9 @@ In other words, 2 types that are $\eta$ equivalent to one another will
 \textit{not} be judged as equal types.
 
 One way to fix this is to allow the type checker to eta expand terms, via
-eliminating and then applying the data constructor, after computing the beta
+eliminating and then applying the data constructor while computing the beta
 normal form. However, for simplicity, we chose to follow the original 
-formulation of the calculus of constructions and ignore this.
+formulation of the Calculus of Constructions and ignore this.
 
 % Another kind of equivalence is \textit{eta equivalence}. To explain this,
 % consider the terms $\lambda x, \, B \, x$ and $B$. Both of them have exactly the
@@ -1113,7 +1374,7 @@ formulation of the calculus of constructions and ignore this.
 %   \end{prooftree}
 % \]
 
-\subsection{Programs}
+\subsection{Big step semantics for programs}
 \begin{comment}
   Follows this approach:
   https://www.cs.cornell.edu/courses/cs6110/2013sp/lectures/lec05-sp13.pdf
@@ -1235,7 +1496,7 @@ we obtain a transition system, given by the tuple
   (\emptyset, \, \langle S_0; \, \dots; \, S_n \rangle, \, \Type), \, F \rangle
 \end{align*}
 
-Notice how our formalization mimics the definition of a finite state automaton.
+Notice how our formalization mimics the definition of an automaton.
 
 \subsubsection{Output expression of evaluating a program}
 With these rules, given a user-entered program, say $\langle S_0;
@@ -1249,4 +1510,36 @@ output expression of a program to be the $E$ such that
 In other words, the expression output to the user is the expression obtained by
 beginning with the initial configuration and then recursively evaluating
 until we reach a final configuration.
+
+\section{Metatheoretic discussion}
+The original Calculus of Constructions is known to be strongly normalizing in
+that the normalization process, when applied to any well typed term, always
+terminates. Furthermore, it has decidable typechecking and is logically
+consistent when its type system is viewed as a logical calculus, with the Pi type
+corresponding to universal quantification.
+
+\textbf{TODO}
+
+Say something about why we think our bidirectional typechecking works.
+https://arxiv.org/pdf/2102.06513.pdf
+
+Also say something about how ``impredicative'' Sigma types breaks consistency
+due to Girard's paradox and that the only (?) way to fix that is to use a 
+predicative hierarchy of type universe with either cumulativitiy or universe
+polymorphism.
+
+Mention that this issue may not be a big one because the proof term in Girard's
+is astronomical and Idk if our system can even handle anything that big since it
+isn't very efficient (cos we substitute naively rather than use normalization
+by evaluation).
+
+If users are really afraid, just avoid using higher order existential
+quantification and stick to first order. Alternatively, can encode higher order
+existential quantification in terms of universal in CoC (see Type Theory and
+Formal Proof book).
+
+https://era.ed.ac.uk/bitstream/handle/1842/12487/Luo1990.Pdf
+
+\section{Technical implementation}
+
 \end{document}
