@@ -550,10 +550,10 @@ should it exist, is unique, just as in the simply typed lambda calculus.
 We now define, using mutual recursion, the subset of neutral and 
 normalized expressions via the following judgments:
 \begin{enumerate}
-  \item $\hnf(E)$
+  \item $\hnf(E)$ \\
     This asserts that $E$ is an expression that is in head normal form.
   
-  \item $\neutral(E)$
+  \item $\neutral(E)$ \\
     This asserts that $E$ is a neutral expression.
 \end{enumerate}
 
@@ -636,7 +636,7 @@ The rules are as follows:
 \end{enumerate}
 \end{definition}
 
-Note that \verb|let| expressions are not considered to be in head normal form
+Note that \verb|let ... in ...| expressions are not considered to be in head normal form
 because we treat expressions of the form \verb|let x := E in E'| as syntactic
 sugar for the application $(\lambda x, E') \, E$ during the process of
 normalization. 
@@ -644,10 +644,11 @@ normalization.
 In fact, we will see later that the typing rules for \verb|let|
 expressions are also derived using this syntactic trick. 
 
+Finally, we also define the notion of beta equivalence. 
+
 \begin{definition} [Beta equivalence]
-Finally, we also define the notion of beta equivalence. We say that two expressions
-are beta equivalent to each other, written $E_1 \equiv_\beta E_2$ if they have
-the same head normal form.
+We say that two expressions are beta equivalent to each other, written
+$E_1 \equiv_\beta E_2$ if they have the same head normal form.
 
 If both expressions are also alpha equivalent, ie
 they're equal up to renaming of bound variables, we write
