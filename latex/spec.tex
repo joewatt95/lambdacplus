@@ -25,12 +25,12 @@ This is especially important for our language since dependent type theory is a
 complex subject.
 
 A benefit of this approach is that not only did our specification serve as a
-guide for our implementation, many of the rules we formalize here
-translate almost directly into the code which we implemented.
+guide for our implementation, many of the rules we formalized here
+translated almost directly into the code which we implemented.
 
-Despite our formality, we still aim to provide sufficient exposition and
+Despite our rigour, it is our aim to provide sufficient exposition and
 justification for our design decisions.
-We hope that the reader will agree that the ideas underlying our formalization
+We hope that the reader will come to see that the ideas underlying our formalization
 are intuitive. 
 
 In the next section, we offer some background on dependent type theory in 
@@ -38,7 +38,7 @@ relation to the Curry-Howard correspondence. Thereafter, we discuss where our
 language stands in relation to CoC.
 
 \subsection{Dependent type theory and Curry-Howard}
-Abstractly, CoC is a pure type system that sits at the top of Barendregt's
+Abstractly, CoC is a pure type system that sits atop of Barendregt's
 lambda cube.
 More concretely, it generalizes the simply typed and polymorphic
 lambda calculi by replacing the simple function type with the dependent Pi type.
@@ -59,16 +59,14 @@ Functions that inhabit this set are known as \textit{choice functions} in set
 theory. Such choice functions associate to each $x \in A$, an element $f(x)$ in $B_x$.
 % As a fun fact, the Axiom of Choice asserts that this set is nonempty
 % if every $B_x$ is inhabited.
-
 % The main references which we base our language on are
 % \href{https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf}{this paper on $\lambda
 %   \Pi$} and \href{https://github.com/andrejbauer/spartan-type-theory}{this
 %   implementation of a dependent type theory}.
-
 More generally, dependently typed languages allow types to depend on expressions
 as well.
+Now you might ask, of what use are dependent types?
 
-Now you might ask, of what use are these dependent types?
 Remember that the Curry-Howard correspondence says that simple type theory
 can be used to encode constructive propositional logic,
 with sum types (ie coproducts) corresponding to disjunction, products to 
@@ -146,11 +144,10 @@ In the next section, we discuss how our language resembles and differs from
 CoC.
 
 \subsection{Our language in comparison to CoC}
-As mentioned earlier, our language is based on the original
-formulation of CoC. This means that we neither have inductive types nor a
-countable hierarchy of type universes.
-Since our emphasis here is on simplicity, we stay true to the original calculus,
-by offering only 2 sorts, \verb|Type| and \verb|Kind|.
+Since our emphasis here is on simplicity, we stay true to the original
+formulation of CoC, by offering only 2 sorts, \verb|Type| and \verb|Kind|, as
+opposed to a countable hierarchy of type universes. We also do not treat inductive
+types.
 
 As with CoC, \verb|Type| in our language is the sort of propositions as well as 
 datatypes. Informally, we can think of type as the type of all types.
@@ -176,6 +173,7 @@ general programming. This means that our language, like CoC, does not have
 basic programming constructs like general recursion, conditional statements or
 even basic types like numbers and booleans.
 
+Where our language differs from CoC is in the built-in types.
 In its original formulation as a pure type system, CoC only includes one built-in
 type, namely the Pi type. It does not have Sigmas or sums (ie coproducts).
 While there are ways to encode $\exists$, $\wedge$ and $\vee$ into CoC
@@ -1138,13 +1136,14 @@ First we introduce a new metavariable $s$ to denote either of the 2 sorts,
   $\Gamma$ if it satisfies
   \[ \Gamma \vdash T \Leftarrow s \]
 
-  Informally, we can think of $\Type$ as the ``type of all small types'' and so
-  all small well formed types are those expressions satisfying
+  Informally, we can think of $\Type$ as the ``type of all types'' and so
+  all well formed types are those expressions satisfying
   $\Gamma \vdash T \Leftarrow \Type$, ie they can be checked to have type $\Type$.
 
-  Those $T$ satisfying $\Gamma \vdash T \Leftarrow \Kind$ instead represent the
-  type of type constructors. In other words, the type of a type constructor is a
-  Kind, just like in Haskell. 
+  % Those $T$ satisfying $\Gamma \vdash T \Leftarrow \Kind$ instead represent the
+  % type of type constructors. 
+  % In other words, the type of a type constructor is a
+  % Kind, just like in Haskell.
 \end{definition}
 
 With this, we define well formed contexts as contexts satisfying 2 key invariants:
