@@ -6,36 +6,45 @@
 \begin{document}
 
 \section{Introduction}
+Our language is a theorem prover for constructive logic, based on 
+the Calculus of Constructions (CoC), which is a dependently typed lambda calculus.
+CoC forms the foundation of many theorem provers like Coq, Lean and Agda, 
+though they also include many other features like inductive types and a 
+cumulative hierarchy of type universes.
 
-BIG TODO: Write something about Pure Type Systems and the lambda cube and how
-this language is essentially an extension of the Calculus of Constructions, with
-stuff like top level definitions and lightweight Typed Source esque type
-inference.
+In this document, we provide a big-step semantics for our language, upon which
+our interpreter was based.
 
-Our language is a dependently typed lambda calculus, based on the calculus of
-constructions.
-The main references which we base our language on are
-\href{https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf}{this paper on $\lambda
-  \Pi$} and \href{https://github.com/andrejbauer/spartan-type-theory}{this
-  implementation of a dependent type theory}.
+Our approach to semantics is heavily inspired by 
+\href{https://homepages.inf.ed.ac.uk/gdp/publications/sos_jlap.pdf}
+{Plotkin's seminal work} on structural operational semantics, as well as the 
+\href{https://smlfamily.github.io/sml97-defn.pdf}{specification for Standard ML}.
+Though our language specification is formal and mathematically
+intensive, we believe in the importance of rigour to ensure precision and clarity.
+This is especially important for our language since dependent type theory is a
+complex subject.
 
-In System F, types may depend on other type variables, thus enabling
-parametrically polymorphic functions. 
-In our language, we generalize this to allow types to depend on terms as well.
-In order to achieve this, we promote all types to expressions, so we no longer
-have separate syntactic categories for them. 
+A benefit of this approach is that not only did our specification serve as a
+guide for our implementation, many of the rules we formalize here
+translate almost directly into the code which we implemented.
 
-Yes, this means that \textit{everything} in our language is an expression, even those
-things which we call types!
-With this in mind, a type is then an expression, say $T$, which satisfies a very
-specific typing judgment, ie $\Gamma \vdash T \Leftarrow \Type$. We'll revisit
-this again later.
+Despite our formality, we still aim to provide sufficient exposition and
+justification for our design decisions.
+We hope that the reader will agree that the ideas underlying our formalization
+are intuitive. 
 
-The main aim of our project is to implement a simple lambda calculus with the
-dependent function type. These are also known as Pi types in the literature.
+In the next section, we offer some background on dependent type theory in 
+relation to the Curry-Howard correspondence. Thereafter, we discuss where our
+language stands in relation to CoC.
+
+\subsection{Dependent type theory and Curry-Howard}
+Abstractly, CoC is a pure type system that sits at the top of Barendregt's
+lambda cube.
+More concretely, it generalizes the simply typed and polymorphic
+lambda calculi by replacing the simple function type with the dependent Pi type.
 These generalize the simple function type $A \to B$ by allowing the output type
 $B$ to now \textit{depend on the value} of the input expression.
-The type of functions in our language is now written as $\Pi_{x : A} B(x)$ where
+The type of functions is now written as $\Pi_{x : A} B(x)$ where
 we write $B(x)$ for the return type to emphasize that $x$ may appear free in
 $B$.
 
@@ -48,34 +57,171 @@ elements $x \in A$, we can form the generalized cartesian product, denoted
 \end{align*}
 Functions that inhabit this set are known as \textit{choice functions} in set
 theory. Such choice functions associate to each $x \in A$, an element $f(x)$ in $B_x$.
-As a fun fact, the Axiom of Choice asserts that this set is nonempty
-if every $B_x$ is inhabited.
+% As a fun fact, the Axiom of Choice asserts that this set is nonempty
+% if every $B_x$ is inhabited.
 
-Another core feature of our language will be type inference.
-This will be implemented alongside typechecking, using a fancy
-\textit{bidirectional typechecking} algorithm. Don't worry, we'll formalize all
-this later. For now, this just means that typechecking and type inference are
-mutually recursive processes.
+% The main references which we base our language on are
+% \href{https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf}{this paper on $\lambda
+%   \Pi$} and \href{https://github.com/andrejbauer/spartan-type-theory}{this
+%   implementation of a dependent type theory}.
 
-Our language also doesn't have full blown recursion and is
-\textit{strongly normalizing} in that every sequence of beta reductions will
-always terminate in a unique head normal form. This allows us to safely
-normalize all terms to full head normal form.
+More generally, dependently typed languages allow types to depend on expressions
+as well.
 
-TODO: explain why our language is strongly normalizing and why this allows us to
-normalize everything all the way.
+Now you might ask, of what use are these dependent types?
+Remember that the Curry-Howard correspondence says that simple type theory
+can be used to encode constructive propositional logic,
+with sum types (ie coproducts) corresponding to disjunction, products to 
+conjunction, unit to $\top$ and void to $\bot$.
+
+But what about the quantifiers $\forall$ and $\exists$?
+This is where dependent type theory comes in.
+
+To prove the universally quantified statement, $\forall x \in A, \, P(x)$ by hand,
+we would assume that $x$ is an arbitrary element of $A$ and then proceed to prove
+that $P(x)$ holds.
+Well, according to the BHK interpretation of constructive logic, constructing
+a proof as such is akin to defining a function which takes 
+as input an element $x$ of type $A$ and returns a proof of $P(x)$.
+What is the type of such a function? It is precisely the Pi type, 
+$\Pi_{x : A} P(x)$!
+
+In the event that the output type of a Pi type doesn't depend on the value of the
+input, we recover the simple function type, which we write as $A \rightarrow B$
+or $\Pi_{x : A} B$. So we see that the Pi type allows us to model both
+logical implication as well as universal quantification. 
+
+As for the existential quantifier, a proof of $\exists x \in A, \, P(x)$
+corresponds to a pair, $\langle x, \, \text{pf} \rangle$ where $x$ is an element
+of type $A$ witnessing the existential and pf is a proof that for this $x$, 
+$P(x)$ holds. The type of the pair $\langle x, \, \text{pf}\rangle$ is the
+Sigma type, $\Sigma_{x : A} P(x)$. Such Sigma types generalize the ordinary pair
+type, by allowing the type of the second component to depend on the value of
+the first. 
+
+There is also another interesting interpretation of the Sigma type.
+Consider the notion of a subset, $\{x \in A \, | \, P(x) \}$, from set theory.
+By interpreting sets as types, we can model elements of this subtype of $A$ as
+pairs containing an element of type $A$ and a second element certifying that the
+first element does belong to this subtype. What would such a certificate be?
+Well, a proof that it satisfies the predicate $P$!
+Such a pair is of the Sigma type $\Sigma_{x : A} P(x)$!
+
+Note that if the second component of a pair doesn't depend on the first, we recover
+the usual pair (ie product) type, written $A \times B$ or $\Sigma_{x : A} B$.
+With this, we see that the Sigma type can encode 3 different notions, namely
+conjunction, existential quantification, and the subtype/subset relation!
+
+In essence, adding dependent types to the lambda calculus allows types to include
+expressions like variables.
+This give us the extra tools that we need to go beyond propositional logic and
+formalize constructive predicate logic!
+
+The table below summarizes the correspondence between types and their Curry-Howard
+interpretation.
+
+\begin{center}
+\begin{tabular}{ |c|c|c|c| }
+  \hline
+ Type & Formal notation & Alt notation & Curry-Howard interpretation \\ 
+ \hline
+ Pi & $\Pi_{x : A}B(x)$ & & $\forall x \in A, \, B(x)$ \\  
+    & $\Pi_{x : A}B$ & $A \rightarrow B$ & $A \rightarrow B$ \\  
+    \hline
+ Sigma & $\Sigma_{x : A}B(x)$ & & $\exists x \in A, \, B(x)$ \\
+       & $\Sigma_{x : A}B(x)$ & & $\{ x \in A \, | \, B(x) \}$ \\
+       & $\Sigma_{x : A}B$ & $A \times B$ & $A \wedge B$ \\
+       \hline
+ Sum & $A + B$ & & $A \vee B$ \\
+ \hline
+ Unit & $\top$ & & $\top$ (ie logical truth) \\
+ \hline
+ Void & $\bot$ & & $\bot$ (ie logical falsity) \\
+ \hline
+\end{tabular}
+\end{center}
+
+These are the types which we implement in our language.
+In the next section, we discuss how our language resembles and differs from
+CoC.
+
+\subsection{Our language in comparison to CoC}
+As mentioned earlier, our language is based on the original
+formulation of CoC. This means that we neither have inductive types nor a
+countable hierarchy of type universes.
+Since our emphasis here is on simplicity, we stay true to the original calculus,
+by offering only 2 sorts, \verb|Type| and \verb|Kind|.
+
+As with CoC, \verb|Type| in our language is the sort of propositions as well as 
+datatypes. Informally, we can think of type as the type of all types.
+In other words, an element $T$ of type \verb|Type| can be interpreted as either
+being a proposition whose elements are proofs or a datatype like a set.
+Though this is in line with the Curry-Howard interpretation, this has the
+unfortunate consequence of conflating the syntactic roles of propositions and
+data types.
+  
+This may be counter-intuitive for users because in first (or higher) order
+logic, there is a clear distinction between terms and well-formed formulae,
+which belong to different syntactic categories. 
+
+As for the sort \verb|Kind|, it's actually not really useful for users. It's
+just here to prevent Girard's paradox, a type theoretic formulation of the set
+theoretic Burali-Forti argument.
+Through the construction of Girard's paradox, one can (in theory) provide a 
+proof of false, ie a lambda expression that inhabits the empty type.
+In doing so, the logical consistency of the calculus is lost.
+
+It should also be noted that we focus on theorem proving via Curry-Howard over
+general programming. This means that our language, like CoC, does not have
+basic programming constructs like general recursion, conditional statements or
+even basic types like numbers and booleans.
+
+In its original formulation as a pure type system, CoC only includes one built-in
+type, namely the Pi type. It does not have Sigmas or sums (ie coproducts).
+While there are ways to encode $\exists$, $\wedge$ and $\vee$ into CoC
+[insert ref to Type Theory and Formal Proof book], such encodings can be awkward
+to work with. Hence, we decided to also implement Sigma and sum types as built-ins
+so that $\exists$ and $\wedge$ can be modeled more naturally via Sigma and
+$\vee$ via the sum type.
+
+% Unfortunately, it should be noted that our formalization of the typing
+% judgments for the Sigma type does allow for Girard's paradox to creep back to our
+% language, when viewed as a logical calculus. We discuss this issue in more detail
+% and offer possible workarounds in a later section, along with the other
+% metatheoretic properties of our language.
+
+% Another core feature of our language will be type inference.
+% This will be implemented alongside typechecking, using a fancy
+% \textit{bidirectional typechecking} algorithm. Don't worry, we'll formalize all
+% this later. For now, this just means that typechecking and type inference are
+% mutually recursive processes.
+
+% Our language also doesn't have full blown recursion and is
+% \textit{strongly normalizing} in that every sequence of beta reductions will
+% always terminate in a unique head normal form. This allows us to safely
+% normalize all terms to full head normal form.
 
 \section{Syntax}
-Here we describe the concrete ascii syntax for our language.
-We also describe the syntactic sugar users can enter. This includes unicode
-symbols.
+In order to implement our rich type system, we promote types to the level of
+expressions in our language, so we no longer have separate syntactic categories 
+for them.
 
-Note that we have separate syntax for expressions and statements, the latter of 
-which function like top-level commands. These will be used by the user to interact
-with our language.
+Yes, this means that \textit{everything} in our language is an expression, even
+those things which we call types!
+With this in mind, a type is then an expression, say $T$, which satisfies a very
+specific typing judgment, ie $\Gamma \vdash T \Leftarrow s$. We'll revisit
+this again later.
+
+For now, we describe the concrete ascii syntax for our language, alongside
+the syntactic sugar users can enter. This includes unicode symbols.
+
+At the top level, programs will be nonempty sequences of statements.
+Statements function like top-level commands, as found in other theorem provers
+like Coq and Lean. These offer a way for users to interact with our system.
+Through statements, users can introduce global assumptions and definitions.
 
 \subsection{Syntax for expressions}
-We define the set of valid expressions of our language as the initial algebra, 
+We first define the set of valid expressions of our language as the initial algebra, 
 ie least prefixed point, of the endofunctor
 \begin{align*}
   F : X \mapsto \{ E \, | \, \{ E_0, E_1, \dots, E_n \} \subseteq X \text{ and }
@@ -116,18 +262,9 @@ Before we list the full set of rules, we first introduce some metavariables.
     \end{prooftree}
   \]
 
-  Our language has 2 sorts, just like the original CoC. In the spirit of Curry
-  Howard, our language makes no distinction between types and propositions and
-  so users can enter \verb|Prop| (short for ``proposition") in place of \verb|Type|.
-
-  This syntactix sugar has the unfortunate consequence of conflating the syntactic
-  roles of propositions and types.
-  Types which we think of as data can be used interchangeably with types which
-  we view as propositions.
-  
-  This may be counter-intuitive for users because in first (or higher) order
-  logic, there is a clear distinction between terms and well-formed formulae,
-  which belong to different syntactic categories.
+  Since our language makes no distinction between types and propositions,
+  we allow users to enter \verb|Prop| (short for ``proposition") in place of 
+  \verb|Type|.
 
 \item \textbf{Variables} \\
   \[
@@ -330,7 +467,7 @@ matching construct in ML like languages.
 However, unlike those, we do not implement actual pattern matching since pattern
 matching for dependent types is not an easy problem.
 Our \verb|match| construct serves the sole purpose of allowing one to perform
-case analysis on sum.
+case analysis on sums.
 
 For convenience, we write 
 $\match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)$ to denote this
@@ -405,16 +542,17 @@ output it.
 \]
 This instructs the interpreter to fully normalize the expression $E$.
 
-In the next section, we will properly define the notion of normalization using a
-big step semantics. For now it suffices to say that normalizing an expression
+Later, we will properly define the notion of normalization using a
+big-step semantics. For now it suffices to say that normalizing an expression
 is the process of fully evaluating it until no more simplifications can be
 performed.
 
 \end{enumerate}
 
 \section{Capture avoiding substitutions}
-Here we define the notion of capture avoiding substitutions. For this, we
-formalize the notion of free variables and substitution.
+In this section, we define the concept of free variables and capture avoiding
+substitutions. This will be important when we later define normalization and
+reduction in our big-step semantics.
 
 \subsection{Free variables}
 We define the set of free variables of an expression $E$, ie $\FV(E)$ recursively.
@@ -492,7 +630,7 @@ tedious. The key thing to note is that in the expression
 $\match(E, x \rightarrow E_1, y \rightarrow E_2)$, $x$ is bound in $E_1$ and $y$
 is bound in $E_2$.
 
-\section{Big step operational semantics}
+\section{Semantics}
 \begin{comment}
   https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf
   http://math.andrej.com/2012/11/08/how-to-implement-dependent-type-theory-i/
@@ -501,53 +639,67 @@ is bound in $E_2$.
   https://www.cs.cornell.edu/courses/cs4110/2010fa/lectures/lecture03.pdf
 \end{comment}
 
-In this section, we define a big-step semantics for our language.
-We follow the approach of Plotkin, as described in his
-\href{https://web.eecs.umich.edu/~weimerw/2014-6610/reading/plotkin81structural.pdf}
-{famous technical report} on structural operational semantics.
+Now we define a static and big-step semantics for our language.
 
 \subsection{Expressions}
-\subsubsection{Head normal form, neutral expressions, beta equivalence}
-\textbf{Head normal form and neutral expressions}
+\subsubsection{Overview of reduction and normalization}
 
-In the simply typed lambda calculus in which there is only the simple function 
-type and lambda abstraction, normalization is the process in which 
-expressions are simplified through repeated applications of the beta reduction rule
+In the simply typed lambda calculus, there is only the simple function 
+type and lambda abstraction. There, normalization is the process in which 
+expressions are reduced through repeated applications of the beta reduction rule
 into a form in which no further beta reductions can occur anywhere in the 
 expression, even underneath the outermost lambda.
-The resulting expression is said to be in \textit{head normal form}. In this
-section, we want to define similar notions for our richer language.
+The resulting, reduced expression is said to be in \textit{head normal form}. 
+In this section, we want to define similar notions for our richer language.
 
 First, note that we have more than just function types in our language. In
 particular, we have 3 main types, namely \verb|Pi|, \verb|Sigma| and \verb|Sum|.
-Also, ``types'' themselves are expressions too.
+Also, these ``types'' themselves are expressions too. Thus we need to generalize
+the notion of normalization to account for these new types and their elimination
+rules. Intuitively, we want to repeatedly reduce an expression using all of
+these rules until we can reduce no further.
 
-Next note that we will be performing normalization and substitution with
+Next note that we will be reducing expressions and substituting with
 respect to a context, which contains definitions which the user declares
 globally, via \verb|def| and \verb|axiom| statements.
 
 Since \verb|axiom| statements introduce variables at the global level with a
 type but no binding, expressions can now contain free variables.
-Hence we need a definition of head normal form and normalization
+Hence we also need a definition of head normal form and reduction
 that takes care of expressions with free variables.
-For this, we must introduce the concept of a \textit{neutral expression}.
+In the next section, we define the head normal form of an expression by way of
+a new concept -- the \textit{neutral expression}.
+After that, we introduce the \textit{context}, ie environment, before 
+discussing normalization.
 
-Neutral expressions are those which cannot be reduced via one of the elimination
-rules (ie the ones for \verb|Pi|, \verb|Sigma| and \verb|Sum| types) because 
-the expression to be eliminated is a free variable rather than an expression of
-the appropriate type.
+% Thereafter, we will introduce the notion of a \textit{context}, which we will use
+% to define the process of normalization.
+
+% Intuitively, an expression is in head normal form if cannot be further reduced
+% by way of an elimination rule. Neutral expressions are those in which the
+% elimination rule cannot be applied to reduce an expression because the
+% leading term is a free variable.
+
+% Normalization is then the process in which we repeatedly reduce an expression
+% using these elimination rules to obtain a head normal form. 
+% Note that in our language, we are normalizing with respect to a context, 
+% ie we have the possibility to substitute free variables with globally
+% defined bindings from the context.
+
+% In the rules to follow, we shall see that this head normal form of an expression,
+% should it exist, is unique, just as in the simply typed lambda calculus.
+
+\subsubsection{Neutral expressions, head normal form, beta equivalence}
+Informally, neutral expressions are those which cannot be reduced via one of the 
+elimination rules (ie the ones for \verb|Pi|, \verb|Sigma| and \verb|Sum| types)
+because  the expression to be eliminated is a free variable rather than an
+expression of the appropriate type.
 
 With this, we generalize the notion of head normal form to be one in which
 the expression cannot be further simplified by applying any of the 3
 elimination rules corresponding to the aforementioned types.
 
-Normalization is then the process in which we repeatedly simplify an expression
-using these elimination rules, with the aim of reducing it to a head normal form.
-In the rules to follow, we shall see that this head normal form of an expression,
-should it exist, is unique, just as in the simply typed lambda calculus.
-
-\begin{definition} [Neutral expressions and head normal form]
-We now define, using mutual recursion, the subset of neutral and 
+Formally we define, using mutual recursion, the subset of neutral and 
 normalized expressions via the following judgments:
 \begin{enumerate}
   \item $\hnf(E)$ \\
@@ -577,7 +729,7 @@ The rules are as follows:
     \begin{prooftree}
       \hypo{\hnf(E_1)}
       \hypo{\hnf(E_2)}
-      \infer2{\hnf(\Pi_{x : E_1}, \, E_2)}
+      \infer2{\hnf(\Pi_{x : E_1} E_2)}
     \end{prooftree}
   \]
 
@@ -585,7 +737,7 @@ The rules are as follows:
     \begin{prooftree}
       \hypo{\hnf(E_1)}
       \hypo{\hnf(E_2)}
-      \infer2{\hnf(\Sigma_{x : E_1}, \, E_2)}
+      \infer2{\hnf(\Sigma_{x : E_1} E_2)}
     \end{prooftree}
   \]
 
@@ -634,12 +786,11 @@ The rules are as follows:
     \end{prooftree}
   \]
 \end{enumerate}
-\end{definition}
 
 Note that \verb|let ... in ...| expressions are not considered to be in head normal form
 because we treat expressions of the form \verb|let x := E in E'| as syntactic
 sugar for the application $(\lambda x, E') \, E$ during the process of
-normalization. 
+normalization.
 
 In fact, we will see later that the typing rules for \verb|let|
 expressions are also derived using this syntactic trick. 
@@ -655,7 +806,6 @@ they're equal up to renaming of bound variables, we write
 $E_1 \equiv_{\alpha \beta} E_2$.
 \end{definition}
 
-\subsubsection{Metavariables for neutral and normalized expressions}
 We now introduce 2 more types of metavariables corresponding to the new definitions
 given in the previous section. 
 
@@ -665,12 +815,13 @@ form.
 \item $n$ ranges over all neutral terms.
 \end{enumerate}
 
-\subsubsection{Contexts}
-Here we take the context, $\Gamma$, to be a list, ie a finite sequence, of triples
-of the form
+\subsubsection{A brief overview of contexts}
+We define contexts, denoted by the metavariable, $\Gamma$, to be lists of
+triples of the form
 \begin{align*}
   (\text{variable name}, \, \text{type of variable}, \, \text{binding})
 \end{align*}
+
 We will use $\emptyset$ to denote the empty context, and $::$ to refer to the
 list cons operation.
 
@@ -687,11 +838,20 @@ We should mention that whenever we write, say
 $(x, \, \tau, \, \nu) \in \Gamma$, we allow the metavariable $\nu$ to be 
 \verb|und| as well. Also if there are multiple occurrences of $x$ in $\Gamma$,
 as is the case when there is variable shadowing, we refer to the first occurrence
-of $x$. 
+of $x$.
+
+Most of the time, when we work with contexts, we want them to be \textit{well
+formed} in the sense that we want the contexts that we deal with in our typing
+and normalization judgments to satisfy some additional invariants.
+
+Primarily, we want the ``types'' that we store in the context to be ``valid types"
+rather than just being expressions in our language.
+We will discuss this in more detail later, alongside the static semantics.
 
 \subsubsection{Overview of judgement forms}
-We first give an overview of the main judgment forms which we will define in a
-mutually recursive fashion in the subsequent few sections.
+Since we will be defining some judgment forms (including normalization and
+typing related ones) in a mutually recursive fashion, we first give an
+overview of them.
 
 \begin{enumerate}
 \item $\wf(\Gamma)$ \\
@@ -715,9 +875,8 @@ mutually recursive fashion in the subsequent few sections.
   $\lambda \, (T : \Type) (x : T), \, x$.
 
 \item $\Gamma \vdash E \Downarrow \nu$ \\
-  This $\cdot \vdash \cdot \Downarrow \cdot$ relation is used in our definition of a
-  big-step operational semantics to normalize expressions to their full head
-  normal form.
+  The $\cdot \vdash \cdot \Downarrow \cdot$ relation is our big-step normalization
+  process.
   It says that with respect to a context $\Gamma$ containing global bindings, we
   may normalize $E$ to an expression, $\nu$ that is in head normal form.
   % Note that we can do so because our language is a lambda calculus that does
@@ -725,16 +884,29 @@ mutually recursive fashion in the subsequent few sections.
 \end{enumerate}
 
 \subsubsection{Big step normalization}
-Before defining our type system given by the 2 judgments,
-$\cdot \vdash \cdot \Leftarrow \cdot$ and $\cdot \vdash \cdot \Rightarrow
-\cdot$, we first define $\cdot \vdash \cdot \Downarrow \cdot$, the big
-step semantics for normalizing expressions. This is because we will actually
-need to perform normalization while typechecking.
+% Before defining our type system given by the 2 judgments,
+% $\cdot \vdash \cdot \Leftarrow \cdot$ and $\cdot \vdash \cdot \Rightarrow
+% \cdot$, we first define $\cdot \vdash \cdot \Downarrow \cdot$, the big
+% step semantics for normalizing expressions. This is because we will actually
+% need to perform normalization while typechecking.
 
-Recall that the aim of normalization is to reduce an expression to head normal
-form, which includes neutral expressions and free variables as a subset.
+As mentioned earlier, the aim of normalization is to reduce an
+expression, through repeated applications of the 3 elimination rules
+(ie \verb|Pi|, \verb|Sigma| and \verb|Sum|) to head normal form, which includes
+neutral expressions and free variables as a subset.
 
-The rules are as follows:
+One may notice that this intuitive formulation resembles a small-step semantics.
+Indeed, we may obtain a contraction rule from each elimination rule and then
+formalize a one-step transition relation, say $\Gamma \vdash E \longmapsto E'$.
+From that, we can then derive its reflexive, transitive closure,
+$\Gamma \vdash E \longmapsto^* E'$.
+
+However we take a different approach. We define a big-step semantics
+directly because this translates nicer into a recursive interpreter written in a
+functional style.
+
+In the rules below, note how our elimination rules account for expressions
+in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
 
 % It should be noted at this point that in our semantics to follow, we only 
 % normalize terms after we typecheck them. 
@@ -777,8 +949,8 @@ The rules are as follows:
     \end{prooftree}
   \]
   This says type ascriptions do not play a role in computation. They're just
-  there to help the type checker figure things out and for users to communicate
-  their intentions.
+  there to help the type checker figure things out. Users can also use these as
+  a form of documentation.
  
 \item \textbf{Pi elimination, ie function application} \\
   \[
@@ -797,8 +969,6 @@ The rules are as follows:
       \infer2{\Gamma \vdash E_1 \,\, E_2 \Downarrow n \,\, \nu}
     \end{prooftree}
   \]
-
-  The last rule handle the cases of neutral expressions.
 
 \item \textbf{Normalizing under lambdas} \\
   \[
@@ -954,7 +1124,15 @@ The reason is that we will ensure that we only normalize expressions after we
 typecheck them, and we will see in the next section that \verb|Kind| has no
 type. Thus we will never need to normalize it.
 
-\subsubsection{Well formed context and typing judgments}
+\subsubsection{Well formed types and contexts}
+Recall that when defining the notion of a context earlier, we said that we
+normally only work with well formed ones. In particular, this means that the
+types we store in the context are ``valid''. Here we properly define these
+concepts.
+
+First we introduce a new metavariable $s$ to denote either of the 2 sorts,
+\verb|Type| and \verb|Kind|. 
+
 \begin{definition} [Well formed type and type constructor]
   An expression $T$ is said to be a well-formed type with respect to the context
   $\Gamma$ if it satisfies
@@ -969,9 +1147,29 @@ type. Thus we will never need to normalize it.
   Kind, just like in Haskell. 
 \end{definition}
 
+With this, we define well formed contexts as contexts satisfying 2 key invariants:
+\begin{enumerate}
+  \item Well formed contexts only contain well formed types.
+  \item The expressions representing the type and binding of a variable are both
+  in head normal form.
+\end{enumerate}
+
+Observe that in order to maintain these 2 invariants while typechecking
+an expression,  we will need to perform normalization on types themselves.
+To see this, consider what happens when we want to typecheck a lambda abstraction.
+Intuitively, we procceed as in the simply typed lambda calculus. We want to add
+the variable and its type to the context and continue typechecking the body.
+But remember, we must ensure that the context remains well formed when
+typechecking the body. For this, we must check that the type is well formed and
+normalize it to head normal form before we can add it to the context.
+
+However, it must be noted that we only normalize expressions after we typecheck
+them. At no point in our formulation in the next section, do we attempt to
+normalize an expression before checking that it has a well formed type.
+
 \begin{definition} [Well formed context]
-  Note that our definition below implies that expressions and types that we
-  store in our context are normalized to head normal form.
+  Recalling that $\emptyset$ denotes the empty list and that $::$ denotes the list
+  cons operation, we define precisely the judgment $\wf(\Gamma)$.
 
   \begin{enumerate}
   \item \textbf{Base case} \\
@@ -985,7 +1183,7 @@ type. Thus we will never need to normalize it.
     \[
       \begin{prooftree}
         \hypo{\wf(\Gamma)}
-        \hypo{\Gamma \vdash \tau \Rightarrow s}
+        \hypo{\Gamma \vdash \tau \Leftarrow s}
         \infer2{\wf ((x, \, \tau, \, \nu) :: \Gamma)}
       \end{prooftree}
     \]
@@ -993,13 +1191,14 @@ type. Thus we will never need to normalize it.
     \[
       \begin{prooftree}
         \hypo{\wf(\Gamma)}
-        \hypo{\Gamma \vdash \tau \Rightarrow s}
+        \hypo{\Gamma \vdash \tau \Leftarrow s}
         \infer2{\wf ((x, \, \tau, \, \text{und}) :: \Gamma)}
       \end{prooftree}
     \]
   \end{enumerate}
 \end{definition}
 
+\subsubsection{Static semantics, ie typing rules}
 \begin{definition} [Bidrectional typechecking]
   Here we define the 2 \textit{mutually recursive} relations
   \begin{enumerate}
@@ -1027,7 +1226,6 @@ type. Thus we will never need to normalize it.
     \]
     This says that we may infer the type of a variable if the type information
     is already in our context.
-    Note that in this rule, we also allow $\nu$ to be \verb|und|.
 
   \item \textbf{Type} \\
     \[
@@ -1084,9 +1282,9 @@ type. Thus we will never need to normalize it.
     to each other, we may conclude that $E$ indeed has type $\tau$.
 
     \begin{remark}
-      Note that this rule, together with the one on type ascriptions, is the reason
-      why we need to perform computations on types, ie normalize them, while
-      typechecking expressions. 
+      This rule, together with the one on type ascriptions, is precisely the reason
+      why we eagerly normalize types and maintain the 2 invariants required
+      for our contexts to be well formed.
 
       To see this, suppose the user requests that we typecheck an expression
       of the form $(x : T)$
@@ -1096,14 +1294,15 @@ type. Thus we will never need to normalize it.
 
       Unlike the simply typed and polymorphic lambda calculi, our type system is
       much richer and so checking types for equality is not so simple.
-      How do we check if 2 ``types'' are equal when they are really just expressions?
-      One idea is to fully simplify them to their respective unique head normal forms,
-      via normalization, and then check if those are structurally equal.
+      In fact, ``types'' are just expressions!
 
-      However, it must be noted that throughout these rules, we only normalize
-      expressions after we typecheck them. We always check that a type is
-      well formed, ie that $\Gamma \vdash T \Rightarrow s$, before we try to
-      normalize $T$.
+      Ah but since we always normalize types before dealing with them, assuming
+      that terms have a unique head normal form 
+      (we'll discuss this later in the section on metatheoretic properties), we 
+      will normalize $T$ and $T'$ to $\tau$ and $\tau'$ respectively.
+      After that, we need only compare them for structural equality,
+      modulo alpha equivalence. Such an operation is trivial to implement using
+      an implementation that represets variables by de bruijn indices.
     \end{remark}
 
   \item \textbf{Pi formation} \\
@@ -1319,33 +1518,16 @@ type. Thus we will never need to normalize it.
 
 The nice thing about these rules is that we can translate it almost directly
 into a typechecking and inference algorithm!
-More precisely, we may translate $\Gamma \vdash E \Rightarrow T$ into a
+More precisely, we may translate $\Gamma \vdash E \Leftarrow T$ into a
 function called $\text{check}(\Gamma, \, E, \, T)$ which checks if the
 expression $E$ really has the type $T$ given a context $\Gamma$.
 
-Similarly, $\Gamma \vdash E \Leftarrow T$ gives us a the function
+Similarly, $\Gamma \vdash E \Rightarrow T$ gives us the function
 $\text{infer}(\Gamma, \, E)$ which outputs the inferred type of $E$ given
 the context $\Gamma$.
 
 In the literature, such rules are called \textit{syntax directed}, as the
 algorithm closely follows the formalization of the corresponding judgments.
-
-It's worth noting that $\eta$ equivalence is not respected by our type system.
-By that we mean that the following rule does not hold:
-\[
-  \begin{prooftree}
-    \hypo{\Gamma \vdash E \Rightarrow \tau'}
-    \hypo{\tau \equiv_{\eta} \tau'}
-    \infer2{\Gamma \vdash E \Leftarrow \tau}
- \end{prooftree}
-\]
-In other words, 2 types that are $\eta$ equivalent to one another will 
-\textit{not} be judged as equal types.
-
-One way to fix this is to allow the type checker to eta expand terms, via
-eliminating and then applying the data constructor while computing the beta
-normal form. However, for simplicity, we chose to follow the original 
-formulation of the Calculus of Constructions and ignore this.
 
 % Another kind of equivalence is \textit{eta equivalence}. To explain this,
 % consider the terms $\lambda x, \, B \, x$ and $B$. Both of them have exactly the
@@ -1375,7 +1557,7 @@ formulation of the Calculus of Constructions and ignore this.
 %   \end{prooftree}
 % \]
 
-\subsection{Big step semantics for programs}
+\subsection{Statements and programs}
 \begin{comment}
   Follows this approach:
   https://www.cs.cornell.edu/courses/cs6110/2013sp/lectures/lec05-sp13.pdf
@@ -1383,13 +1565,11 @@ formulation of the Calculus of Constructions and ignore this.
 
 Programs in our language are nonempty sequences of statements, with each
 statement being built from some expression.
-Following \href{https://web.eecs.umich.edu/~weimerw/2014-6610/reading/plotkin81structural.pdf}
-{Plotkin's approach} to structural operational semantics, we formalize
-the execution of program by defining a \textit{transition system}.
+We formalize the execution of programs by defining a
+\textit{transition system}.
 
-In the next section, we define the notion of a configuration, which plays the
-same role as states in automata. Thereafter, we formalize the big-step 
-transition relation for executing programs.
+Before that, we first define the notion of a configuration, which plays the
+same role as states in automata. 
 
 \subsubsection{Configuration/state of program}
 A configuration has the form
@@ -1399,22 +1579,23 @@ A configuration has the form
 Configurations are triples representing the instantaneous state during an
 execution of a program. Here, $\Gamma$ denotes the current state of the
 global context and the sequence $\langle S_0; \, \dots; \, S_n \rangle$ denotes
-the next statements to be executed. 
+the sequence of statements to be executed next. 
 The expression $E$ is used to indicate the output of the previously executed
 statement.
 
 With this view, given a program, $\langle S_0; \, \dots; \, S_n
-\rangle$, we also define:
+\rangle$, we also define the initial and final configurations.
 \begin{enumerate}
-\item \textbf{Initial configuration} \\
+\item \textbf{Initial configuration:}
   $ (\emptyset, \, \langle S_0; \, \dots; \, S_n \rangle, \, \Type)$
 
+  This is the state in which we begin executing our programs.
   Initially, our global context is empty. Also, \verb|Type| is merely a dummy
   value and could have very well be replaced by \verb|Kind|.
 
-\item \textbf{Final configurations} \\
-  These are all configurations of the form
-  $(\Gamma, \, \langle \rangle, \, E)$
+\item \textbf{Final configurations} $(\Gamma, \, \langle \rangle, \, E)$
+After executing programs in our language, if all goes well, we'll end up in
+one of these states.
 \end{enumerate}
 
 In the next section, we define the big-step transition relation for programs $\cdot
@@ -1423,7 +1604,7 @@ this notion of a configuration.
 
 \subsubsection{Big step semantics for programs}
 We define the big step transition relation, $\cdot \Downarrow \cdot$, via a
-new judgment form in our calculus.
+new judgment form.
 
 It should be noted that in the rules below, we interleave type checking and 
 evaluation, ie we type check and then evaluate each statement, one at a time,
@@ -1510,14 +1691,13 @@ In other words, the expression output to the user is the expression obtained by
 beginning with the initial configuration and then recursively evaluating
 until we reach a final configuration.
 
-\section{Metatheoretic discussion}
+\section{Metatheoretic discussion -- TODO}
 The original Calculus of Constructions is known to be strongly normalizing in
 that the normalization process, when applied to any well typed term, always
 terminates. Furthermore, it has decidable typechecking and is logically
 consistent when its type system is viewed as a logical calculus, with the Pi type
 corresponding to universal quantification.
 
-\textbf{TODO}
 
 Say something about why we think our bidirectional typechecking works.
 https://arxiv.org/pdf/2102.06513.pdf
@@ -1538,6 +1718,37 @@ existential quantification in terms of universal in CoC (see Type Theory and
 Formal Proof book).
 
 https://era.ed.ac.uk/bitstream/handle/1842/12487/Luo1990.Pdf
+
+
+
+Here we make an assumption that head normal forms are \textit{unique}. 
+This is not a far fetched assumption because it holds for the original Calculus
+of Constructions as well as various extensions of it that include \verb|Sigma|
+types among others. [insert reference to Luo's phd thesis]
+
+
+
+It's worth noting that $\eta$ equivalence is not respected by our type system.
+By that we mean that the following rule does not hold:
+\[
+  \begin{prooftree}
+    \hypo{\Gamma \vdash E \Rightarrow \tau'}
+    \hypo{\tau \equiv_{\eta} \tau'}
+    \infer2{\Gamma \vdash E \Leftarrow \tau}
+ \end{prooftree}
+\]
+In other words, 2 types that are $\eta$ equivalent to one another will 
+\textit{not} be judged as equal types.
+
+One way to fix this is to allow the type checker to eta expand terms, via
+eliminating and then applying the data constructor while computing the beta
+normal form. However, this significantly complicates discussions of the
+metatheoretic properties of the language and so for simplicity, we chose to
+follow the original formulation of the Calculus of Constructions and ignore
+this.
+
+% http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.39.9149&rep=rep1&type=pdf
+% http://www2.tcs.ifi.lmu.de/~abel/lfsigma.pdf
 
 \section{Technical implementation}
 

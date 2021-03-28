@@ -105,6 +105,11 @@ More sample programs can be found in the `sample_programs` directory.
   - [ ] Unit, aka the singleton type, aka logical truth
   - [ ] Void, aka the empty type, aka logical falsity
 
+## Project structure (Work in progress)
+### Overview of what happens when you enter a program
+Programs entered by the user are first parsed by the parser (found in `lib/parsing`).
+
+### Detailed breakdown of directory structure
 - `bin` currently contains only `main.ml` which contains the main entry point to
   interact with our language.
 - `lib` is our library which contains all the code making our language work.
@@ -118,16 +123,11 @@ More sample programs can be found in the `sample_programs` directory.
     statements. These include normalization, type checking and context management
     using de bruijn indices.
         - `context.ml` is the module implementing the context/environment.
-        The level of abstraction is controlled via the module signature found in
-        `context.mli`.
-        Contexts function like a list of triples of triples of the form
-                (var name string, type of var, binding)
-        - `normalization.ml` currently contains the `shift` and `subst`
-        functions for working with our AST using de bruijn indices.
-        We aim to implement the `normalize` function for expressions soon.
-        - `typing.ml` is currently empty. Eventually we will implement our
-        bidirectional typechecking algorithm here.
-        This will include the 2 key functions `check` and `infer`, where `infer`
+        - `normalization.ml` currently contains the `normalize`, `subst` and
+        `beta_reduce` functions. The latter 2 implement the substitution operation
+        for de bruijn ASTs.
+        - `typing.ml` implements our bidirectional typechecking algorithm.
+        This indluces the 2 key functions `check` and `infer`, where `infer`
         involves synthesizing the type, while `check` involves verifying if an
         expression has a given type.
         - `eval_statements.ml` contains functions for evaluating statements.
@@ -139,3 +139,5 @@ More sample programs can be found in the `sample_programs` directory.
    the internal AST and vice versa.
    - `error_reporting.ml` contains functions for handling errors that occur while
    running programs in our language. These include pretty printing of errors.
+   - `pretty_printing.ml` contains utilities for unparsing expressions and pretty
+   printing them.
