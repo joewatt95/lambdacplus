@@ -56,7 +56,9 @@ let rec infer ctx (expr : int Ast.expr) =
     match inferred_type.data with
     | Ast.Pi {expr=input_type; body=output_type; _} ->
       check ~outer_expr:expr ctx arg input_type;
-      Norm.beta_reduce output_type arg
+      arg
+      |> Norm.beta_reduce output_type
+      |> Norm.normalize ctx
     | _ -> 
       raise @@ Type_mismatch
         {expr=fn; outer_expr=expr; inferred_type; expected_type=Family "Pi"}
@@ -199,7 +201,7 @@ and check ~outer_expr ctx expr expected_type =
     let inferred_type = infer ctx expr in
     (* Here we need to check if the inferred type and expr_type are equal *)
     if not @@ equal_expr inferred_type expected_type
-    then 
+    then
       let expected_type = Exact expected_type in
       raise @@ Type_mismatch {expr; inferred_type; expected_type; outer_expr}
 

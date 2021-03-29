@@ -188,13 +188,16 @@ let parser_to_internal_stmts stmts ctx =
 (* Based on pg 85 of Types and Programming Languages *)
 
 let pick_fresh_name var_name ctx =
-  let append_prime = (Fun.flip (^)) "'" in
-  let is_var_name_free var_name =
-    not @@ Kernel.Context.is_var_name_bound ctx var_name
-  in
-  let new_var_name =
-     Common.Utils.until is_var_name_free append_prime var_name in
-  new_var_name, Kernel.Context.add_binding new_var_name ctx
+  match var_name with
+  | "_" -> var_name, Kernel.Context.add_binding var_name ctx
+  | _ ->
+    let append_prime = (Fun.flip (^)) "'" in
+    let is_var_name_free var_name =
+      not @@ Kernel.Context.is_var_name_bound ctx var_name
+    in
+    let new_var_name =
+      Common.Utils.until is_var_name_free append_prime var_name in
+    new_var_name, Kernel.Context.add_binding new_var_name ctx
 
 let rec internal_to_parser_raw_expr ctx raw_expr =
   match raw_expr with

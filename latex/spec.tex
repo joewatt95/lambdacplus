@@ -14,11 +14,10 @@ cumulative hierarchy of type universes.
 
 In this document, we provide a big-step semantics for our language, upon which
 our interpreter was based.
-
 Our approach to semantics is heavily inspired by 
 \href{https://homepages.inf.ed.ac.uk/gdp/publications/sos_jlap.pdf}
-{Plotkin's seminal work} on structural operational semantics, as well as the 
-\href{https://smlfamily.github.io/sml97-defn.pdf}{specification for Standard ML}.
+{Plotkin's seminal work} on structural operational semantics.
+
 Though our language specification is formal and mathematically
 intensive, we believe in the importance of rigour to ensure precision and clarity.
 This is especially important for our language since dependent type theory is a
@@ -63,6 +62,7 @@ theory. Such choice functions associate to each $x \in A$, an element $f(x)$ in 
 % \href{https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf}{this paper on $\lambda
 %   \Pi$} and \href{https://github.com/andrejbauer/spartan-type-theory}{this
 %   implementation of a dependent type theory}.
+
 More generally, dependently typed languages allow types to depend on expressions
 as well.
 Now you might ask, of what use are dependent types?
@@ -161,15 +161,15 @@ This may be counter-intuitive for users because in first (or higher) order
 logic, there is a clear distinction between terms and well-formed formulae,
 which belong to different syntactic categories. 
 
-As for the sort \verb|Kind|, it's actually not really useful for users. It's
+As for the sort \verb|Kind|, it's not all too useful for users. It's
 just here to prevent Girard's paradox, a type theoretic formulation of the set
 theoretic Burali-Forti argument.
 Through the construction of Girard's paradox, one can (in theory) provide a 
-proof of false, ie a lambda expression that inhabits the empty type.
+proof of false, ie an expression that inhabits the empty type.
 In doing so, the logical consistency of the calculus is lost.
 
 It should also be noted that we focus on theorem proving via Curry-Howard over
-general programming. This means that our language, like CoC, does not have
+general programming. This means that our language does not have
 basic programming constructs like general recursion, conditional statements or
 even basic types like numbers and booleans.
 
@@ -207,11 +207,12 @@ for them.
 Yes, this means that \textit{everything} in our language is an expression, even
 those things which we call types!
 With this in mind, a type is then an expression, say $T$, which satisfies a very
-specific typing judgment, ie $\Gamma \vdash T \Leftarrow s$. We'll revisit
-this again later.
+specific typing judgment, namely $\Gamma \vdash T \Leftarrow s$,
+where $s \in \{ \Type, \, \Kind \}$. We'll revisit this again later.
 
 For now, we describe the concrete ascii syntax for our language, alongside
-the syntactic sugar users can enter. This includes unicode symbols.
+the syntactic sugar we provide. This includes unicode versions of logical symbols
+that we write on paper.
 
 At the top level, programs will be nonempty sequences of statements.
 Statements function like top-level commands, as found in other theorem provers
@@ -361,8 +362,9 @@ Before we list the full set of rules, we first introduce some metavariables.
   \verb|Sigma|.
 
   In the event that the output type does not depend on the input type, users
-  may enter \verb|A -> B| and \verb|A * B| in place of 
-  \verb|Pi (x : A), B| and \verb|Sigma (x : A), B|.
+  may enter \verb|A -> B| in place of \verb|Pi (x : A), B|.
+  For the case of \verb|Sigma|, \verb|A * B| and \verb|A /\ B| can be written
+  in place of \verb|Sigma (x : A), B|.
 
   \item \textbf{Sigma constructor} \\
   \[
@@ -418,6 +420,8 @@ Before we list the full set of rules, we first introduce some metavariables.
     \infer2{A + B}
   \end{prooftree}
 \]
+
+As syntactic sugar, users can write \verb|A \/ B| instead.
 
 \item \textbf{Sum type constructor} \\
 \[

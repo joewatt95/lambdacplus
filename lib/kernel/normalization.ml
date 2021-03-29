@@ -65,6 +65,8 @@ let normalize ctx =
       inherit [_] Ast.ast_mapper
 
       method! visit_Var {data=ctx; _} index =
+        (* if Stdlib.(Context.index_to_var_name ctx index = "g")
+        then Context.pretty_print ctx; *)
         index
         |> Context.get_binding ctx
         |> CCOpt.map Location.data
@@ -74,8 +76,9 @@ let normalize ctx =
         self#visit_raw_expr ctx expr.data
 
       method! visit_App ctx {left=fn; right=arg} =
+        let fn = self#visit_expr ctx fn in
         let arg = self#visit_expr ctx arg in
-        match self#visit_raw_expr ctx fn.data with
+        match fn.data with
         | Ast.Fun {body; _} ->
           let body = beta_reduce body arg in
           self#visit_raw_expr ctx body.data
@@ -120,9 +123,11 @@ let normalize ctx =
           Location.update_data ctx @@ fun ctx -> Context.add_binding input_var ctx
 
       method! visit_Let ctx {expr=binding; body; _} =
-        let binding = self#visit_expr ctx binding in
+        let fn = Location.locate @@ Ast.Fun {input_type=None; input_var="dummy"; body} in 
+        self#visit_App ctx {left=fn; right=binding}
+        (* let binding = self#visit_expr ctx binding in
         let body = beta_reduce body binding in
-        self#visit_raw_expr ctx body.data
+        self#visit_raw_expr ctx body.data *)
 
       (* method! visit_Let_pair ctx _  _ binding body =
         let binding = self#visit_expr ctx binding in

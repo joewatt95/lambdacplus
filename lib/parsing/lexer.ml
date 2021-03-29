@@ -67,8 +67,8 @@ let rec tokenize lexbuf =
   | ":=" -> G.COLON_EQ
   | "=>" | "⇒" -> G.DOUBLE_ARROW
   | "->" | "→" -> G.ARROW
-  | "*" | "⨯" | "∧" -> G.PROD
-  | "+" | "∨" -> G.PLUS
+  | "*" | "⨯" | "∧" | "/\\" -> G.PROD
+  | "+" | "∨" | "\\/" -> G.PLUS
   | "|" -> G.BAR
 
   | name -> 
