@@ -31,7 +31,7 @@ and 'a abstraction = {
    inr `match_var` -> `match_body`
   *)
 and 'a match_binding = {
-  match_var : (string [@visitors.opaque]);
+  match_var : (string [@visitors.opaque] [@equal Utils.always_true]);
   match_body : 'a expr;
 }
 
@@ -150,8 +150,6 @@ let shift shift_by =
       method shift_under_binder {data=cutoff; _} expr =
         let new_cutoff = Location.locate @@ cutoff + 1 in
         self#visit_expr new_cutoff expr 
-
-      (* method shift_under_single_binder = self#shift_under_binder 1 *)
 
       (* Note that we don't need to impement the visit_App, visit_Type,
          visit_Kind and visit_Ascription methods since the Visitors package

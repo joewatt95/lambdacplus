@@ -40,6 +40,8 @@ let rec infer ctx (expr : int Ast.expr) =
     | _ ->
       check_well_formed_type ctx ascribed_type;
       let ascribed_type = Norm.normalize ctx ascribed_type in
+      print_endline "Ascribed:";
+      print_endline @@ Ast.show_expr Format.pp_print_int ascribed_type;
       check ~outer_expr:expr ctx expr' ascribed_type;
       ascribed_type
   end
@@ -68,16 +70,24 @@ let rec infer ctx (expr : int Ast.expr) =
   check_well_formed_type ctx input_ty;
   let input_ty = Norm.normalize ctx input_ty in
   let ctx = Context.add_binding input_var ~var_type:input_ty ctx in
-  let output_type = infer ctx body in
+  let output_type = Norm.normalize ctx @@ infer ctx body in
   (* What source location info should be used here? *)
   Location.set_data expr @@ Ast.Pi {var_name=input_var; expr=input_ty; body=output_type}
 
  | Ast.Let {var_name; expr=binding; body} ->
+  (* let var_type = infer ctx binding in
+  let fn = Location.locate @@ Ast.Fun {input_var=var_name; input_type=Some var_type; body} in
+  let expr = Location.set_data expr @@ Ast.App {left=fn; right=binding} in
+  infer ctx expr *)
   let var_type = infer ctx binding in
   let ctx = Context.add_binding var_name ~var_type:var_type ctx in
+  print_endline @@ Ast.show_expr Format.pp_print_int binding;
   body 
   |> infer ctx
-  |> Fun.flip Norm.beta_reduce binding
+  (* Need to shift here? This is kinda like Match where we need to correct the
+    indices when we move back out the binder. *)
+  (* |> Fun.flip Norm.beta_reduce binding *)
+  |> fun expr -> Norm.subst 0 expr binding
   |> Norm.normalize ctx
 
  | Ast.Pi abstraction | Ast.Sigma abstraction-> infer_pi_sigma ctx abstraction
@@ -199,6 +209,10 @@ and check ~outer_expr ctx expr expected_type =
 
   | _, _ ->
     let inferred_type = infer ctx expr in
+    print_endline "Inferred:";
+    print_endline @@ Ast.show_expr Format.pp_print_int inferred_type;
+    print_endline "Expected:";
+    print_endline @@ Ast.show_expr Format.pp_print_int expected_type;
     (* Here we need to check if the inferred type and expr_type are equal *)
     if not @@ equal_expr inferred_type expected_type
     then
@@ -208,7 +222,7 @@ and check ~outer_expr ctx expr expected_type =
 (* Check if expr is a well-formed type wrt ctx. In other words, this checks
   if the type of expr is Type or Kind. If so, we return it. Otherwise, we throw
   an exception. *)
-and get_well_formed_type ctx expr = 
+and get_well_formed_type ctx expr =
   let inferred_type = infer ctx expr in
   match inferred_type.data with
   | Ast.Type | Ast.Kind -> inferred_type

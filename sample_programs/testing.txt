@@ -1,0 +1,34 @@
+constant A : Type
+constant B : Type
+
+constant R : A -> B -> Prop
+
+// Works
+def choice := fun (R_left_total : forall a : A, exists b : B, R a b) =>
+ (fun (f : A -> B) (pf : forall a : A, R a (f a)) => 
+   ((f, pf) : exists f : A -> B, forall a : A, R a (f a)))
+   (fun (a : A) => fst (R_left_total a))
+   (fun (a : A) => snd (R_left_total a))
+
+check (choice : (forall a : A, exists b : B, R a b) -> 
+                  (exists f : A -> B, forall a : A, R a (f a)))
+
+// Doesnt work. Let ... in ... expressions are not playing nice with typechecking.
+def choice := fun (R_left_total : forall a : A, exists b : B, R a b) =>
+  let f := fun (a : A) => fst (R_left_total a) in
+  let pf := fun (a : A) => snd (R_left_total a) in 
+  // We can't construct the pair to prove the existential because this
+  // next line doesn't typecheck.
+  // (pf : forall a : A, R a (f a))
+  // This does typecheck however: (pf : forall a : A, (fst (R_left_total a)))
+  // Idk why (f a) doesn't seem to be normalized correctly to (fst (R_left total a))
+  // in the type.
+  ((f, pf) : exists f : A -> B, forall a : A, R a (f a))
+
+// Doesnt work
+// Same problem as above.
+def choice := fun (R_left_total : forall a : A, exists b : B, R a b) =>
+  (fun (f : A -> B) => 
+    let pf := fun (a : A) => snd (R_left_total a) in 
+    (pf : forall a : A, R a (f a)))
+  (fun (a : A) => fst (R_left_total a))

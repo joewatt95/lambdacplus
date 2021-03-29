@@ -20,16 +20,16 @@ let subst from_index to_expr =
 
       method! visit_Fun from_to input_var input_type body =
         let input_type = CCOpt.map (self#visit_expr from_to) input_type in
-        let body = self#subst_under_single_binder from_to body in
+        let body = self#subst_under_binder from_to body in
         Ast.Fun {input_var; input_type; body}
 
       method! visit_abstraction from_to {var_name; expr; body} =
         let expr = self#visit_expr from_to expr in
-        let body = self#subst_under_single_binder from_to body in
+        let body = self#subst_under_binder from_to body in
         {var_name; expr; body}
 
       method! visit_match_binding from_to {match_var; match_body} =
-        let match_body = self#subst_under_single_binder from_to match_body in
+        let match_body = self#subst_under_binder from_to match_body in
         {match_var; match_body}
 
       (* method! visit_Let_pair from_to left_var right_var binding body =
@@ -39,13 +39,11 @@ let subst from_index to_expr =
 
       (* Handy helper function for performing substitutions under binders.
          These include lambda and Pi. *)
-      method subst_under_binder num_binders {data=(from_index, to_expr); _} = 
+      method subst_under_binder {data=(from_index, to_expr); _} = 
         to_expr
-        |> Ast.shift num_binders
-        |> fun to_expr -> self#visit_expr @@ Location.locate (from_index + num_binders, to_expr)
+        |> Ast.shift 1
+        |> fun to_expr -> self#visit_expr @@ Location.locate (from_index + 1, to_expr)
       
-      method subst_under_single_binder = self#subst_under_binder 1
-
       (* Note that we don't need to override the default methods that the Visitors
          package generates for visit_Type, visit_Kind, visit_App and 
          visit_Ascription since we only need special rules for handle variables 
@@ -123,11 +121,23 @@ let normalize ctx =
           Location.update_data ctx @@ fun ctx -> Context.add_binding input_var ctx
 
       method! visit_Let ctx {expr=binding; body; _} =
-        let fn = Location.locate @@ Ast.Fun {input_type=None; input_var="dummy"; body} in 
-        self#visit_App ctx {left=fn; right=binding}
-        (* let binding = self#visit_expr ctx binding in
+        (* let fn = Location.locate @@ Ast.Fun {input_type=None; input_var="dummy"; body} in 
+        self#visit_App ctx {left=fn; right=binding} *)
+        let binding = self#visit_expr ctx binding in
         let body = beta_reduce body binding in
-        self#visit_raw_expr ctx body.data *)
+        self#visit_raw_expr ctx body.data
+
+      method! visit_Fst ctx expr =
+        let expr = self#visit_expr ctx expr in
+        match expr.data with
+        | Ast.Pair {left; _} -> self#visit_raw_expr ctx left.data
+        | _ -> Ast.Fst expr
+
+      method! visit_Snd ctx expr =
+        let expr = self#visit_expr ctx expr in
+        match expr.data with
+        | Ast.Pair {right;_} -> self#visit_raw_expr ctx right.data
+        | _ -> Ast.Snd expr
 
       (* method! visit_Let_pair ctx _  _ binding body =
         let binding = self#visit_expr ctx binding in
