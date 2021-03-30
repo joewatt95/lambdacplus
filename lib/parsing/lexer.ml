@@ -47,7 +47,14 @@ let reserved_keywords =
    (["def"], G.DEF);
    (["axiom"; "constant"], G.AXIOM);
    (["check"], G.CHECK);
-   (["eval"], G.EVAL)]
+   (["eval"], G.EVAL);
+   (* For proof terms like Lean. *)
+   (["assume"], G.ASSUME);
+   (["have"], G.HAVE);
+   (["from"], G.FROM);
+   (["show"], G.SHOW);
+   (["theorem"; "lemma"], G.THEOREM)
+   ]
    (* Fancy stream fusion stuff *)
   |> Iter.of_list
   |> Iter.flat_map_l
@@ -71,12 +78,12 @@ let rec tokenize lexbuf =
   | "+" | "∨" | "\\/" -> G.PLUS
   | "|" -> G.BAR
 
-  | name -> 
+  | name ->
     let lexeme = Encoding.lexeme lexbuf in
     Hashtbl.get_or reserved_keywords lexeme ~default:(G.VAR_NAME lexeme)
   | newline
 
-  | "//", Star (Compl ('\r' | '\n')) 
+  | "--", Star (Compl ('\r' | '\n')) 
 
   | Plus whitesp -> tokenize lexbuf
 

@@ -11,8 +11,7 @@ TODO: Implement error reporting
 https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
  *)
 %{
-  module Ast = Common.Ast
-  module Loc = Common.Location
+  open Common
 %}
 
 %token APP
@@ -20,6 +19,9 @@ https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
 (* Types and expressions *)
 %token TYPE KIND PI SIGMA FUN LET IN FST SND ARROW PROD
         PLUS MATCH INL INR BAR END WITH
+
+(* For proof terms, like Lean. *)
+%token ASSUME HAVE FROM SHOW THEOREM
 
 (* Misc punctuation *)
 %token LPAREN RPAREN COLON_EQ COLON COMMA DOUBLE_ARROW
@@ -34,23 +36,29 @@ https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
 %token EOF
 
 (* Lowest precedence *)
-%nonassoc LPAREN VAR_NAME FUN PI SIGMA TYPE LET KIND FST SND MATCH INL INR
+%nonassoc LPAREN VAR_NAME FUN PI SIGMA TYPE LET KIND FST SND MATCH INL INR ASSUME HAVE SHOW
 (* Highest precedence *)
 %nonassoc APP
 
-%start <string Common.Ast.list_of_stmts> main
+%start <string Ast.list_of_stmts> main
 
 %%
 
 let main := terminated(nonempty_list(stmt), EOF)
 
-let located(x) == ~ = x; { Loc.locate x ~source_loc:$loc }
+let located(x) == ~ = x; { Location.locate x ~source_loc:$loc }
 
 let stmt == located(
   | DEF; ~ = var_name; COLON_EQ; binding = expr;  { Ast.Def {var_name; binding}}
   | AXIOM; ~ = var_name; COLON; var_type = expr;  { Ast.Axiom {var_name; var_type} }
   | CHECK; ~ = expr;                              { Ast.Check expr }
   | EVAL; ~ = expr;                               { Ast.Eval expr }
+  | THEOREM; ~=var_name; COLON; claim=expr; COLON_EQ; proof=expr;
+  {
+    let binding = 
+      Location.locate @@ Ast.Ascription {expr=proof; ascribed_type=claim} in
+    Ast.Def {var_name; binding}
+  } 
 )
 
 let expr :=
@@ -59,6 +67,7 @@ let expr :=
   | delimited(LPAREN, expr, RPAREN)
   | fun_expr
   | pi_expr
+  | proof_term
 
 let raw_expr :=
   (* This 1st rule is causing shift/reduce conflicts in menhir. *)
@@ -81,6 +90,36 @@ let raw_expr :=
   | sum_expr 
  (* | let_pair *)
 
+(* From Lean reference manual:
+assume h : p, t is sugar for λ h : p, t
+have h : p, from s, t is sugar for (λ h : p, t) s
+suffices h : p, from s, t is sugar for (λ h : p, s) t
+show p, t is sugar for (t : p) *)
+ let proof_term ==
+  | ASSUME; ~=fun_arg_list; COMMA; body=expr;
+    { List.fold_right
+        (fun (input_var, input_type) body ->
+          Location.locate (Ast.Fun {input_var; input_type; body}) ~source_loc:$loc)
+      fun_arg_list body }
+  | located(
+    | HAVE; ~=var_name; COLON; claim=expr; COMMA; FROM; proof=expr; COMMA; body=expr;
+      {
+        (* let fn = Location.locate @@ Ast.Fun {input_var=var_name; input_type=Some claim; body} in
+        Ast.App {left=fn; right=proof} *)
+        let binding = Location.locate @@ Ast.Ascription {expr=proof; ascribed_type=claim} in
+        Ast.Let {var_name; expr=binding; body}
+      }
+    | HAVE; claim=expr; COMMA; FROM; proof=expr; COMMA; body=expr;
+      {
+        (* let fn = Location.locate @@ Ast.Fun {input_var="this"; input_type=Some claim; body} in
+        Ast.App {left=fn; right=proof} *)
+        let binding = Location.locate @@ Ast.Ascription {expr=proof; ascribed_type=claim} in
+        Ast.Let {var_name="this"; expr=binding; body}
+      }
+    | SHOW; claim=expr; COMMA; FROM; proof=expr;
+    { Ast.Ascription {expr=proof; ascribed_type=claim} }
+  )
+
 let var_name == VAR_NAME
 
 let annotated_expr == 
@@ -90,11 +129,11 @@ let ascription ==
       (expr, ascribed_type) = annotated_expr;
     { Ast.Ascription {expr; ascribed_type} }
 
-let fun_expr := FUN; ~ = fun_arg_list; DOUBLE_ARROW; body=expr;
+let fun_expr == FUN; ~ = fun_arg_list; DOUBLE_ARROW; body=expr;
     { List.fold_right
         (fun (input_var, input_type) body ->
-          Loc.locate (Ast.Fun {input_var; input_type; body}) ~source_loc:$loc)
-      fun_arg_list body}
+          Location.locate (Ast.Fun {input_var; input_type; body}) ~source_loc:$loc)
+      fun_arg_list body }
 
 let fun_arg_list == nonempty_list(fun_arg)
 
@@ -113,12 +152,12 @@ let pi_expr ==
   | PI; ~ = pi_arg_list; COMMA; output_type=expr;
     { List.fold_right
       (fun (input_var, input_type) output_type ->
-         Loc.locate
+         Location.locate
            (Ast.Pi {var_name=input_var; expr=input_type; body=output_type}) ~source_loc:$loc)
       pi_arg_list output_type}
   (* Parens are optional in the event there's only one input variable. *)
   | PI; (input_var, input_type) = annotated_name; COMMA; output_type=expr;
-    { Loc.locate (Ast.Pi {var_name=input_var; expr=input_type; body=output_type}) ~source_loc:$loc }
+    { Location.locate (Ast.Pi {var_name=input_var; expr=input_type; body=output_type}) ~source_loc:$loc }
 
 let pi_arg_list ==
     | nonempty_list(bracketed_annotated_name)
