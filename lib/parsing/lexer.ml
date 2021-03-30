@@ -44,7 +44,11 @@ let reserved_keywords =
    (["Kind"], G.KIND);
    (["let"], G.LET);
    (["in"], G.IN);
+   (* Statements *)
    (["def"], G.DEF);
+   (* These are typed version of def statements, used to state and prove 
+    theorems. *)
+   (["theorem"; "lemma"], G.THEOREM);
    (["axiom"; "constant"], G.AXIOM);
    (["check"], G.CHECK);
    (["eval"], G.EVAL);
@@ -52,9 +56,7 @@ let reserved_keywords =
    (["assume"], G.ASSUME);
    (["have"], G.HAVE);
    (["from"], G.FROM);
-   (["show"], G.SHOW);
-   (["theorem"; "lemma"], G.THEOREM)
-   ]
+   (["show"], G.SHOW)]
    (* Fancy stream fusion stuff *)
   |> Iter.of_list
   |> Iter.flat_map_l

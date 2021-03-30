@@ -18,7 +18,7 @@ let eval_stmt (stmt : int Ast.stmt) ctx =
     let ctx = Context.add_binding var_name ~var_type:var_type ctx in
     var_type, ctx
 
-  | Ast.Def {var_name; binding} ->
+  | Ast.Def {var_name; binding; ascribed_type=None} ->
     let inferred_type = Typing.infer ctx binding in
     let binding = Norm.normalize ctx binding in
     (* let return_val = 
@@ -29,6 +29,14 @@ let eval_stmt (stmt : int Ast.stmt) ctx =
     in
     (* print_endline @@ Context.show ctx;
     print_endline @@ Ast.show_expr Format.pp_print_int binding; *)
+    binding, ctx
+
+  | Ast.Def {var_name; binding; ascribed_type=Some ascribed_type} ->
+    let inferred_type = Typing.infer_annotation ~outer_expr:binding ctx binding ascribed_type in
+    let binding = Norm.normalize ctx binding in
+    let ctx =
+      Context.add_binding var_name ~var_type:inferred_type ~binding:binding ctx 
+    in
     binding, ctx
 
 let eval_stmts stmts ctx =

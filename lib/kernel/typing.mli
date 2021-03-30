@@ -33,6 +33,9 @@ exception Type_mismatch of {
    An exception is thrown if we have insufficient information to compute the type. *)
 val infer : Context.t -> int Common.Ast.expr -> int Common.Ast.expr
 
+val infer_annotation : 
+  outer_expr:int Common.Ast.expr -> Context.t -> int Common.Ast.expr -> int Common.Ast.expr -> int Common.Ast.expr 
+
 (* This is thrown by `infer` if we're unable to infer the type of an expression. *)
 exception Cannot_infer_type of int Common.Ast.expr
 

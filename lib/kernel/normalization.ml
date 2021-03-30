@@ -120,7 +120,7 @@ let normalize ctx =
       method add_binding input_var ctx =
           Location.update_data ctx @@ fun ctx -> Context.add_binding input_var ctx
 
-      method! visit_Let ctx {expr=binding; body; _} =
+      method! visit_Let ctx {expr=binding; body; _} _ =
         (* let fn = Location.locate @@ Ast.Fun {input_type=None; input_var="dummy"; body} in 
         self#visit_App ctx {left=fn; right=binding} *)
         let binding = self#visit_expr ctx binding in

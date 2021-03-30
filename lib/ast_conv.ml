@@ -118,8 +118,10 @@ let rec parser_to_internal_raw_expr ctx (expr : string Ast.expr) =
     Ast.Pi (parser_to_internal_abstraction ctx abstraction)
   | Ast.Sigma abstraction ->
     Ast.Sigma (parser_to_internal_abstraction ctx abstraction)
-  | Ast.Let abstraction ->
-    Ast.Let (parser_to_internal_abstraction ctx abstraction)
+  | Ast.Let {abstraction; ascribed_type} ->
+    let abstraction = parser_to_internal_abstraction ctx abstraction in
+    let ascribed_type = CCOpt.map (parser_to_internal_expr ctx) ascribed_type in
+    Ast.Let {abstraction; ascribed_type}
 
   (* | Ast.Let_pair {left_var; right_var; binding; body} ->
     let binding = parser_to_internal_expr ctx binding in
@@ -143,10 +145,11 @@ and parser_to_internal_expr ctx expr =
 
 let rec parser_to_internal_raw_stmt raw_stmt ctx =
   match raw_stmt with
-  | Ast.Def {var_name; binding} ->
+  | Ast.Def {var_name; binding; ascribed_type} ->
+    let ascribed_type = CCOpt.map (parser_to_internal_expr ctx) ascribed_type in
     let binding = parser_to_internal_expr ctx binding in
     let new_ctx = Kernel.Context.add_binding var_name ctx in
-    Ast.Def {var_name; binding}, new_ctx
+    Ast.Def {var_name; binding; ascribed_type}, new_ctx
 
   | Ast.Axiom {var_name; var_type} ->
     let var_type = parser_to_internal_expr ctx var_type in
@@ -258,8 +261,10 @@ let rec internal_to_parser_raw_expr ctx raw_expr =
     Ast.Pi (internal_to_parser_abstraction ctx abstraction)
   | Ast.Sigma abstraction ->
     Ast.Sigma (internal_to_parser_abstraction ctx abstraction)
-  | Ast.Let abstraction ->
-    Ast.Let (internal_to_parser_abstraction ctx abstraction)
+  | Ast.Let {abstraction; ascribed_type} ->
+    let abstraction = internal_to_parser_abstraction ctx abstraction in
+    let ascribed_type = CCOpt.map (internal_to_parser_expr ctx) ascribed_type in
+    Ast.Let {abstraction; ascribed_type}
 
   (* | Ast.Let_pair {left_var; right_var; binding; body} ->
     let binding = internal_to_parser_expr ctx binding in

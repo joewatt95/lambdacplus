@@ -31,8 +31,9 @@ let rec infer ctx (expr : int Ast.expr) =
 
  (* Do we want to allow users to assert that the type of Type, and type
     constructors is Kind? *)
- | Ast.Ascription {expr=expr'; ascribed_type} ->
-  begin
+ | Ast.Ascription {expr=inner_expr; ascribed_type} ->
+ infer_annotation ~outer_expr:expr ctx inner_expr ascribed_type
+  (* begin
     match ascribed_type.data with
     | Ast.Kind -> 
       check ~outer_expr:expr ctx expr' Ast.located_kind; 
@@ -44,7 +45,7 @@ let rec infer ctx (expr : int Ast.expr) =
       print_endline @@ Ast.show_expr Format.pp_print_int ascribed_type; *)
       check ~outer_expr:expr ctx expr' ascribed_type;
       ascribed_type
-  end
+  end *)
 
  (* | Ast.Pi {var_name=input_var; expr=input_type; body=output_type} ->
   check_well_formed_type ctx input_type;
@@ -74,7 +75,7 @@ let rec infer ctx (expr : int Ast.expr) =
   (* What source location info should be used here? *)
   Location.set_data expr @@ Ast.Pi {var_name=input_var; expr=input_ty; body=output_type}
 
- | Ast.Let {var_name; expr=binding; body} ->
+ | Ast.Let {abstraction={var_name; expr=binding; body}; ascribed_type=None} ->
   (* let var_type = infer ctx binding in
   let fn = Location.locate @@ Ast.Fun {input_var=var_name; input_type=Some var_type; body} in
   let expr = Location.set_data expr @@ Ast.App {left=fn; right=binding} in
@@ -91,6 +92,15 @@ let rec infer ctx (expr : int Ast.expr) =
   |> Fun.flip Norm.beta_reduce binding
    (* |> fun expr -> Norm.subst 0 expr binding *)
   (* |> Norm.normalize ctx *)
+
+ | Ast.Let {abstraction={var_name; expr=binding; body}; 
+            ascribed_type=Some ascribed_type} ->
+  let var_type = infer_annotation ~outer_expr:expr ctx binding ascribed_type in
+  let binding = Norm.normalize ctx binding in
+  let ctx = Context.add_binding var_name ~var_type:var_type ~binding ctx in
+  body 
+  |> infer ctx
+  |> Fun.flip Norm.beta_reduce binding
 
  | Ast.Pi abstraction | Ast.Sigma abstraction-> infer_pi_sigma ctx abstraction
 
@@ -187,6 +197,19 @@ and infer_pi_sigma ctx ({var_name; expr=type1; body=type2} : int Ast.abstraction
   let type1 = Norm.normalize ctx type1 in
   let ctx = Context.add_binding var_name ~var_type:type1 ctx in
   get_well_formed_type ctx type2
+
+and infer_annotation ~outer_expr ctx expr (ascribed_type : int Ast.expr) =
+  match ascribed_type.data with
+  | Ast.Kind -> 
+    check ~outer_expr ctx expr Ast.located_kind; 
+    ascribed_type
+  | _ ->
+    check_well_formed_type ctx ascribed_type;
+    let ascribed_type = Norm.normalize ctx ascribed_type in
+    (* print_endline "Ascribed:";
+    print_endline @@ Ast.show_expr Format.pp_print_int ascribed_type; *)
+    check ~outer_expr:expr ctx expr ascribed_type;
+    ascribed_type
   
 and check ~outer_expr ctx expr expected_type =
   match expr.data, expected_type.data with

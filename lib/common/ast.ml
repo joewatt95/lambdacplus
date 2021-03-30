@@ -54,7 +54,7 @@ and 'a raw_expr =
   | Pi of 'a abstraction 
   | Fun of
     { input_var : (string [@visitors.opaque] [@equal Utils.always_true]);
-      input_type : ('a expr option [@visitors.opaque]);
+      input_type : ('a expr option [@visitors.opaque] [@equal Utils.always_true]);
       body : 'a expr }
   | App of 'a pair
 
@@ -77,7 +77,9 @@ and 'a raw_expr =
   | Ascription of { expr : 'a expr; ascribed_type : 'a expr }
 
   (* Local let binding *)
-  | Let of 'a abstraction
+  | Let of 
+    { abstraction : 'a abstraction; 
+      ascribed_type : ('a expr option [@visitors.opaque]) }
 
   (* | Let_pair of
     { left_var : (string [@visitors.opaque]);
@@ -137,6 +139,11 @@ let shift shift_by =
         (* let body = self#visit_expr (self#incr_cutoff cutoff) body in *)
         {var_name; expr; body}
 
+      method! visit_Let cutoff abstraction ascribed_type =
+        let ascribed_type = CCOpt.map (self#visit_expr cutoff) ascribed_type in
+        let abstraction = self#visit_abstraction cutoff abstraction in
+        Let {abstraction; ascribed_type} 
+
       method! visit_match_binding cutoff {match_var; match_body} =
         let match_body = self#shift_under_binder cutoff match_body in
         {match_var; match_body}
@@ -161,7 +168,9 @@ type 'a list_of_exprs = 'a expr list
 
 type 'a stmt = 'a raw_stmt Location.located 
 and 'a raw_stmt =
-  | Def of {var_name : string; binding : 'a expr}
+  | Def of {var_name : string; 
+            binding : 'a expr; 
+            ascribed_type : ('a expr option [@visitors.opaque] [@Utils.always_true])}
   | Axiom of {var_name : string; var_type : 'a expr}
   | Check of 'a expr
   | Eval of 'a expr

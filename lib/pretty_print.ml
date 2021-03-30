@@ -36,8 +36,15 @@ open Common
 
       method build_App _ = Fun.uncurry @@ Printf.sprintf "(%s %s)"
 
-      method build_Let _ (var_name, binding, body) = 
-        Printf.sprintf "(let %s := %s in %s)" var_name binding body
+      method build_Let env (var_name, binding, body) ascribed_type = 
+          match ascribed_type with
+        | Some input_type ->
+          input_type
+          |> super#visit_expr env
+          |> fun ascribed_type -> 
+              Printf.sprintf "let %s : %s := %s in %s" var_name ascribed_type binding body
+        | None ->
+          Printf.sprintf "(let %s := %s in %s)" var_name binding body
 
       method build_Ascription _ = Printf.sprintf "(%s : %s)"
 

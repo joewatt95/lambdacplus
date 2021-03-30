@@ -49,17 +49,23 @@ let main := terminated(nonempty_list(stmt), EOF)
 let located(x) == ~ = x; { Location.locate x ~source_loc:$loc }
 
 let stmt == located(
-  | DEF; ~ = var_name; COLON_EQ; binding = expr;  { Ast.Def {var_name; binding}}
+  | def_stmt
   | AXIOM; ~ = var_name; COLON; var_type = expr;  { Ast.Axiom {var_name; var_type} }
   | CHECK; ~ = expr;                              { Ast.Check expr }
   | EVAL; ~ = expr;                               { Ast.Eval expr }
   | THEOREM; ~=var_name; COLON; claim=expr; COLON_EQ; proof=expr;
   {
-    let binding = 
-      Location.locate @@ Ast.Ascription {expr=proof; ascribed_type=claim} in
-    Ast.Def {var_name; binding}
+    (* let binding = 
+      Location.locate @@ Ast.Ascription {expr=proof; ascribed_type=claim} in *)
+    Ast.Def {var_name; binding=proof; ascribed_type=Some claim}
   } 
 )
+
+let def_stmt ==
+  | DEF; ~ = var_name; COLON_EQ; binding = expr;
+    { Ast.Def {var_name; binding; ascribed_type=None}}
+  | DEF; ~ = var_name; COLON; ascribed_type=expr; COLON_EQ; binding = expr;
+    { Ast.Def {var_name; binding; ascribed_type=Some ascribed_type} }
 
 let expr :=
   | located(raw_expr)
@@ -106,15 +112,15 @@ show p, t is sugar for (t : p) *)
       {
         (* let fn = Location.locate @@ Ast.Fun {input_var=var_name; input_type=Some claim; body} in
         Ast.App {left=fn; right=proof} *)
-        let binding = Location.locate @@ Ast.Ascription {expr=proof; ascribed_type=claim} in
-        Ast.Let {var_name; expr=binding; body}
+        (* let binding = Location.locate @@ Ast.Ascription {expr=proof; ascribed_type=claim} in *)
+        Ast.Let {abstraction={var_name; expr=proof; body}; ascribed_type=Some claim} 
       }
     | HAVE; claim=expr; COMMA; FROM; proof=expr; COMMA; body=expr;
       {
         (* let fn = Location.locate @@ Ast.Fun {input_var="this"; input_type=Some claim; body} in
         Ast.App {left=fn; right=proof} *)
-        let binding = Location.locate @@ Ast.Ascription {expr=proof; ascribed_type=claim} in
-        Ast.Let {var_name="this"; expr=binding; body}
+        (* let binding = Location.locate @@ Ast.Ascription {expr=proof; ascribed_type=claim} in *)
+        Ast.Let {abstraction={var_name="this"; expr=proof; body}; ascribed_type=Some claim} 
       }
     | SHOW; claim=expr; COMMA; FROM; proof=expr;
     { Ast.Ascription {expr=proof; ascribed_type=claim} }
@@ -163,8 +169,10 @@ let pi_arg_list ==
     | nonempty_list(bracketed_annotated_name)
 
 let let_expr ==
-  LET; ~ = var_name; COLON_EQ; binding=expr; IN; body=expr;
-  { Ast.Let {var_name; expr=binding; body} }
+  | LET; ~=var_name; COLON_EQ; binding=expr; IN; body=expr;
+    { Ast.Let {abstraction={var_name; expr=binding; body}; ascribed_type=None} }
+  | LET; ~=var_name; COLON; ascribed_type=expr; COLON_EQ; binding=expr; IN; body=expr;
+    { Ast.Let {abstraction={var_name; expr=binding; body}; ascribed_type = Some ascribed_type} }
 
 let sigma_expr == SIGMA; 
   (input_var, input_type) = sigma_arg;
@@ -184,16 +192,16 @@ let sum_expr ==
 
 let match_expr ==
   | MATCH; ~ = expr; WITH;
-    BAR; INL; var_left = var_name; ARROW; body_left = expr;
-    BAR; INR; var_right = var_name; ARROW; body_right = expr;
+    BAR; INL; var_left = var_name; DOUBLE_ARROW; body_left = expr;
+    BAR; INR; var_right = var_name; DOUBLE_ARROW; body_right = expr;
     END;
   { Ast.Match
     {expr;
      inl={match_var=var_left; match_body=body_left};
      inr={match_var=var_right; match_body=body_right}} }
   | MATCH; ~ = expr; WITH;
-    BAR; INR; var_right = var_name; ARROW; body_right = expr;
-    BAR; INL; var_left = var_name; ARROW; body_left = expr;
+    BAR; INR; var_right = var_name; DOUBLE_ARROW; body_right = expr;
+    BAR; INL; var_left = var_name; DOUBLE_ARROW; body_left = expr;
     END;
   { Ast.Match
     {expr;

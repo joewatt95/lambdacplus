@@ -11,7 +11,7 @@ theorem choice :
     -- Define the magic choice function :^)
     -- This looks into the proof that R is left total and grabs an explicit
     -- witness for a.
-    let f := fun (a : A) =>
+    let f : A -> B := fun a =>
       have exists b : B, R a b, from R_left_total a,
       fst this
     in
