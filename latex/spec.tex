@@ -20,8 +20,9 @@ Our approach to semantics is heavily inspired by
 
 Though our language specification is formal and mathematically
 intensive, we believe in the importance of rigour to ensure precision and clarity.
-This is especially important for our language since dependent type theory is a
-complex subject.
+This is especially important for our language since the theory behind
+dependent type theory is already rather complex.
+Even moreso is the mechanization and implementation of a type theory like CoC.
 
 A benefit of this approach is that not only did our specification serve as a
 guide for our implementation, many of the rules we formalized here
@@ -633,6 +634,21 @@ $\match(E, x \rightarrow E_1, y \rightarrow E_2)$, $x$ is bound in $E_1$ and $y$
 is bound in $E_2$.
 
 \section{Semantics}
+We define the semantics for expressions first and statements later.
+For expressions, we formulate a static type system along with a big-step
+operational semantics which is used for evaluation.
+For statements, we define evaluation in terms of a transition system, ie a
+generalized automaton.
+To evaluate programs, ie sequences of statements, we do not have a separate
+typechecking and evaluation phase. We typecheck and evaluate each statement
+entered line by line, as if they were entered in a REPL enviroment.
+This makes our implementation well suited for use in interactive environments.
+
+The style of operational semantics presented here is a hybrid between the
+small-step dynamic semantics and big-step denotational semantics.
+This means that we will be carrying around an environment and performing
+syntactic substitutions with respect to it.
+
 \begin{comment}
   https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf
   http://math.andrej.com/2012/11/08/how-to-implement-dependent-type-theory-i/
@@ -641,38 +657,37 @@ is bound in $E_2$.
   https://www.cs.cornell.edu/courses/cs4110/2010fa/lectures/lecture03.pdf
 \end{comment}
 
-Now we define a static and big-step semantics for our language.
-
 \subsection{Expressions}
 \subsubsection{Overview of reduction and normalization}
-
-In the simply typed lambda calculus, there is only the simple function 
-type and lambda abstraction. There, normalization is the process in which 
-expressions are reduced through repeated applications of the beta reduction rule
-into a form in which no further beta reductions can occur anywhere in the 
+In the theory of lambda calculi, the notion of computation is captured by the
+process of beta reduction. Normalization is then the process in which
+expressions are reduced through repeated applications of the beta reduction
+rule into a form in which no further beta reductions can occur anywhere in the
 expression, even underneath the outermost lambda.
-The resulting, reduced expression is said to be in \textit{head normal form}. 
+The resulting expression is said to be in \textit{head normal form}. 
 In this section, we want to define similar notions for our richer language.
 
-First, note that we have more than just function types in our language. In
-particular, we have 3 main types, namely \verb|Pi|, \verb|Sigma| and \verb|Sum|.
-Also, these ``types'' themselves are expressions too. Thus we need to generalize
-the notion of normalization to account for these new types and their elimination
-rules. Intuitively, we want to repeatedly reduce an expression using all of
-these rules until we can reduce no further.
+First, note that unlike the simply typed lambda calculus and even CoC, we have more
+than just function types in our language. In particular, we have 3 main types,
+namely \verb|Pi|, \verb|Sigma| and \verb|Sum|.
+Thus we need to generalize the notion of normalization to account for these new
+types and their elimination rules. Intuitively, we want to repeatedly reduce
+an expression using all of these rules until we can reduce no further.
 
 Next note that we will be reducing expressions and substituting with
-respect to a context, which contains definitions which the user declares
+respect to an environment, which contains definitions which the user declares
 globally, via \verb|def| and \verb|axiom| statements.
 
 Since \verb|axiom| statements introduce variables at the global level with a
 type but no binding, expressions can now contain free variables.
 Hence we also need a definition of head normal form and reduction
 that takes care of expressions with free variables.
+
 In the next section, we define the head normal form of an expression by way of
 a new concept -- the \textit{neutral expression}.
-After that, we introduce the \textit{context}, ie environment, before 
-discussing normalization.
+After that, we introduce the \textit{context}, which is our take on the
+environment from denotational semantics.
+We will then be in a position to discuss normalization.
 
 % Thereafter, we will introduce the notion of a \textit{context}, which we will use
 % to define the process of normalization.
@@ -791,11 +806,8 @@ The rules are as follows:
 
 Note that \verb|let ... in ...| expressions are not considered to be in head normal form
 because we treat expressions of the form \verb|let x := E in E'| as syntactic
-sugar for the application $(\lambda x, E') \, E$ during the process of
+sugar for the application $(\lambda x, \, E') \, E$ during the process of
 normalization.
-
-In fact, we will see later that the typing rules for \verb|let|
-expressions are also derived using this syntactic trick. 
 
 Finally, we also define the notion of beta equivalence. 
 
@@ -909,6 +921,10 @@ functional style.
 
 In the rules below, note how our elimination rules account for expressions
 in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
+Also notice how all the base cases are annotated with $\wf(\Gamma)$ judgments
+in the hypotheses. In other words, we always assume that our contexts satisfy 
+some extra invariants when normalizing expressions using them. These details will
+be covered later.
 
 % It should be noted at this point that in our semantics to follow, we only 
 % normalize terms after we typecheck them. 
@@ -972,6 +988,16 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
     \end{prooftree}
   \]
 
+  The first rule says that we normalize function applications via syntactic
+  substitution, with respect to an environment. Notice how this is a hybrid
+  between the styles of dynamic semantics and denotational semantics. 
+
+  The second rule utilizes the previously introduced concept of a neutral
+  expression to handle the case when the elimination rule cannot be used because
+  the expression at the head of a function application is a free variable.
+  Remember that such variables can exist because users are allowed to introduce
+  indeterminate constants as the top level via \verb|axiom| statements.
+
 \item \textbf{Normalizing under lambdas} \\
   \[
     \begin{prooftree}
@@ -1005,6 +1031,8 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
         \infer2{\Gamma \vdash \text{let } x := E \text{ in } E' \Downarrow \nu'}
       \end{prooftree}
     \]
+    This rule was derived by desugaring $\text{let } x := E \text{ in } E'$ into
+    the function application $(\lambda x, \, E') \,\, E$.
 
 \item \textbf{Normalizing under pair constructor} \\
     \[
@@ -1367,9 +1395,10 @@ normalize an expression before checking that it has a well formed type.
     \[
       \begin{prooftree}
         \hypo{\Gamma \vdash E \Rightarrow \tau}
-        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash E' \Rightarrow \tau'(x)}
-        \hypo{\Gamma \vdash \tau'[x \mapsto E] \Downarrow \tau''}
-        \infer3{\Gamma \vdash \text{let } x := E \text{ in } E' \Rightarrow \tau''}
+        \hypo{\Gamma \vdash E \Downarrow \nu}
+        \hypo{(x, \, \tau, \, \nu) :: \Gamma \vdash E' \Rightarrow \tau'}
+        % \hypo{\Gamma \vdash \tau'[x \mapsto \nu] \Downarrow \tau''}
+        \infer3{\Gamma \vdash \text{let } x := E \text{ in } E' \Rightarrow \tau'}
       \end{prooftree}
     \]
 
