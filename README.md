@@ -9,6 +9,36 @@ intuitionistic logic.
 ### Specs
 Refer to the `latex` directory.
 
+## Sample proof
+```lean
+constant A : Type
+constant B : Type
+
+constant R : A -> B -> Prop
+
+-- The axiom of choice is provable constructively due to the strong elimination rule
+-- of the Sigma type.
+theorem choice : 
+(forall a : A, exists b : B, R a b) -> exists f : A -> B, forall a : A, R a (f a) := 
+  assume R_left_total,
+    -- Define the magic choice function :^)
+    -- This looks into the proof that R is left total and grabs an explicit
+    -- witness for a.
+    let f := fun (a : A) =>
+      have exists b : B, R a b, from R_left_total a,
+      fst this
+    in
+    have forall a : A, R a (f a), from
+      assume a,
+        have exists b : B, R a b, from R_left_total a,
+        show R a (f a), from snd this,
+    show exists f : A -> B, forall a : A, R a (f a), from (f, this)
+
+check choice
+```
+
+More sample programs can be found in the `sample_programs` directory.
+
 ## Usage
 This section is heavily based on [this example](https://github.com/esy-ocaml/hello-ocaml).
 
@@ -49,42 +79,6 @@ $ node ./_esy/default/build/default/bin/main.bc.js
 
 To ease testing, the `run_main.sh` script has been provided with the command
 `esy ./_esy/default/build/default/bin/main.bc`.
-
-## Sample execution
-```shell
-$ ./run_main.sh 
-Enter input:
-// Assume that A and B are types.
-constant A : Type
-constant B : Type
-
-// Assume that R is a binary relation on A x B.
-// Technically speaking, R is a predicate symbol and these are
-// represented by type constructors in the Curry Howard interpretation of
-// logic.
-constant R : A -> B -> Prop
-
-// Further assume that every (a : A) is related to some (b : B).
-axiom R_left_total : ∀ a : A, ∃ b : B, R a b
-
-// We define a choice function using the explicit witness provided by the
-// constructive existential quantifier.
-def f := λ (a : A) =>
-  let exists_b_Rab := R_left_total a in
-  fst exists_b_Rab
-
-// pf is a proof that given an arbitrary (a : A), a is really related to (f a). 
-def pf := λ (a : A) => snd (R_left_total a)
-
-// Use f and pf to witness the existential below.
-check ((f, pf) : ∃ f : A -> B, ∀ a : A, R a (f a))
-
-Here's the output:
-(Σ (f' : (∏ (_ : A), B)), (∏ (a : A), ((R a) (f' a))))
-
-```
-
-More sample programs can be found in the `sample_programs` directory.
 
 ## Current status
 ### Implemented types
