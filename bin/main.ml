@@ -46,19 +46,15 @@ let js_run_repl str =
       let stmts, naming_ctx =
         str
         |> Parsing.Parser.parse_string
-        |> Fun.flip Ast_conv.parser_to_internal_stmts
-          !global_nctx
+        |> Fun.flip Ast_conv.parser_to_internal_stmts !global_nctx
       in
       try
         let stmts' , ctx' =
-          stmts
-          |> Fun.flip Kernel.Eval_statements.eval_stmts !global_ectx
+          Fun.flip Kernel.Eval_statements.eval_stmts !global_ectx stmts
         in
-        let res = stmts'
-        |> Pretty_print.unparse_internal_expr naming_ctx in
         global_nctx := naming_ctx;
         global_ectx := ctx';
-        res
+        Pretty_print.unparse_internal_expr naming_ctx stmts'
       with exc ->
         Error_reporting.fmt_eval_err_str naming_ctx exc
     with exc ->
