@@ -130,7 +130,7 @@ let internal_run_once () =
     exit 2
 
 let () =
-  Js.export_all "repl"
+  Js.export_all
     (object%js
       method js_run_repl = js_run_repl.
-    )
+    end)
