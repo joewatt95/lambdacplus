@@ -131,9 +131,7 @@ let internal_run_once () =
     exit 2
 
 let () =
-  Js.export "myMathLib"
+  Js.export_all
   (object%js
-    method add x y = x +. y
-    method abs x = abs_float x
-    val zero = 0.
+    method repl s = js_run_repl s
   end)
