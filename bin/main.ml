@@ -133,5 +133,5 @@ let internal_run_once () =
 let () =
   Js.export_all
   (object%js
-    method repl s = js_run_repl s
+    method js_run_repl = Js.wrap_callback js_run_repl
   end)
