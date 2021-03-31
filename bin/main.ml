@@ -28,6 +28,41 @@ def pf := λ (a : A) => snd (R_left_total a)
 check ((f, pf) : ∃ f : A -> B, ∀ a : A, R a (f a))
 |} *)
 
+let global_nctx = ref Kernel.Context.empty
+let global_ectx = ref Kernel.Context.empty
+
+let js_run_repl str =
+  match String.(compare str "quit") with
+  | 0 -> "bye"
+  | _ ->
+  match String.(compare str "reset") with
+  | 0 ->
+    global_nctx := Kernel.Context.empty;
+    global_ectx := Kernel.Context.empty;
+    "reset success"
+  | _ ->
+    try
+      let stmts, naming_ctx =
+        str
+        |> Parsing.Parser.parse_string
+        |> Fun.flip Ast_conv.parser_to_internal_stmts
+          !global_nctx
+      in
+      try
+        let stmts' , ctx' =
+          stmts
+          |> Fun.flip Kernel.Eval_statements.eval_stmts !global_ectx
+        in
+        let res = stmts'
+        |> Pretty_print.unparse_internal_expr naming_ctx in
+        global_nctx := naming_ctx;
+        global_ectx := ctx';
+        res
+      with exc ->
+        Error_reporting.fmt_eval_err_str naming_ctx exc
+    with exc ->
+      Error_reporting.fmt_parse_err_str exc
+
 let rec internal_run_repl nctx ectx =
   print_string "> ";
   flush stdout;
@@ -40,10 +75,10 @@ let rec internal_run_repl nctx ectx =
     | _ ->
     try
       let stmts, naming_ctx = 
-      str
-      |> Parsing.Parser.parse_string
-      |> Fun.flip Ast_conv.parser_to_internal_stmts
-        nctx
+        str
+        |> Parsing.Parser.parse_string
+        |> Fun.flip Ast_conv.parser_to_internal_stmts
+          nctx
       in
       try
         let stmts', ctx' = 
