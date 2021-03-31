@@ -22,7 +22,7 @@ open Common
         self#build_pi_sigma "(%s → %s)" "(∏ (%s : %s), %s)"
 
       method build_Sigma _ =
-        self#build_pi_sigma "(%s ∨ %s)" "(Σ (%s : %s), %s)"
+        self#build_pi_sigma "(%s * %s)" "(Σ (%s : %s), %s)"
 
       method build_Fun env input_var input_type body = 
         match input_type with
