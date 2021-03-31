@@ -31,29 +31,36 @@ check ((f, pf) : ∃ f : A -> B, ∀ a : A, R a (f a))
 let rec internal_run_repl nctx ectx =
   print_string "> ";
   flush stdout;
-  let stmts, naming_ctx = 
+  let str = read_line () in
+    match String.(compare str "quit") with
+    | 0 -> print_endline "bye"
+    | _ ->
+    match String.(compare str "reset") with
+    | 0 -> internal_run_repl Kernel.Context.empty Kernel.Context.empty
+    | _ ->
     try
-      read_line ()
+      let stmts, naming_ctx = 
+      str
       |> Parsing.Parser.parse_string
       |> Fun.flip Ast_conv.parser_to_internal_stmts
         nctx
+      in
+      try
+        let stmts', ctx' = 
+        stmts
+        |> Fun.flip Kernel.Eval_statements.eval_stmts ectx
+        in
+        stmts'
+        |> Pretty_print.unparse_internal_expr naming_ctx
+        |> fun str -> print_endline @@ "\n" ^ str ^ "\n";
+        flush stdout;
+        internal_run_repl naming_ctx ctx'
+      with exc ->
+        print_endline @@ Error_reporting.fmt_eval_err_str naming_ctx exc;
+        internal_run_repl nctx ectx
     with exc ->
       print_endline @@Error_reporting.fmt_parse_err_str exc;
-      exit 1;
-  in
-  try
-    let stmts', ctx' = 
-    stmts
-    |> Fun.flip Kernel.Eval_statements.eval_stmts ectx
-    in
-    stmts'
-    |> Pretty_print.unparse_internal_expr naming_ctx
-    |> fun str -> print_endline @@ "\n" ^ str ^ "\n";
-    flush stdout;
-  internal_run_repl naming_ctx ctx'
-  with exc ->
-    print_endline @@ Error_reporting.fmt_eval_err_str naming_ctx exc;
-    exit 2
+      internal_run_repl nctx ectx
 
 let internal_run_once () =
   (* For debugging *)
