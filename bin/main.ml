@@ -1,5 +1,6 @@
 open Containers
 open Cs4215_dependent_types
+open Js_of_ocaml
 
 (* let prog = {|
 // Assume that A and B are types.
@@ -130,7 +131,9 @@ let internal_run_once () =
     exit 2
 
 let () =
-  Js.export_all
-    (object%js
-      method js_run_repl = js_run_repl.
-    end)
+  Js.export "myMathLib"
+  (object%js
+    method add x y = x +. y
+    method abs x = abs_float x
+    val zero = 0.
+  end)

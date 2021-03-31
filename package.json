@@ -9,11 +9,12 @@
     "@opam/containers": ">= 3.2 < 4.0",
     "@opam/containers-data": ">= 3.2 < 4.0",
     "@opam/iter": "~1.2.1",
-    "@opam/visitors": ">= 20210316",
-    "@opam/ppx_deriving": "~5.2.1",
-    "@opam/ppx_fields_conv":  ">= v0.14.2",
-    "@opam/sedlex": ">= 2.3",
+    "@opam/js_of_ocaml-ppx": "3.9.0",
     "@opam/menhir": ">= 20210310",
+    "@opam/ppx_deriving": "~5.2.1",
+    "@opam/ppx_fields_conv": ">= v0.14.2",
+    "@opam/sedlex": ">= 2.3",
+    "@opam/visitors": ">= 20210316",
     "ocaml": "~4.11.2"
   },
   "devDependencies": {
