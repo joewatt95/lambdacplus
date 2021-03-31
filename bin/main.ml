@@ -28,7 +28,7 @@ def pf := λ (a : A) => snd (R_left_total a)
 check ((f, pf) : ∃ f : A -> B, ∀ a : A, R a (f a))
 |} *)
 
-let rec internal_run_repl ctx =
+let rec internal_run_repl nctx ectx =
   print_string "> ";
   flush stdout;
   let stmts, naming_ctx = 
@@ -36,7 +36,7 @@ let rec internal_run_repl ctx =
       read_line ()
       |> Parsing.Parser.parse_string
       |> Fun.flip Ast_conv.parser_to_internal_stmts
-        ctx
+        nctx
     with exc ->
       print_endline @@Error_reporting.fmt_parse_err_str exc;
       exit 1;
@@ -44,13 +44,13 @@ let rec internal_run_repl ctx =
   try
     let stmts', ctx' = 
     stmts
-    |> Fun.flip Kernel.Eval_statements.eval_stmts naming_ctx
+    |> Fun.flip Kernel.Eval_statements.eval_stmts ectx
     in
     stmts'
     |> Pretty_print.unparse_internal_expr naming_ctx
     |> fun str -> print_endline @@ "\n" ^ str ^ "\n";
     flush stdout;
-  internal_run_repl ctx'
+  internal_run_repl naming_ctx ctx'
   with exc ->
     print_endline @@ Error_reporting.fmt_eval_err_str naming_ctx exc;
     exit 2
@@ -87,4 +87,4 @@ let internal_run_once () =
     print_endline @@ Error_reporting.fmt_eval_err_str naming_ctx exc;
     exit 2
 
-let () = internal_run_repl Kernel.Context.empty
+let () = internal_run_repl Kernel.Context.empty Kernel.Context.empty
