@@ -128,3 +128,9 @@ let internal_run_once () =
   with exc ->
     print_endline @@ Error_reporting.fmt_eval_err_str naming_ctx exc;
     exit 2
+
+let () =
+  Js.export_all "repl"
+    (object%js
+      method js_run_repl = js_run_repl.
+    )
