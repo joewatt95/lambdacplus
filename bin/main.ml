@@ -128,5 +128,3 @@ let internal_run_once () =
   with exc ->
     print_endline @@ Error_reporting.fmt_eval_err_str naming_ctx exc;
     exit 2
-
-let () = internal_run_repl Kernel.Context.empty Kernel.Context.empty
