@@ -22,4 +22,9 @@ let parse lexbuf =
 
 let parse_string = Sedlexing.Utf8.from_string %> parse
 
-let parse_channel = Sedlexing.Utf8.from_channel %> parse
+(* let parse_channel = Sedlexing.Utf8.from_channel %> parse *)
+
+let parse_channel channel =
+  let raw_string = IO.read_all channel in
+  let parsed = parse_string raw_string in
+  raw_string, parsed

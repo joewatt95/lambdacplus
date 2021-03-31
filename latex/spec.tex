@@ -201,6 +201,9 @@ $\vee$ via the sum type.
 % normalize all terms to full head normal form.
 
 \section{Syntax}
+\todo[inline]{TODO: Document the lightweight syntactic sugar in the spirit of Lean for writing proofs
+and give some sample proofs}
+
 In order to implement our rich type system, we promote types to the level of
 expressions in our language, so we no longer have separate syntactic categories 
 for them.
@@ -221,23 +224,23 @@ like Coq and Lean. These offer a way for users to interact with our system.
 Through statements, users can introduce global assumptions and definitions.
 
 \subsection{Syntax for expressions}
-We first define the set of valid expressions of our language as the initial algebra, 
-ie least prefixed point, of the endofunctor
-\begin{align*}
-  F : X \mapsto \{ E \, | \, \{ E_0, E_1, \dots, E_n \} \subseteq X \text{ and }
-    \begin{prooftree}   
-      \hypo{E_0}
-      \hypo{E_1}
-      \hypo{\dots}
-      \hypo{E_n}
-      \infer4{E}
-    \end{prooftree}
-    \text{ is a rule instance}
-  \} 
-\end{align*}
-on some complete powerset lattice.
-Such a construction can be justified by the famous fixed point theorems of Tarski
-and Kleene.
+% We first define the set of valid expressions of our language as the initial algebra, 
+% ie least prefixed point, of the endofunctor
+% \begin{align*}
+%   F : X \mapsto \{ E \, | \, \{ E_0, E_1, \dots, E_n \} \subseteq X \text{ and }
+%     \begin{prooftree}   
+%       \hypo{E_0}
+%       \hypo{E_1}
+%       \hypo{\dots}
+%       \hypo{E_n}
+%       \infer4{E}
+%     \end{prooftree}
+%     \text{ is a rule instance}
+%   \} 
+% \end{align*}
+% on some complete powerset lattice.
+% Such a construction can be justified by the famous fixed point theorems of Tarski
+% and Kleene.
 
 Before we list the full set of rules, we first introduce some metavariables.
 
@@ -449,21 +452,22 @@ on a sum type via the \verb|match| construct below
 
 \begin{verbatim}
   match E with
-  | inl x -> E1
-  | inr y -> E2
+  | inl x => E1
+  | inr y => E2
   end
 \end{verbatim}
 
 The ordering of both clauses can be swapped so users can also enter
 \begin{verbatim}
   match E with
-  | inr y -> E2
-  | inl x -> E1
+  | inr y => E2
+  | inl x => E1
   end
 \end{verbatim}
 
 Note here that $x$ is bound in the expression that is $E_1$, while $y$ is bound
-in $E_2$.
+in $E_2$. \verb|inl| and \verb|inr| are used to indicate which case we are
+considering
 
 This \verb|match| construct is fashioned after the similarly named pattern
 matching construct in ML like languages.
@@ -1131,7 +1135,7 @@ be covered later.
      \hypo{\Gamma \vdash E_2[y \mapsto \nu] \Downarrow \nu_2}
      \infer2{\Gamma \vdash 
        \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)
-       \Downarrow E_2[y \mapsto \nu_2]}
+       \Downarrow \nu_2}
    \end{prooftree}  
   \]
 
@@ -1723,7 +1727,8 @@ In other words, the expression output to the user is the expression obtained by
 beginning with the initial configuration and then recursively evaluating
 until we reach a final configuration.
 
-\section{Metatheoretic discussion -- TODO}
+\section{Metatheoretic discussion}
+\todo[inline] {TODO: flesh out this part}
 The original Calculus of Constructions is known to be strongly normalizing in
 that the normalization process, when applied to any well typed term, always
 terminates. Furthermore, it has decidable typechecking and is logically
@@ -1783,5 +1788,7 @@ this.
 % http://www2.tcs.ifi.lmu.de/~abel/lfsigma.pdf
 
 \section{Technical implementation}
+\todo[inline] {Work in progress}
+Mention the pains of de bruijn indices.
 
 \end{document}

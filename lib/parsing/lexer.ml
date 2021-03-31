@@ -19,7 +19,7 @@ let raise_syntax_err lexbuf =
 
 let whitesp = [%sedlex.regexp? ' ' | '\t']
 let newline = [%sedlex.regexp? ('\r' | '\n' | "\r\n")]
-let name = 
+let name =
   [%sedlex.regexp? ((alphabetic |  '_'), Star (alphabetic | '_' | '0' .. '9')) 
                    | math]
 

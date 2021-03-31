@@ -1,13 +1,9 @@
-constant A : Type
-constant B : Type
-
-constant R : A -> B -> Prop
-
 -- The axiom of choice is provable constructively due to the strong elimination rule
 -- of the Sigma type.
 theorem choice : 
+forall (A : Type) (B : Type) (R : A -> B -> Prop),
 (forall a : A, exists b : B, R a b) -> exists f : A -> B, forall a : A, R a (f a) := 
-  assume R_left_total,
+  assume A B R R_left_total,
     -- Define the magic choice function :^)
     -- This looks into the proof that R is left total and grabs an explicit
     -- witness for a.
