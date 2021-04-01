@@ -12,7 +12,6 @@ check or_comm
 theorem or_assoc :
 forall (P : Prop) (Q : Prop) (R : Prop), ((P \/ Q) \/ R) -> (P \/ (Q \/ R)) :=
   assume P Q R (h : (P \/ Q) \/ R),
-  show P \/ (Q \/ R), from 
     match h with
     | inr r =>
       have Q \/ R, from inr r,

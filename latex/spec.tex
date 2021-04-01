@@ -6,7 +6,8 @@
 \begin{document}
 
 \section{Introduction}
-Our language is a theorem prover for constructive logic, based on 
+Our language is a theorem prover for constructive logic. It allows users to prove
+theorems by way of the Curry-Howard correspondence. At its core is
 the Calculus of Constructions (CoC), which is a dependently typed lambda calculus.
 CoC forms the foundation of many theorem provers like Coq, Lean and Agda, 
 though they also include many other features like inductive types and a 
@@ -140,6 +141,13 @@ interpretation.
 \end{tabular}
 \end{center}
 
+Curry-Howard tells us that we can then model the introduction and elimination
+rules for each logical connective and quantifier by the introduction and elimination
+rules of the corresponding type. This means that proving, say a universally
+quantified statement, corresponds to defining a function of the appropriate
+\verb|Pi| type. Universal instantiation and modus ponens then correspond to
+function application.
+
 These are the types which we implement in our language.
 In the next section, we discuss how our language resembles and differs from
 CoC.
@@ -167,7 +175,7 @@ just here to prevent Girard's paradox, a type theoretic formulation of the set
 theoretic Burali-Forti argument.
 Through the construction of Girard's paradox, one can (in theory) provide a 
 proof of false, ie an expression that inhabits the empty type.
-In doing so, the logical consistency of the calculus is lost.
+This compromises the logical consistency of the calculus.
 
 It should also be noted that we focus on theorem proving via Curry-Howard over
 general programming. This means that our language does not have
@@ -182,6 +190,84 @@ While there are ways to encode $\exists$, $\wedge$ and $\vee$ into CoC
 to work with. Hence, we decided to also implement Sigma and sum types as built-ins
 so that $\exists$ and $\wedge$ can be modeled more naturally via Sigma and
 $\vee$ via the sum type.
+
+\subsection{Proofs in our language}
+Before we dive into a formal description of the syntax and semantics of our
+language, let's first explore how we can write proofs in Curry-Howard style.
+To see how our language can be used, let's see some sample proofs.
+To prove a theorem by way of Curry-Howard, we first write down the proposition
+we want to prove as a type. Then we provide an expression of that corresponding
+type.
+
+Below is a sample program which establishes the commutativity of disjunction. 
+\begin{verbatim}
+theorem or_comm :
+forall (P : Prop) (Q : Prop), (P \/ Q) -> Q \/ P :=
+  fun P Q (p_or_q : P \/ Q) =>
+    match p_or_q with
+    | inl p => (inr p : Q \/ P)
+    | inr q => (inl q : Q \/ P)
+    end
+\end{verbatim}
+
+Technically, the theorem named \verb|or_comm| is a function whose body is given
+after the \verb|:=| symbol. Its type is given on the second line, which amounts
+to the proposition that for any propositions $P$ and $Q$, $P \vee Q$ implies 
+$Q \vee P$.
+
+Note that \verb|forall| and \verb|->| are both
+syntactic sugar for the \verb|Pi| type, since the dependent function type
+allows us to encode both the universal quantifier and implication.
+
+Now, a proof of this proposition is then an expression of the corresponding type.
+It is a function which takes in 2 arbitrary propositions, ie types, say
+$P$ and $Q$, and then a proof of $P \vee Q$. 
+Thus we have on the third line, a function whose input parameters are named
+\verb|P|, \verb|Q| and \verb|p_or_q|. We type annotate \verb|p_or_q| with
+\verb|P \/ Q| to indicate, for readability purposes, that it is supposed to be
+a proof of $P \vee Q$.
+
+As for the output of the function, it should be a proof of $Q \vee P$. The
+most natural thing to do is to consider cases on $P \vee Q$ since that's the
+only useful assumption we have.
+By Curry-Howard, the rule of disjunction elimination, which lets us perform
+case analysis on a disjunct, is captured by the \verb|match| construct.
+
+Hence in the 4th line, we match on \verb|p_or_q|. We have 2 cases to consider,
+namely the case when $P$ is true and when $Q$ is true.
+The branch given by \verb#|inl p => ...# indicates that we want to consider the
+case when the left disjunct, $P$ is true. A proof of P, which we name \verb|p|
+is then bound in the expression after the arrow \verb|=>|.
+In this case, we return \verb|(inr p : Q \/ P)|. \verb|inr| is the data constructor
+which introduces the right disjunct for the sum type which models disjunction.
+The type annotation is used to indicate to the interpreter that we intend to
+return a proof of $Q \vee P$.
+
+For the other case, ie the branch with \verb#|inr q => ...#, we have a proof of
+$Q$, named \verb|q|, which is then bound in the expression after the \verb|=>|.
+In this case, we return \verb|(inl q : Q \/ P)|.
+
+Noting that lines beginning with \verb|--| are treated as comments and 
+using syntactic sugar borrowed from the Lean theorem prover, we may rewrite this
+as
+\begin{verbatim}
+theorem or_comm :
+forall (P : Prop) (Q : Prop), (P \/ Q) -> Q \/ P :=
+-- Assume that P and Q are propositions and that p_or_q 
+-- is a proof that P \/ Q.
+  assume P Q (p_or_q : P \/ Q),
+    -- We proceed by considering cases on P \/ Q.
+    match p_or_q with
+    -- In the event where P is true, ie p is a proof of P,
+    -- we may immediate conclude Q \/ P is true since 
+    -- (inr p) is a proof of it.
+    | inl p => show Q \/ P, from inr p
+    -- In the event where Q is true, ie q is a proof of Q,
+    -- we use (inl q) to show Q \/ P. 
+    | inr q => show Q \/ P, from inl q
+    end
+\end{verbatim}
+which may read more naturally to those who are more mathematically inclined.
 
 % Unfortunately, it should be noted that our formalization of the typing
 % judgments for the Sigma type does allow for Girard's paradox to creep back to our
@@ -201,8 +287,6 @@ $\vee$ via the sum type.
 % normalize all terms to full head normal form.
 
 \section{Syntax}
-\todo[inline]{TODO: Document the lightweight syntactic sugar in the spirit of Lean for writing proofs
-and give some sample proofs}
 
 In order to implement our rich type system, we promote types to the level of
 expressions in our language, so we no longer have separate syntactic categories 
@@ -242,7 +326,8 @@ Through statements, users can introduce global assumptions and definitions.
 % Such a construction can be justified by the famous fixed point theorems of Tarski
 % and Kleene.
 
-Before we list the full set of rules, we first introduce some metavariables.
+The syntax for our language and syntactic sugar are heavily inspried by the
+Lean theorem prover.
 
 \subsubsection{Metavariables}
 \begin{enumerate}
@@ -292,21 +377,14 @@ Before we list the full set of rules, we first introduce some metavariables.
       \infer2{\fun \, x => E}
     \end{prooftree}
   \]
-  \[
-    \begin{prooftree}
-      \hypo{x_0}
-      \hypo{x_1}
-      \hypo{\dots}
-      \hypo{x_n}
-      \hypo{E}
-      \infer5{\fun \, x_0 \,\, x_1 \, \dots \, x_n => E}
-    \end{prooftree}
-  \]
-  Note that all functions in our language are unary and so
-  $\fun \, x_0 \, x_1 \, \dots \, x_n => E$ is syntactic sugar for
-  \[ \fun \, x_0 => (\fun \, x_1 => \dots (\fun x_n => E)) \]
 
-  Simimarly, one can also provide optional type annotations for input variables.
+  Note that all functions in our language are unary. However, we allow users
+  to enter \verb|fun x_0 x_1 ... x_n => E|, which is desugared into
+  \begin{verbatim}
+    fun x_0 => (fun x_1 => ... (fun x_n => E))
+  \end{verbatim}
+
+  Similarly, one can also provide optional type annotations for input variables.
   This is to help the type checker infer the type of a function.
   \[
     \begin{prooftree}
@@ -317,20 +395,12 @@ Before we list the full set of rules, we first introduce some metavariables.
     \end{prooftree}
   \]
 
-  \[
-    \begin{prooftree}
-      \hypo{x_i}
-      \hypo{T_i}
-      \hypo{E}
-      \infer3{\fun \, (x_0 : T_0) \,\, (x_1 : T_1) \, \dots \, (x_n : T_n) => E}
-    \end{prooftree}
-  \]
-  We also treat $\fun \, (x_0 : T_0) \,\, (x_1 : T_1) \, \dots \, (x_n : T_n) => E$
-  as syntactic sugar for
-  \[ \fun \, (x_0 : T_0) => (\fun \, (x_1 : T_1) => \dots (\fun (x_n : T_n) => E)) \]
-
-  As syntactic sugar, we allow users to use \verb|lambda| and $\lambda$ in place
-  of \verb|fun|. 
+  Users can enter a mixture of typed and untyped input parameters, like for
+  instance \verb|fun x y (h : T) => E|
+  which is desugared into 
+  \begin{verbatim}
+    fun x => (fun y => (fun (h : T) => E))
+  \end{verbatim}
 
 \item \textbf{Pi and Sigma type} \\
   \[
@@ -340,24 +410,24 @@ Before we list the full set of rules, we first introduce some metavariables.
       \hypo{B}
       \infer3{\Pii \, (x : A), \, B}
     \end{prooftree}
-  \] 
+ \]
 
-  \[
-    \begin{prooftree}
-      \hypo{x_i}
-      \hypo{A_i}
-      \hypo{B}
-      \infer3{\Pii \, (x_0 : A_0) \, (x_1 : A_1) \, \dots \, (x_n : A_n), \, B}
-    \end{prooftree}
-  \] 
-  As with functions, this is syntactic sugar for
-  \[ \Pii \, (x_0 : A_0), \, (\Pii \, (x_1 : A_1), \,  \dots \, (\Pii \, (x_n : A_n), \, B)) \]
+  As with functions, we provide
+  \begin{verbatim}
+    Pi (x0 : A0) (x1 : A1) ... (xn : An), B
+  \end{verbatim}
+
+  as syntactic sugar for
+
+  \begin{verbatim}
+      Pi (x0 : A0), (Pi (x1 : A1), ... (Pi (xn : An), B))
+  \end{verbatim}
 
   If there is only one pair of input type and type annotation following the \verb|Pi|,
   the brackets may be ommitted so users can enter \verb|Pi x : A, B| instead of
   \verb|Pi (x : A), B|.
 
-  The syntax rules for Sigma, ie $\Sigmaa\, (x : A), B$ and the above syntactic
+  The syntax rules for Sigma, ie \verb|Sigma (x : A), B| and the above syntactic
   sugar work the same as with Pi above. 
 
   We also allow users to enter, in place of \verb|Pi|, \verb|forall| or using
@@ -378,6 +448,7 @@ Before we list the full set of rules, we first introduce some metavariables.
       \infer2{(E_1, \, E_2)}
     \end{prooftree}  
   \]
+  This constructs a pair of some Sigma type.
 
   \item \textbf{Sigma eliminators} \\
   \[
@@ -393,6 +464,9 @@ Before we list the full set of rules, we first introduce some metavariables.
     \infer1{\snd \, E}
    \end{prooftree}
  \]
+
+ \verb|fst| is used to obtain the first component of a pair and \verb|snd| is used
+ to obtain the second component.
 
 \item \textbf{Type ascriptions} \\
   \[
@@ -415,6 +489,17 @@ Before we list the full set of rules, we first introduce some metavariables.
     \infer3{\text{let } x := E \text{ in } E'}
   \end{prooftree}
 \]
+Local let bindings behave the same way as in ML-like languages.
+This binds the expression \verb|E| to \verb|x| in the body that is \verb|E'|.
+
+In the event that the user does not provide a type annotation for the binding
+$E$, it will be inferred by the interpreter. Users can also provide an optional
+annotation via
+\begin{verbatim}
+  let x : T := E in E'
+\end{verbatim}
+
+which is desugared into \verb|let x := (E : T) in E'|
 
 \item \textbf{Sum type} \\
 \[
@@ -425,7 +510,8 @@ Before we list the full set of rules, we first introduce some metavariables.
   \end{prooftree}
 \]
 
-As syntactic sugar, users can write \verb|A \/ B| instead.
+As syntactic sugar, users can write \verb|A \/ B| instead since sum types
+model disjunction.
 
 \item \textbf{Sum type constructor} \\
 \[
@@ -447,8 +533,9 @@ ie $\inl E$ constructs an expression of type $A + B$ given an expression $E$ of
 type $A$. Similarly, $\inr E$ constructs an $A + B$ given $E$ of type $B$.
 
 \item \textbf{Sum type eliminator} \\
-Given expressions $E$ and variables $x$ and $y$, users can perform case analysis
-on a sum type via the \verb|match| construct below
+Given expressions $E$, and variables $x$ and $y$, users can perform case analysis
+on a sum type via the \verb|match| construct below.
+Note that this corresponds to the rule of disjunction elimination.
 
 \begin{verbatim}
   match E with
@@ -465,10 +552,6 @@ The ordering of both clauses can be swapped so users can also enter
   end
 \end{verbatim}
 
-Note here that $x$ is bound in the expression that is $E_1$, while $y$ is bound
-in $E_2$. \verb|inl| and \verb|inr| are used to indicate which case we are
-considering
-
 This \verb|match| construct is fashioned after the similarly named pattern
 matching construct in ML like languages.
 However, unlike those, we do not implement actual pattern matching since pattern
@@ -476,13 +559,18 @@ matching for dependent types is not an easy problem.
 Our \verb|match| construct serves the sole purpose of allowing one to perform
 case analysis on sums.
 
+Note here that \verb|x| and \verb|y| are binders, with \verb|x| being bound in
+\verb|E1| and \verb|y| being bound in \verb|E2|.
+\verb|inl| and \verb|inr| are used to indicate which case we are
+considering.
+
 For convenience, we write 
 $\match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)$ to denote this
 construct.
 
 \end{enumerate}
 
-\subsubsection{Syntactic sugar: wildcard variables}
+\subsubsection{Wildcard variables}
 In the event where the user does not intend to use the variable being bound,
 like say in a lambda expression, the underscore, \verb|_|, can be used in place
 of a variable name.
@@ -497,10 +585,12 @@ concrete syntax. Similarly, we also write $\lambda (x : T), \, E$ in place of
 $\fun \, (x : T) => x$.
 Finally, we use $\Pi_{x : A}B(x)$ to abbreviate $\Pii \, (x : A), \, B$.
 
-\subsection{Syntax for statements}
+\subsection{Syntax for statements and programs}
 Statements are top level commands through which users interact with our
 language. Programs in our language will be \textit{nonempty} sequences of
-these statements.
+these statements. Lines that begin with \verb|--| are treated as comments.
+
+We have 4 key statements in our language, fashioned after Coq and Lean.
 
 \begin{enumerate}
 \item \textbf{Def} \\
@@ -513,6 +603,15 @@ these statements.
 \]
 This creates a top level, global definition, binding the variable $x$ to the
 expression given by $E$.
+
+Like with local \verb|let| bindings, we also allow type annotations on def.
+Similarly, we treat \verb|def x : T := E| as syntactic sugar for
+\verb|def x := (E : T)|.
+
+Since Curry-Howard allows us to interpret \verb|(E : T)| as an assertion
+that \verb|E| is a proof of the proposition that is \verb|T|, we also allow
+users to write \verb|lemma x : T := E| and \verb|theorem x : T := E| instead of
+\verb|def x : T := E|.
 
 \item \textbf{Axiom} \\
 \[
@@ -555,6 +654,44 @@ is the process of fully evaluating it until no more simplifications can be
 performed.
 
 \end{enumerate}
+
+
+
+\subsection{Lean-esque syntactic sugar}
+Following \href{https://leanprover.github.io/reference/expressions.html#structured-proofs}
+{Lean}, we provide some lightweight syntactic sugar that allows users to write
+structured proofs in a manner more akin to how one would do so on paper.
+
+\begin{enumerate}
+  \item \verb|assume x0 ... xn, E| is syntactic sugar for \verb|fun x0 ... xn => E| 
+
+  Similarly, type annotations can be given, so
+
+  \verb|assume (x0 : T0) ... (xn : Tn), E| desugars into 
+  
+  \verb|fun (x0 : T0) ... (xn : Tn) => E|
+
+  Users can write \verb|assume ...| in place of \verb|fun ...| to introduce an 
+  arbitrary variable or hypothesis into the context to prove a universally
+  quantified statement or implication.
+
+  \item \verb|have x : T, from E, E'| is sugar for \verb|let x : T := E in E'|
+
+  This models how we write ``We have ... because of ..." in pen and paper proofs.
+  The variable \verb|x| is used to bind the expression \verb|E| that is the proof
+  of the proposition \verb|T| in the remainder of the proof that is \verb|E'|. 
+
+  \item \verb|have T, from E, E'| is sugar for \verb|let this : T := E in E'|
+
+  In the event that the expression is not named, an implicit \verb|"this"| name is
+  given to the expression.
+
+  \item \verb|show T, from E| is sugar for \verb|(E : T)|
+
+  This models how we would conclude a pen and paper proof by writing something
+  along the lines of ``Finally we have shown that ... because of ...'' 
+\end{enumerate}
+
 
 \section{Capture avoiding substitutions}
 In this section, we define the concept of free variables and capture avoiding
@@ -713,8 +850,8 @@ We will then be in a position to discuss normalization.
 \subsubsection{Neutral expressions, head normal form, beta equivalence}
 Informally, neutral expressions are those which cannot be reduced via one of the 
 elimination rules (ie the ones for \verb|Pi|, \verb|Sigma| and \verb|Sum| types)
-because  the expression to be eliminated is a free variable rather than an
-expression of the appropriate type.
+because the expression to be eliminated is a free variable of the appropriate
+type.
 
 With this, we generalize the notion of head normal form to be one in which
 the expression cannot be further simplified by applying any of the 3
@@ -852,9 +989,7 @@ statements and when we want to add a binding for type checking purposes.
 In such scenarios, we don't particularly care about the actual binding. We're
 only interested in the type of the variable. 
 
-We should mention that whenever we write, say
-$(x, \, \tau, \, \nu) \in \Gamma$, we allow the metavariable $\nu$ to be 
-\verb|und| as well. Also if there are multiple occurrences of $x$ in $\Gamma$,
+If there are multiple occurrences of $x$ in $\Gamma$,
 as is the case when there is variable shadowing, we refer to the first occurrence
 of $x$.
 
@@ -890,7 +1025,9 @@ overview of them.
   inference using constraint solving and unification. It's a form of lightweight
   type inference that can infer simple stuff like the return type of a function
   application but not the type parameter in the polymorphic identity function
-  $\lambda \, (T : \Type) (x : T), \, x$.
+  $\lambda \, (T : \Type) (x : T), \, x$. Unfortunately, this means that our
+  language can be rather verbose as a lot of explicit type parameters must be
+  provided.
 
 \item $\Gamma \vdash E \Downarrow \nu$ \\
   The $\cdot \vdash \cdot \Downarrow \cdot$ relation is our big-step normalization
@@ -1043,8 +1180,7 @@ be covered later.
       \begin{prooftree}
         \hypo{\Gamma \vdash E_1 \Downarrow \nu_1}
         \hypo{\Gamma \vdash E_2 \Downarrow \nu_2}
-        \infer2{\Gamma \vdash \langle E_1, \, E_2 \rangle \Downarrow \langle
-          \nu_1, \, \nu_2 \rangle}
+        \infer2{\Gamma \vdash (E_1, \, E_2) \Downarrow (\nu_1, \, \nu_2)}
       \end{prooftree}
     \]
 
@@ -1113,7 +1249,7 @@ be covered later.
 
   \[
     \begin{prooftree}
-     \hypo{\Gamma \vdash E \Downarrow \inl \nu}
+     \hypo{\Gamma \vdash E \Downarrow \nu}
      \infer1{\Gamma \vdash \inr \, E \Downarrow \nu}
     \end{prooftree}  
   \]
@@ -1249,7 +1385,7 @@ normalize an expression before checking that it has a well formed type.
   As a rule of thumb, it is often easier to check the type for
   introduction rules while for elimination rules, it is usually easier to infer
   the type.
-
+  
   \begin{enumerate}
   \item \textbf{Var} \\
     \[
@@ -1288,7 +1424,7 @@ normalize an expression before checking that it has a well formed type.
     \]
     Optional type ascriptions allow the interpreter to infer the type of an
     expression. This is useful for lambda abstractions in particular because it's
-    kinda hard to infer the type of a function like $\lambda x, \, x$ without any
+    hard to infer the type of a function like $\lambda x, \, x$ without any
     further contextual information.
 
     \[
@@ -1424,10 +1560,15 @@ normalize an expression before checking that it has a well formed type.
         \hypo{\Gamma \vdash E_1 \Leftarrow \tau_1}
         \hypo{\Gamma \vdash \tau_2[x \mapsto E_1] \Downarrow \tau_2'}
         \hypo{\Gamma \vdash E_2 \Leftarrow \tau_2'}
-        \infer3{\Gamma \vdash \langle  E_1, \, E_2 \rangle \Leftarrow 
+        \infer3{\Gamma \vdash (E_1, \, E_2) \Leftarrow 
           \Sigma_{x : \tau_1}\tau_2(x)}
       \end{prooftree}
     \]
+    % The data constructor for Sigma, ie the pair constructor, does not come
+    % with any type annotation and thus we are unable to infer the type of the
+    % constructed pair.
+    % Users will need to ascribe a type, like \verb|((E1, E2) : T)| in order to help
+    % the interpreter infer the type of the pair.
    
   \item \textbf{Sigma elimination} \\
     \[
@@ -1505,6 +1646,9 @@ normalize an expression before checking that it has a well formed type.
      \end{prooftree}
    \]
 
+   Without the appropriate type ascription, we can't infer the type of \verb|inl E|
+   and \verb|inr E|. These are meant to be used in conjunction with a type
+   ascription, eg \verb|(inl E : A + B)|.
    \item \textbf{Sum elimination} \\
     \[
     \begin{prooftree}
@@ -1552,8 +1696,20 @@ normalize an expression before checking that it has a well formed type.
   \end{enumerate}
 \end{definition}
 
-The nice thing about these rules is that we can translate it almost directly
-into a typechecking and inference algorithm!
+Note that the data constructors \verb|(. , .)|, \verb|inl| and \verb|inr| do
+not come with type annotations and thus we are unable to infer the type of the
+constructed term. Hence they will need to be paired with type ascriptions to
+help the interpreter figure out what type the expression has.
+
+For instance, to help the interpreter figure out what type \verb|inl E| should be,
+we can ascribe \verb|(inl E : A + B)| and the interpreter will then check if
+\verb|E| has type \verb|A|.
+
+Similarly, we can't infer the type of an unannotated lambda like $\lambda x, \, x$.
+Users must either annotate the input type or ascribe a type to the whole function.
+
+Fortunately, the nice thing about these rules is that we may translate them almost
+directly into a typechecking and inference algorithm!
 More precisely, we may translate $\Gamma \vdash E \Leftarrow T$ into a
 function called $\text{check}(\Gamma, \, E, \, T)$ which checks if the
 expression $E$ really has the type $T$ given a context $\Gamma$.
@@ -1791,4 +1947,5 @@ this.
 \todo[inline] {Work in progress}
 Mention the pains of de bruijn indices.
 
+\section{More sample proofs}
 \end{document}

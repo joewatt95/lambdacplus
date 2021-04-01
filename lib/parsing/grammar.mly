@@ -94,6 +94,7 @@ let raw_expr :=
   | INR; ~ = expr ;                                 <Ast.Inr>
   | match_expr
   | sum_expr 
+ 
  (* | let_pair *)
 
 (* From Lean reference manual:
@@ -173,6 +174,18 @@ let let_expr ==
     { Ast.Let {abstraction={var_name; expr=binding; body}; ascribed_type=None} }
   | LET; ~=var_name; COLON; ascribed_type=expr; COLON_EQ; binding=expr; IN; body=expr;
     { Ast.Let {abstraction={var_name; expr=binding; body}; ascribed_type = Some ascribed_type} }
+   | LET; LPAREN; left_var=var_name; COMMA; right_var=var_name; RPAREN; 
+     COLON_EQ; binding=expr; IN; body=expr; 
+    { 
+      let body = Location.locate @@ 
+        Ast.Let {abstraction={var_name=right_var; 
+                              expr=Location.locate (Ast.Snd binding); body};
+                 ascribed_type=None} in
+      Ast.Let {abstraction={var_name=left_var; 
+                            expr=Location.locate (Ast.Fst binding);
+                            body}; 
+               ascribed_type=None}
+    } 
 
 let sigma_expr == SIGMA; 
   (input_var, input_type) = sigma_arg;
