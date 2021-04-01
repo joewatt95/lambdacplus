@@ -136,5 +136,4 @@ let () =
           val ok = Js.bool flag
           val result = Js.string res
         end))
-    method reset _ = js_reset (); Js._true
   end)
