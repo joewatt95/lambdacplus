@@ -118,11 +118,23 @@ let rec parser_to_internal_raw_expr ctx (expr : string Ast.expr) =
     Ast.Pi (parser_to_internal_abstraction ctx abstraction)
   | Ast.Sigma abstraction ->
     Ast.Sigma (parser_to_internal_abstraction ctx abstraction)
+  | Ast.Exists abstraction ->
+    Ast.Exists (parser_to_internal_abstraction ctx abstraction)
   | Ast.Let {abstraction; ascribed_type} ->
     let abstraction = parser_to_internal_abstraction ctx abstraction in
     let ascribed_type = CCOpt.map (parser_to_internal_expr ctx) ascribed_type in
     Ast.Let {abstraction; ascribed_type}
+  
+  | Ast.Exists_elim {left; right} ->
+    let left = parser_to_internal_expr ctx left in
+    let right = parser_to_internal_expr ctx right in
+    Ast.Exists_elim {left; right}
 
+  | Ast.Exists_pair {left; right} ->
+    let left = parser_to_internal_expr ctx left in
+    let right = parser_to_internal_expr ctx right in
+    Ast.Exists_pair {left; right}
+    
   (* | Ast.Let_pair {left_var; right_var; binding; body} ->
     let binding = parser_to_internal_expr ctx binding in
     let ctx = ctx
@@ -261,6 +273,8 @@ let rec internal_to_parser_raw_expr ctx raw_expr =
     Ast.Pi (internal_to_parser_abstraction ctx abstraction)
   | Ast.Sigma abstraction ->
     Ast.Sigma (internal_to_parser_abstraction ctx abstraction)
+  | Ast.Exists abstraction ->
+    Ast.Exists (internal_to_parser_abstraction ctx abstraction)
   | Ast.Let {abstraction; ascribed_type} ->
     let abstraction = internal_to_parser_abstraction ctx abstraction in
     let ascribed_type = CCOpt.map (internal_to_parser_expr ctx) ascribed_type in
@@ -275,6 +289,16 @@ let rec internal_to_parser_raw_expr ctx raw_expr =
 
   | Ast.Type -> Ast.Type
   | Ast.Kind -> Ast.Kind
+
+  | Ast.Exists_elim {left; right} ->
+    let left = internal_to_parser_expr ctx left in
+    let right = internal_to_parser_expr ctx right in
+    Ast.Exists_elim {left; right}
+
+  | Ast.Exists_pair {left; right} ->
+    let left = internal_to_parser_expr ctx left in
+    let right = internal_to_parser_expr ctx right in
+    Ast.Exists_pair {left; right}
   
 and internal_to_parser_expr ctx expr =
   Location.update_data expr @@ internal_to_parser_raw_expr ctx

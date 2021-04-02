@@ -64,6 +64,11 @@ and 'a raw_expr =
   | Fst of 'a expr
   | Snd of 'a expr
 
+  (* Existential quantifier *)
+  | Exists_pair of 'a pair
+  | Exists of 'a abstraction
+  | Exists_elim of 'a pair
+
   (* Sum types *)
   | Sum of 'a pair
   | Inl of 'a expr
@@ -89,7 +94,8 @@ and 'a raw_expr =
 
 [@@deriving show, fields, eq,
   visitors {variety="map"; ancestors=["Location.fold"]}, 
-  visitors {variety="fold"; ancestors=["Location.fold"]}]
+  visitors {variety="fold"; ancestors=["Location.fold"]},
+  visitors{variety="iter"; ancestors=["Location.fold"]}]
 
 let located_kind = Location.locate Kind
 
@@ -163,10 +169,48 @@ let shift shift_by =
          automatically handles all that boilerplate for us. *)
   end in v#visit_expr @@ Location.locate 0
 
+let do_if_index_present index f =
+  let v =
+    object (self) 
+      inherit [_] iter as super
+
+      method! visit_Var {data=index; _} var_index =
+        Printf.printf "Var index: %d\n" var_index;
+        Printf.printf "Looking for: %d\n" index;
+        if var_index = index then f index
+
+      method! visit_Fun cutoff _ input_type body =
+        CCOpt.iter (self#visit_expr cutoff) input_type;
+        self#check_under_binder cutoff body
+        (* let body = self#visit_expr (self#incr_cutoff cutoff) body in *)
+
+      method! visit_abstraction index {expr; body; _} =
+        self#visit_expr index expr;
+        self#check_under_binder index body
+        (* let body = self#visit_expr (self#incr_cutoff cutoff) body in *)
+
+      method! visit_Let index abstraction ascribed_type =
+        CCOpt.iter (self#visit_expr index) ascribed_type;
+        self#visit_abstraction index abstraction
+
+      method! visit_match_binding cutoff {match_body; _} =
+        self#check_under_binder cutoff match_body
+
+      (* Increment the index whenever we go under a binder. *)
+      method check_under_binder {data=index; _} expr =
+        self#visit_expr (Location.locate @@ index + 1) expr 
+
+      method! visit_expr index {data; _} = super#visit_raw_expr index data
+
+      (* Unused dummies. *)
+      method visit_'a _ _ = ()
+      method build_located _ _ _ _ = ()
+  end in v#visit_expr @@ Location.locate index
+
 type 'a list_of_exprs = 'a expr list
 [@@deriving show]
 
-type 'a stmt = 'a raw_stmt Location.located 
+type 'a stmt = 'a raw_stmt Location.located
 and 'a raw_stmt =
   | Def of {var_name : string; 
             binding : 'a expr; 

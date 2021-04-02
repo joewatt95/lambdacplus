@@ -18,7 +18,8 @@ https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
 
 (* Types and expressions *)
 %token TYPE KIND PI SIGMA FUN LET IN FST SND ARROW PROD
-        PLUS MATCH INL INR BAR END WITH
+      PLUS MATCH INL INR BAR END WITH 
+      EXISTS EXISTS_ELIM EXISTS_LPAREN EXISTS_RPAREN
 
 (* For proof terms, like Lean. *)
 %token ASSUME HAVE FROM SHOW THEOREM
@@ -36,7 +37,8 @@ https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
 %token EOF
 
 (* Lowest precedence *)
-%nonassoc LPAREN VAR_NAME FUN PI SIGMA TYPE LET KIND FST SND MATCH INL INR ASSUME HAVE SHOW
+%nonassoc LPAREN VAR_NAME FUN PI SIGMA TYPE LET KIND FST SND MATCH INL INR 
+          ASSUME HAVE SHOW EXISTS EXISTS_ELIM EXISTS_LPAREN
 (* Highest precedence *)
 %nonassoc APP
 
@@ -81,6 +83,7 @@ let raw_expr :=
   (* This let rule is also causing shift/reduce conflicts. *)
   | let_expr
   | sigma_expr
+  | exists_expr
   | pair_expr
   | TYPE;                                        { Ast.Type }
   | KIND;                                        { Ast.Kind }
@@ -94,6 +97,8 @@ let raw_expr :=
   | INR; ~ = expr ;                                 <Ast.Inr>
   | match_expr
   | sum_expr 
+  | exists_pair_expr
+  | EXISTS_ELIM; left=expr; right=expr;   { Ast.Exists_elim {left; right} }
  
  (* | let_pair *)
 
@@ -174,23 +179,28 @@ let let_expr ==
     { Ast.Let {abstraction={var_name; expr=binding; body}; ascribed_type=None} }
   | LET; ~=var_name; COLON; ascribed_type=expr; COLON_EQ; binding=expr; IN; body=expr;
     { Ast.Let {abstraction={var_name; expr=binding; body}; ascribed_type = Some ascribed_type} }
-   | LET; LPAREN; left_var=var_name; COMMA; right_var=var_name; RPAREN; 
-     COLON_EQ; binding=expr; IN; body=expr; 
-    { 
-      let body = Location.locate @@ 
-        Ast.Let {abstraction={var_name=right_var; 
-                              expr=Location.locate (Ast.Snd binding); body};
-                 ascribed_type=None} in
-      Ast.Let {abstraction={var_name=left_var; 
-                            expr=Location.locate (Ast.Fst binding);
-                            body}; 
-               ascribed_type=None}
-    } 
+  // | LET; LPAREN; left_var=var_name; COMMA; right_var=var_name; RPAREN; 
+  //   COLON_EQ; binding=expr; IN; body=expr; 
+  //   { 
+  //     let body = Location.locate @@ 
+  //       Ast.Let {abstraction={var_name=right_var; 
+  //                             expr=Location.locate (Ast.Snd binding); body};
+  //                ascribed_type=None} in
+  //     Ast.Let {abstraction={var_name=left_var; 
+  //                           expr=Location.locate (Ast.Fst binding);
+  //                           body}; 
+  //              ascribed_type=None}
+  //   } 
 
 let sigma_expr == SIGMA; 
   (input_var, input_type) = sigma_arg;
   COMMA; output_type=expr;
   { Ast.Sigma {var_name=input_var; expr=input_type; body=output_type} }
+
+let exists_expr == EXISTS; 
+  (input_var, input_type) = sigma_arg;
+  COMMA; output_type=expr;
+  { Ast.Exists {var_name=input_var; expr=input_type; body=output_type} }
 
 let sigma_arg == 
   | delimited(option(LPAREN), separated_pair(var_name, COLON, expr), option(RPAREN))
@@ -198,6 +208,10 @@ let sigma_arg ==
 let pair_expr == 
   (left, right) = delimited(LPAREN, separated_pair(expr, COMMA, expr), RPAREN);
   { Ast.Pair {left; right} }
+
+let exists_pair_expr == 
+  (left, right) = delimited(EXISTS_LPAREN, separated_pair(expr, COMMA, expr), EXISTS_RPAREN);
+  { Ast.Exists_pair {left; right} }
 
 let sum_expr ==
   (left, right) = separated_pair(expr, PLUS, expr);

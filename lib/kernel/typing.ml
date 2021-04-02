@@ -102,7 +102,8 @@ let rec infer ctx (expr : int Ast.expr) =
   |> infer ctx
   |> Fun.flip Norm.beta_reduce binding
 
- | Ast.Pi abstraction | Ast.Sigma abstraction-> infer_pi_sigma ctx abstraction
+ | Ast.Pi abstraction | Ast.Sigma abstraction | Ast.Exists abstraction ->
+  infer_pi_sigma_exists ctx abstraction
 
  | Ast.Fst _ | Ast.Snd _ ->
   expr
@@ -151,6 +152,25 @@ let rec infer ctx (expr : int Ast.expr) =
             {expr; outer_expr=expr; inferred_type; expected_type=Family "Sum"}
   end
 
+  | Ast.Exists_elim {left; right} ->
+    let left_type = infer ctx left in
+    let right_type = infer ctx right in
+    begin
+    match left_type.data, right_type.data with
+    | Ast.Exists {expr=ty1; body=px1; _},
+      Ast.Pi {expr=ty2; body={data=Ast.Pi {expr=px2; body=ret; _}; _}; _} ->
+        if equal_expr ty1 ty2 && equal_expr px1 px2
+        then 
+          (* let _ = print_endline @@ Ast.show_expr Format.pp_print_int right_type in *)
+          begin
+          Ast.do_if_index_present 1 (fun _ -> raise Not_found) ret;
+          Ast.do_if_index_present 0 (fun _ -> raise Not_found) ret;
+          Ast.shift (-2) ret
+          end
+        else assert false
+    | _, _ -> assert false
+    end
+
   (* | Ast.Let_pair {left_var; right_var; binding; body} ->
     expr
     |> infer_sigma_exn ctx 
@@ -176,7 +196,8 @@ let rec infer ctx (expr : int Ast.expr) =
        end
   *)
 
- | Ast.Kind | Ast.Pair _ | Ast.Fun {input_type=None; _} | Ast.Inl _ | Ast.Inr _ -> 
+ | Ast.Kind | Ast.Pair _ | Ast.Exists_pair _ | Ast.Fun {input_type=None; _}
+ | Ast.Inl _ | Ast.Inr _ -> 
   raise @@ Cannot_infer_type expr
 
 and infer_sigma_exn ctx (outer_expr : int Ast.expr) =
@@ -192,7 +213,7 @@ and infer_sigma_exn ctx (outer_expr : int Ast.expr) =
     end
   | _ -> assert false
 
-and infer_pi_sigma ctx ({var_name; expr=type1; body=type2} : int Ast.abstraction) =
+and infer_pi_sigma_exists ctx ({var_name; expr=type1; body=type2} : int Ast.abstraction) =
   check_well_formed_type ctx type1;
   let type1 = Norm.normalize ctx type1 in
   let ctx = Context.add_binding var_name ~var_type:type1 ctx in
@@ -219,14 +240,17 @@ and check ~outer_expr ctx expr expected_type =
     |> Context.add_binding input_var ~var_type:input_type
     |> fun ctx -> check ~outer_expr ctx body output_type
 
-  | Ast.Pair {left; right},  
-    Ast.Sigma {expr=left_type; body=right_type; _} ->
-    check ctx ~outer_expr left left_type;
-    right_type
-    |> Fun.flip Norm.beta_reduce left
-    |> Norm.normalize ctx
-    |> check ctx ~outer_expr right 
-    (* check ctx ~outer_expr expr2 @@ Norm.normalize ctx @@ Norm.beta_reduce expr2_type expr1 *)
+  | Ast.Pair {left; right}, Ast.Sigma abstraction
+  | Ast.Exists_pair {left; right}, Ast.Exists abstraction ->
+    begin
+    match abstraction with {expr=left_type; body=right_type; _} ->
+      check ctx ~outer_expr left left_type;
+      right_type
+      |> Fun.flip Norm.beta_reduce left
+      |> Norm.normalize ctx
+      |> check ctx ~outer_expr right 
+      (* check ctx ~outer_expr expr2 @@ Norm.normalize ctx @@ Norm.beta_reduce expr2_type expr1 *)
+    end
 
   | Ast.Inl expr, Sum {left=expected_type; _}
   | Ast.Inr expr, Sum {right=expected_type; _} -> 

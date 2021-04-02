@@ -25,10 +25,12 @@ let () =
     |> fst
     (* |> fun expr ->
       print_endline @@ Common.Ast.show_expr Format.pp_print_int expr; expr; *)
+    |> fun x -> Kernel.Context.pretty_print naming_ctx; x
     |> Pretty_print.unparse_internal_expr naming_ctx
     (* |> Parsing.Ast.show_expr *)
     |> fun str -> print_endline @@ "\nHere's the output:\n" ^ str;
     flush stdout
   with exc ->
-    print_endline @@ Error_reporting.fmt_eval_err_str naming_ctx exc;
-    exit 2
+    raise exc
+    (* print_endline @@ Error_reporting.fmt_eval_err_str naming_ctx exc;
+    exit 2 *)

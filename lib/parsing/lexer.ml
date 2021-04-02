@@ -32,7 +32,9 @@ let name =
 let reserved_keywords =
   [(["fun"; "λ"; "lambda"], G.FUN);
    (["Pi"; "Π"; "∏"; "∀"; "forall"], G.PI);
-   (["Sigma"; "Σ"; "∃"; "exists"], G.SIGMA);
+   (["Sigma"; "Σ"], G.SIGMA);
+   (["∃"; "exists"], G.EXISTS);
+   (["exists_elim"], G.EXISTS_ELIM);
    (["fst"], G.FST);
    (["snd"], G.SND);
    (["match"], G.MATCH);
@@ -71,6 +73,8 @@ let rec tokenize lexbuf =
   https://github.com/vshaxe/hxparser/blob/master/src/syntax/lexing/lexer.ml *)
   | '(' -> G.LPAREN
   | ')' -> G.RPAREN
+  | "(|" -> G.EXISTS_LPAREN
+  | "|)" -> G.EXISTS_RPAREN
   | ',' -> G.COMMA
   | ':' -> G.COLON
   | ":=" -> G.COLON_EQ
