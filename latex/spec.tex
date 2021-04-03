@@ -6,15 +6,22 @@
 \begin{document}
 
 \section{Introduction}
-Our language is a playground for the Curry-Howard which implements an impredicative type
-theory based on the Calculus of Constructions (CoC).
+Our language is a playground for the Curry-Howard correspondence.
+At its core is the impredicative type theory known as the Calculus of
+Constructions (CoC). Syntactically, it feels much like the Lean theorem prover,
+which like Coq, is based on a predicative variant of CoC with inductive types.
 
-Following CoC, we stay true to the spirit of the 
-\textit{Curry-Howard correspondence} and identify propositions as data types.
+Following CoC, we stay true to the spirit of Curry-Howard and identify
+propositions as data types.
 Through this, all the logical connectives and quantifiers of intuitionistic
 logic are given a computational interpretation.
 The end result is a programming language which can be viewed as a theorem prover
 of sorts.
+
+Unfortunately, we are unsure if our language is logically consistent like the
+original CoC since we do implement many more types to model the various logical
+connectives more naturally. Still, we hope that it inspires others to discover
+the joy of Curry-Howard.
 
 % Our language is a theorem prover for constructive logic. It allows users to prove
 % theorems by way of the Curry-Howard correspondence. At its core is
@@ -103,15 +110,15 @@ logical implication as well as universal quantification.
 
 \subsubsection{Sigma and existential types}
 
-As for the existential quantifier, the BHK interpretation says that it's a 
+As for the existential quantifier, the BHK interpretation says that a 
 proof of $\exists x \in A, \, P(x)$ corresponds to a pair, 
 $(x, \, p)$ where $x$ is an element
 of type $A$ witnessing the existential and pf is a proof that for this $x$, 
 $P(x)$ holds.
 
-The Sigma type generalizes the simple procuct type for pairs in the simply
-typed lambda calculus to Sigma type, $\Sigma_{x : A} P(x)$.
-The difference here is that the type of the second component to depend on the
+The Sigma type, denoted $\Sigma_{x : A}B(x)$, generalizes the simple procuct 
+type for pairs in the simply typed lambda calculus. 
+The type of the second component is now allowed to depend on the
 value of the first.
 
 Now there are 2 ways in which the elimination rules can be formulated, each
@@ -136,8 +143,8 @@ the usual pair (ie product) type, written $A \times B$ or $\Sigma_{x : A} B$.
 With this, we see that the Sigma type can encode 3 different notions, namely
 conjunction, existential quantification, and the subtype/subset relation!
 
-The ordinary existential quantifier that we know from logic can be modeled by
-formulating the elimination rule in a slightly different manner. 
+Now to model the existential quantifier from logic as we are familiar with, we
+need a weaker elimination rule.
 Recall that when we eliminate an existentially quantified formula, say
 $\exists x, \, \varphi(x)$, the witness we obtain is completely arbitrary save
 for the fact that it satisfies $\varphi$.
@@ -153,8 +160,8 @@ to enforce this layer of abstraction that prevents users from obtaining the
 original witness. What new kind of programming language construct can we use to
 model such pairs?
 
-The answer lies in a feature that modern functional languages like Haskell and
-Ocaml offer -- existential types. 
+The answer lies in a feature that modern functional languages like Ocaml offer
+-- existential types. 
 
 To see this, first recall that in Ocaml, we can define module signatures like
 
@@ -166,91 +173,96 @@ end
 \end{verbatim}
 
 Such a signature can be identified with the \textit{existential type}
-$\{ \exists t, \, \{ \text{lst} : t \, \text{list} \} \}$.
+$\exists t, \, \{ \text{lst} : t \, \text{list} \}$.
 The existential quantification here enforces an abstraction barrier, forcing
 users to manipulate such values opaquely, without knowing anything about \verb|t|.
 
 We can augment the polymorphic lambda calculus with these existential types
-with an unpacking, ie elimination, rule that looks like:
-\[
+with introduction and elimination rules.
+Note that in the rules below, $X$ may occur free in $T'$ here since $T'$ is
+existentially quantified over the type variable $X$.
+
+\begin{enumerate}
+  \item \textbf{Introduction} \\
+  \[
   \begin{prooftree}
-    \hypo{\Gamma \vdash t_1 : \{\exists X, \, T_{12} \}} 
-    \hypo{\Gamma, \, X, \, x : T_{12} \, \vdash t_2 : T_2}
-    \infer2{\Gamma \vdash \text{let } \{X, \, x = t_1\} \text{ in } t_2 : T_2}
-  \end{prooftree} 
-\]
-Note that $X$ may occur free in $T_{12}$ here since $T_{12}$ is existentially
-quantified over the type variable $X$.
+    \hypo{\Gamma \vdash E : T'[X \mapsto T]}
+    \infer1[(T-Pack)]{\Gamma \vdash \{T, \, E\} \text{ as } T' : \exists X, \, T'}
+  \end{prooftree}
+  \]
 
-Focusing on the types alone, we obtain
-\[
+  Notice how this looks a lot like the rule of existential introduction, with $T$
+  being a witness and $T'[X \mapsto T]$ being the proposition that this $T$
+  satisfies the property $T'$. 
+ 
+  \item \textbf{Elimination} \\
+  \[
+   \begin{prooftree}
+     \hypo{\Gamma \vdash E : \exists X, \, T } 
+     \hypo{\Gamma, \, X, \, x : T \, \vdash E' : T'}
+     \infer2[(T-Unpack)]{\Gamma \vdash \text{let } \{X, \, x\} = E \text{ in } E' : T'}
+   \end{prooftree}
+  \]
+
+  Focusing on the types alone, we obtain
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash \exists X, \, T_{12} } 
+      \hypo{\Gamma, \, T_{12} \, \vdash T_2}
+      \infer2{\Gamma \vdash T_2}
+    \end{prooftree} 
+  \]
+
+  which resembles the usual rule of existential elimination from logic:
+  \[
   \begin{prooftree}
-    \hypo{\Gamma \vdash \exists X, \, T_{12} } 
-    \hypo{\Gamma, \, T_{12} \, \vdash T_2}
-    \infer2{\Gamma \vdash T_2}
-  \end{prooftree} 
-\]
+    \hypo{\Gamma \vdash \exists x, \, \varphi(x)}
+    \hypo{\Gamma, \, \varphi(x) \vdash \psi}
+    \infer2{\Gamma \vdash \psi}
+  \end{prooftree}
+  \]
+  provided $x$ does not occur free in $\Gamma$ and $\psi$.
 
-which eerily resembles the usual rule of existential elimination from logic:
-\[
-\begin{prooftree}
-  \hypo{\Gamma \vdash \exists x, \, \varphi(x)}
-  \hypo{\Gamma, \, \varphi(x) \vdash \psi}
-  \infer2{\Gamma \vdash \psi}
-\end{prooftree}
-\]
-provided $x$ does not occur free in $\Gamma$ and $\psi$.
+  This rule says that we may derive the desired conclusion, $\psi$, 
+  under the assumption that $x$ is completely arbitrary save for the fact that it 
+  satisfies $\varphi$. Note that we must also make sure to discharge the variable
+  so that the conclusion, $\psi$, does not contain $x$ free. 
 
-In other words, we may derive the desired conclusion, $\psi$, 
-under the assumption that $x$ is completely arbitrary save for the fact that it 
-satisfies $\varphi$. Note that we must also make sure to discharge the variable
-so that the conclusion, $\psi$, does not contain $x$ free. 
+\end{enumerate}
+
+Modeling existential types as pairs denoted by $\{E_1, \, E_2\}$, we obtain the
+following introduction and elimination rules:
+
+\begin{enumerate}
+  \item \textbf{Introduction} \\
+  \[
+  \begin{prooftree}
+    \hypo{\Gamma \vdash E_1 : A}
+    \hypo{\Gamma \vdash E_2 : B[x \mapsto E_1]}
+    \infer2{\Gamma \vdash \{E_1, \, E_2\} : \exists x : A, \, B(x)}
+  \end{prooftree}
+  \]
+ 
+  \item \textbf{Elimination} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E : (\exists x : A, \, B(x)) }
+      \hypo{\Gamma, \, x : A, \, y : B(x) \vdash E' : T}
+      \infer2{\Gamma \vdash \text{let } \{x, \, y\} := E \text{ in } E' : T}
+    \end{prooftree}
+  \]
+  \end{enumerate}
 
 Thus we see that the Curry-Howard interpretation of the usual existential
-quantifier is a dependent version of the existential type. 
+quantifier is a dependent variation of the existential type. 
 Its cousin, the Sigma type, can then
 be seen as a very strong, constructive version of existential quantification in
 which all the proofs themselves carry explicit witnesses which can be projected
 out.
 
-Now, we may reformulate the rule of existential elimination
-using the Deduction and Generalization theorems or simply from the
-rules of intuitionistic natural deduction, as
-\[
-\begin{prooftree}
-  \hypo{\Gamma \vdash \exists x, \, \varphi(x)}
-  \hypo{\Gamma \vdash \forall x \, (\varphi(x) \rightarrow \psi)}
-  \infer2{\Gamma \vdash \psi}
-\end{prooftree}
-\]
-provided $x$ does not occur free in $\psi$.
-
-Next if we follow the BHK interpretation and translate this into type theory,
-we end up with a variation of a dependent pair with a weaker elimination
-rule.
-To distinguish these from the previous, stronger, Sigma type, we call these
-\textit{existentials} and we write $\exists x : A, \, B(x)$ instead of 
-$\Sigma_{x : A} B(x)$ and we denote elements of this type by $(|x, \, y|)$ to
-differentiate them from the stronger variation.
-
-If we then translate the universal quantifier and implication into the Pi type
-and make explicit the proofs of these propositions/types, we arrive at the type
-theoretic rule of existential elimination:
-\[
-  \begin{prooftree}
-    \hypo{\Gamma \vdash E_1 : \exists x : A, \, B(x) }
-    \hypo{\Gamma \vdash E_2 : \Pi_{x : A} \Pi_{y : B(x)} T}
-    \infer2{\Gamma \vdash \existselim \, E_1 \, E_2 : T}
-  \end{prooftree}
- \]
-provided $x$ and $y$ do not occur free in $T$.
-
-Formulating an elimination rule for the Sigma type that abstracts away the
-witness and imposes an abstraction barrier leads us to a ``weaker" Sigma
-type. We call these existentials and denote them by $\exists x : A, \, B(x)$
-to distinguish them from the usual (strong) Sigma type, $\Sigma_{x : A}, B(x)$.
-We also use $(|x, \, y|)$ instead of the $(x, \, y)$ to denote the data
-constructor.
+To distinguish this new variant of the Sigma from the previous, stronger one,
+we call these \textit{existentials} and we write $\exists x : A, \, B(x)$ instead of 
+$\Sigma_{x : A} B(x)$.
 
 \subsubsection{Summary of Curry-Howard correspondence}
 In essence, adding dependent types to the lambda calculus allows types to include
@@ -544,7 +556,7 @@ Lean theorem prover.
     fun x => (fun y => (fun (h : T) => E))
   \end{verbatim}
 
-\item \textbf{Pi and strong Sigma type} \\
+\item \textbf{Pi and Sigma type} \\
   \[
     \begin{prooftree}
       \hypo{x}
@@ -581,14 +593,6 @@ Lean theorem prover.
   For the case of \verb|Sigma|, \verb|A * B| and \verb|A /\ B| can be written
   in place of \verb|Sigma (x : A), B|.
 
-  \item \textbf{Weak Sigma} \\
-  \[
-  \begin{prooftree}
-    \hypo{E}
-    \infer1{\text{exists } E}
-  \end{prooftree}   
-  \]
-
   \item \textbf{Sigma constructor} \\
   \[
     \begin{prooftree}
@@ -597,7 +601,7 @@ Lean theorem prover.
       \infer2{(E_1, \, E_2)}
     \end{prooftree}  
   \]
-  This constructs a pair of some strong Sigma type.
+  This constructs a pair of some Sigma type.
 
   \item \textbf{Sigma eliminators} \\
   \[
@@ -617,37 +621,40 @@ Lean theorem prover.
  \verb|fst| is used to obtain the first component of a pair and \verb|snd| is used
  to obtain the second component.
 
+ \item \textbf{Existential} \\
+  \[
+  \begin{prooftree}
+    \hypo{E}
+    \infer1{\text{exists } E}
+  \end{prooftree}   
+  \]
+  We allow users to enter $\exists$ in unicode instead of \verb|exists|.
+
  \item \textbf{Existential constructor} \\
  \[
   \begin{prooftree}
    \hypo{E_1}
    \hypo{E_2}
-   \infer2{(| E_1, \, E_2 |)} 
+   \infer2{\{ E_1, \, E_2 \}} 
   \end{prooftree}  
  \]
+ This constructs an existential, ie the weaker cousin of the Sigma.
 
  \item \textbf{Existential eliminator} \\
  \[
  \begin{prooftree}
-   \hypo{E_1}
-   \hypo{E_2}
-   \infer2{\existselim \, E_1 \, E_2}
+  \hypo{x}
+  \hypo{y}
+  \hypo{E}
+  \hypo{E'}
+  \infer4{\text{let } \{x, \, y\} := E \text{ in } E'}
  \end{prooftree}  
  \]
 
- This models the rule of existential elimination, which when modelled type 
- theoretically, roughly says:
- \[
-  \begin{prooftree}
-    \hypo{\Gamma \vdash E_1 : \exists x : A, \, B(x) }
-    \hypo{\Gamma \vdash E_2 : \Pi_{x : A} B(x) \rightarrow T}
-    \infer2{\Gamma \vdash \existselim \, E_1 \, E_2 : T} 
-  \end{prooftree}
- \]
- provided $x$ does not occur free in $T$.
-
- Note how this looks similar to the typing judgments for unpacking existential
- types.
+ As discussed in the intro, this models the rule of existential elimination.
+ $x$ and $y$ are binders for $E'$ but not $E$.
+ Note that this is not the same as pair destructuring since this is used for
+ unpacking the existential rather than the Sigma.
 
 \item \textbf{Type ascriptions} \\
   \[
@@ -761,10 +768,12 @@ anywhere else in an expression. It can only be used in place of a variable in a
 binder.
 
 \subsubsection{A word about notation}
-Note that we often write $\lambda x, \, E$ instead of $\fun \, x => E$ as in the
+Note that we often write $\lambda x, \, E$ instead of \verb|fun x => E| as in the
 concrete syntax. Similarly, we also write $\lambda (x : T), \, E$ in place of
-$\fun \, (x : T) => x$.
-Finally, we use $\Pi_{x : A}B(x)$ to abbreviate $\Pii \, (x : A), \, B$.
+\verb|fun (x : T) => x|.
+Finally, we use $\Pi_{x : A}B(x)$ to abbreviate 
+\verb|Pi (x : A), B|, and
+$\exists x : A, \, B(x)$ to abbreviate \verb|exists x : A, B(x)|.
 
 \subsection{Syntax for statements and programs}
 Statements are top level commands through which users interact with our
@@ -899,8 +908,8 @@ free there.
  \FV (\Sigma_{x : A} B(x) &:= \FV(\Pi_{x : A} B(x))
 \end{align*}
 
-Sigma expressions follow the same rules as with Pi expressions, with $x$ being
-bound in the output type $B$ but not in the input type $A$.
+\verb|Sigma| and existential expressions follow the same rules as with \verb|Pi|
+expressions, with $x$ being bound in the output type $B$ but not in the input type $A$.
 
 \begin{align*}
   \FV (A + B) &:= \FV(A) \cup \FV(B) \\
@@ -912,6 +921,13 @@ Note that in match expressions, $x$ is bound in $E_1$ and $y$ is bound in $E_2$.
 For the expressions $\fst \, E$, $\snd \, E$, $\inl \, E$ and $\inr \, E$, the
 set of free variables is precisely $\FV(E)$, since those keywords are treated
 like constants.
+
+Finally, for existential elimination, we have
+\begin{align*}
+  \FV(\text{let } \{x, \, y\} := E \text{ in } E') := 
+    \FV(E) \cup (\FV(E') \setminus \{x, \, y\}) 
+\end{align*}
+since $x$ and $y$ are bound in $E'$ but not $E$.
 
 \subsection{Substitution}
 Here we define $E [x \mapsto E'] := E''$ to mean substituting all free
@@ -940,20 +956,24 @@ $T$. Note that we do not treat $x$ as being bound in $T$ here.
                  &\quad \quad \quad (\text{if } z \notin FV(B) \cup FV(B') \cup \{x\})
 \end{align*}
 
-For Pi expressions, $A$ is an expression and thus when substituting $x$ by
+For \verb|Pi| expressions, $A$ is an expression and thus when substituting $x$ by
 $B'$, we must also perform the substitution in the input type $A$. However, as
 $x$ is not bound there, we need not worry about capturing it when substituting there. 
 
-For Sigma expressions, we define $(\Sigma_{x : A} B(x)) [x \mapsto B']$ in a
-similar fashion as with the case of Pi.
+For \verb|Sigma| and \verb|Exists| expressions, we define 
+$(\Sigma_{x : A} B(x)) [x \mapsto B']$ and $\exists x : A, \, B(x)$ in a 
+similar fashion as with the case of \verb|Pi|.
 
 The substitution rules for \verb|fst|, \verb|snd|, \verb|inl| and \verb|inr| are
 trivial and thus ommitted.
 
-Finally, we avoid specifying substitution formally for match expressions since it's
+We avoid specifying substitution formally for match expressions since it's
 tedious. The key thing to note is that in the expression
 $\match(E, x \rightarrow E_1, y \rightarrow E_2)$, $x$ is bound in $E_1$ and $y$
 is bound in $E_2$.
+
+For existential elimination, ie $\text{let } \{x, \, y\} := E \text{ in } E'$,
+note that $x$ and $y$ are bound in $E'$ but not $E$.
 
 \section{Semantics}
 We define the semantics for expressions first and statements later.
@@ -1290,7 +1310,7 @@ be covered later.
   \]
   This says type ascriptions do not play a role in computation. They're just
   there to help the type checker figure things out. Users can also use these as
-  a form of documentation.
+  a way to document their intentions.
  
 \item \textbf{Pi elimination, ie function application} \\
   \[
@@ -1320,13 +1340,14 @@ be covered later.
   Remember that such variables can exist because users are allowed to introduce
   indeterminate constants as the top level via \verb|axiom| statements.
 
-\item \textbf{Normalizing under lambdas} \\
+  \item \textbf{Normalizing under lambdas} \\
   \[
     \begin{prooftree}
-      \hypo{\Gamma \vdash E \Downarrow \nu}
+      \hypo{(x, \, \text{und}, \, \text{und}) :: \Gamma \vdash E \Downarrow \nu}
       \infer1{\Gamma \vdash \lambda x, \, E, \, \Downarrow \lambda x, \, \nu}
     \end{prooftree}
   \]
+
   \[
     \begin{prooftree}
       \hypo{\Gamma \vdash \lambda x, \, E \Downarrow \nu}
@@ -1417,16 +1438,17 @@ be covered later.
       \begin{prooftree}
         \hypo{\Gamma \vdash E_1 \Downarrow \nu_1}
         \hypo{\Gamma \vdash E_2 \Downarrow \nu_2}
-        \infer2{\Gamma \vdash (|E_1, \, E_2|) \Downarrow (|\nu_1, \, \nu_2|)}
+        \infer2{\Gamma \vdash \{E_1, \, E_2\} \Downarrow \{\nu_1, \, \nu_2\}}
       \end{prooftree}
     \]
   
   \item \textbf{Existential eliminator} \\
    \[
       \begin{prooftree}
-        \hypo{\Gamma \vdash E_1 \Downarrow \nu_1}
-        \hypo{\Gamma \vdash E_2 \Downarrow \nu_2}
-        \infer2{\Gamma \vdash \existselim \, E_1 \, E_2 \Downarrow \existselim \, \nu_1, \, \nu_2}
+        \hypo{\Gamma \vdash E \Downarrow \nu}
+        \hypo{\Gamma \vdash \lambda x, \, \lambda y, \, E' \Downarrow \lambda x, \, \lambda y, \nu'}
+        \infer2{\Gamma \vdash \text{let } \{x, \, y\} := E \text{ in } E' \Downarrow
+                \text{let } \{x, \, y\} := \nu \text{ in } \nu'}
       \end{prooftree}
     \]
 
@@ -1567,13 +1589,8 @@ normalize an expression before checking that it has a well formed type.
       \end{prooftree}
     \]
 
-    \[
-      \begin{prooftree}
-        \hypo{\wf(\Gamma)}
-        \hypo{\Gamma \vdash \tau \Leftarrow s}
-        \infer2{\wf ((x, \, \tau, \, \text{und}) :: \Gamma)}
-      \end{prooftree}
-    \]
+    Here we allow both $\tau$ and $\nu$ to be undefined.
+
   \end{enumerate}
 \end{definition}
 
@@ -1603,6 +1620,7 @@ the type.
       \infer2{\Gamma \vdash x \Rightarrow \tau}
     \end{prooftree}
   \]
+  $\nu$ is allowed to be undefined here.
   This says that we may infer the type of a variable if the type information
   is already in our context.
 
@@ -1676,8 +1694,7 @@ the type.
     In fact, ``types'' are just expressions!
 
     Ah but since we always normalize types before dealing with them, assuming
-    that terms have a unique head normal form 
-    (we'll discuss this later in the section on metatheoretic properties), we 
+    that terms have a unique head normal form, we 
     will normalize $T$ and $T'$ to $\tau$ and $\tau'$ respectively.
     After that, we need only compare them for structural equality,
     modulo alpha equivalence. Such an operation is trivial to implement using
@@ -1810,32 +1827,40 @@ the type.
       \hypo{\Gamma \vdash E_1 \Leftarrow \tau_1}
       \hypo{\Gamma \vdash \tau_2[x \mapsto E_1] \Downarrow \tau_2'}
       \hypo{\Gamma \vdash E_2 \Leftarrow \tau_2'}
-      \infer3{\Gamma \vdash (|E_1, \, E_2|) \Leftarrow 
+      \infer3{\Gamma \vdash \{E_1, \, E_2\} \Leftarrow 
         \exists x : \tau_1, \, \tau_2'(x)}
     \end{prooftree}
 \]
 
 \item \textbf{Existential elimination} \\
 \[
-\begin{prooftree}
-  \hypo{\Gamma \vdash E_1 \Rightarrow \exists x : \tau, \, \tau'(x)}
-  \hypo{\Gamma \vdash E_2 \Rightarrow \Pi_{x : \tau} \Pi_{x' : \tau'(x)} \tau''}
-  \hypo{x, \, x' \notin \FV(\tau'')}
-  \infer3{\Gamma \vdash \existselim \, E_1 \, E_2 \Rightarrow \tau''}
-\end{prooftree}
+  \begin{prooftree}
+   \hypo{\Gamma \vdash E \Rightarrow \exists x : \tau, \, \tau'(x)} 
+   \hypo{(y, \, \tau'(x), \, \text{und}) :: (x, \, \tau, \text{und}) :: \Gamma \vdash
+          E' \Rightarrow \tau''}
+   \hypo{x, \, y \notin \FV(\tau'')}
+   \infer3{\Gamma \vdash \text{let } \{x, \, y\} := E \text{ in } E' \Rightarrow \tau''}
+  \end{prooftree}
 \]
-Here we write $x, \, x' \notin \FV(\tau'')$ to emphasize that $x$ and $x'$ 
+
+Here we write $x, \, y \notin \FV(\tau'')$ to emphasize that $x$ and $y$ 
 should not occur free in the output type that is $\tau''$.
 
-Note how this corresponds to the rule of existential elimination in natural
-deduction as we discussed in the intro
+By adding a fresh, unknown variable $x$, of the right type to the context, we
+essentially abstract away the first component of the underlying pair.
+
+Notice how the rules for existentials in our language are similar to the typing
+rules for existential types.
+Also, take note of how this elimination rule models the rule 
+of existential elimination in natural deduction as we discussed in the intro
 \[
 \begin{prooftree}
   \hypo{\Gamma \vdash \exists x, \, \varphi(x)}
-  \hypo{\Gamma \vdash \forall x, \, \varphi(x) \rightarrow \psi}
+  \hypo{\Gamma, \, \varphi(x) \vdash \psi}
   \infer2{\Gamma \vdash \psi}
 \end{prooftree}
 \]
+provided $x$ does not occur free in $\Gamma$ and $\psi$.
 
   % \[
   %   \begin{prooftree}
@@ -1869,7 +1894,7 @@ deduction as we discussed in the intro
       \infer2{\Gamma \vdash A + B \Rightarrow \Type} 
     \end{prooftree}
   \]
-  Note that this rule says that users can only make construct a sum, aka 
+  Note that this rule says that users can only construct a sum, aka 
   coproduct, out of types that live in the universe \verb|Type|, not 
   \verb|Kind|.
 
@@ -1912,9 +1937,10 @@ deduction as we discussed in the intro
   \end{prooftree}  
 \]
 
-Note that the data constructors \verb|(. , .)|, \verb|inl| and \verb|inr| do
-not come with type annotations and thus we are unable to infer the type of the
-constructed term. Hence they will need to be paired with type ascriptions to
+Note that the data constructors \verb|(. , .)|, \verb|{. , .}|, \verb|inl| and 
+\verb|inr| do not come with type annotations and thus we are unable to infer the
+type of the constructed term.
+Hence they will need to be paired with type ascriptions to
 help the interpreter figure out what type the expression has.
 
 For instance, to help the interpreter figure out what type \verb|inl E| should be,

@@ -5,7 +5,8 @@
    Note that "Binding" may be None or Some.
 *)
 
-(* Underlying type of contexts *)
+(* Underlying type of contexts. This context module is existentially quantified
+over this type variable.  *)
 type t
 
 (* Empty context *)
@@ -22,6 +23,8 @@ val length : t -> int
    when we convert the parser's AST to our own, we only add var names to the
    context to convert them to de bruijn indices. *)
 val add_binding : string -> ?var_type:int Common.Ast.expr -> ?binding:int Common.Ast.expr -> t -> t
+
+val add_name_bindings : t -> string list -> t
 
 (* Given a variable name and a context, find the first index corresponding to
 the variable. *)

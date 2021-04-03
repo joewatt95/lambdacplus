@@ -1,11 +1,7 @@
-(* TODO: Implement error reporting *)
-
 open Containers
 
 (* Change this to change the encoding. *)
 module Encoding = Sedlexing.Utf8
-
-module G = Grammar
 
 exception Syntax_error of {
   lexeme : string;
@@ -30,35 +26,35 @@ let name =
   https://unicode.org/charts/PDF/U2200.pdf
 *)
 let reserved_keywords =
-  [(["fun"; "λ"; "lambda"], G.FUN);
-   (["Pi"; "Π"; "∏"; "∀"; "forall"], G.PI);
-   (["Sigma"; "Σ"], G.SIGMA);
-   (["∃"; "exists"], G.EXISTS);
-   (["exists_elim"], G.EXISTS_ELIM);
-   (["fst"], G.FST);
-   (["snd"], G.SND);
-   (["match"], G.MATCH);
-   (["inl"], G.INL);
-   (["inr"], G.INR);
-   (["with"], G.WITH);
-   (["end"], G.END);
-   (["Type"; "Prop"], G.TYPE);
-   (["Kind"], G.KIND);
-   (["let"], G.LET);
-   (["in"], G.IN);
+  let open Grammar in
+  [(["fun"; "λ"; "lambda"], FUN);
+   (["Pi"; "Π"; "∏"; "∀"; "forall"], PI);
+   (["Sigma"; "Σ"], SIGMA);
+   (["∃"; "exists"], EXISTS);
+   (["fst"], FST);
+   (["snd"], SND);
+   (["match"], MATCH);
+   (["inl"], INL);
+   (["inr"], INR);
+   (["with"], WITH);
+   (["end"], END);
+   (["Type"; "Prop"], TYPE);
+   (["Kind"], KIND);
+   (["let"], LET);
+   (["in"], IN);
    (* Statements *)
-   (["def"], G.DEF);
+   (["def"], DEF);
    (* These are typed version of def statements, used to state and prove 
     theorems. *)
-   (["theorem"; "lemma"], G.THEOREM);
-   (["axiom"; "constant"], G.AXIOM);
-   (["check"], G.CHECK);
-   (["eval"], G.EVAL);
+   (["theorem"; "lemma"], THEOREM);
+   (["axiom"; "constant"], AXIOM);
+   (["check"], CHECK);
+   (["eval"], EVAL);
    (* For proof terms like Lean. *)
-   (["assume"], G.ASSUME);
-   (["have"], G.HAVE);
-   (["from"], G.FROM);
-   (["show"], G.SHOW)]
+   (["assume"], ASSUME);
+   (["have"], HAVE);
+   (["from"], FROM);
+   (["show"], SHOW)]
    (* Fancy stream fusion stuff *)
   |> Iter.of_list
   |> Iter.flat_map_l
@@ -67,26 +63,27 @@ let reserved_keywords =
   |> Iter.to_hashtbl;;
 
 let rec tokenize lexbuf =
+  let open Grammar in
   match%sedlex lexbuf with
-  | eof -> G.EOF
+  | eof -> EOF
   (* Support single-line comments. Idea taken from
   https://github.com/vshaxe/hxparser/blob/master/src/syntax/lexing/lexer.ml *)
-  | '(' -> G.LPAREN
-  | ')' -> G.RPAREN
-  | "(|" -> G.EXISTS_LPAREN
-  | "|)" -> G.EXISTS_RPAREN
-  | ',' -> G.COMMA
-  | ':' -> G.COLON
-  | ":=" -> G.COLON_EQ
-  | "=>" | "⇒" -> G.DOUBLE_ARROW
-  | "->" | "→" -> G.ARROW
-  | "*" | "⨯" | "∧" | "/\\" -> G.PROD
-  | "+" | "∨" | "\\/" -> G.PLUS
-  | "|" -> G.BAR
+  | '(' -> LPAREN
+  | ')' -> RPAREN
+  | "{" -> LEFT_CURLY
+  | "}" -> RIGHT_CURLY
+  | ',' -> COMMA
+  | ':' -> COLON
+  | ":=" -> COLON_EQ
+  | "=>" | "⇒" -> DOUBLE_ARROW
+  | "->" | "→" -> ARROW
+  | "*" | "⨯" | "∧" | "/\\" -> PROD
+  | "+" | "∨" | "\\/" -> PLUS
+  | "|" -> BAR
 
   | name ->
     let lexeme = Encoding.lexeme lexbuf in
-    Hashtbl.get_or reserved_keywords lexeme ~default:(G.VAR_NAME lexeme)
+    Hashtbl.get_or reserved_keywords lexeme ~default:(VAR_NAME lexeme)
   | newline
 
   | "--", Star (Compl ('\r' | '\n')) 

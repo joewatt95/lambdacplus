@@ -19,7 +19,7 @@ https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
 (* Types and expressions *)
 %token TYPE KIND PI SIGMA FUN LET IN FST SND ARROW PROD
       PLUS MATCH INL INR BAR END WITH 
-      EXISTS EXISTS_ELIM EXISTS_LPAREN EXISTS_RPAREN
+      EXISTS LEFT_CURLY RIGHT_CURLY
 
 (* For proof terms, like Lean. *)
 %token ASSUME HAVE FROM SHOW THEOREM
@@ -38,7 +38,7 @@ https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
 
 (* Lowest precedence *)
 %nonassoc LPAREN VAR_NAME FUN PI SIGMA TYPE LET KIND FST SND MATCH INL INR 
-          ASSUME HAVE SHOW EXISTS EXISTS_ELIM EXISTS_LPAREN
+          ASSUME HAVE SHOW EXISTS LEFT_CURLY
 (* Highest precedence *)
 %nonassoc APP
 
@@ -98,7 +98,7 @@ let raw_expr :=
   | match_expr
   | sum_expr 
   | exists_pair_expr
-  | EXISTS_ELIM; left=expr; right=expr;   { Ast.Exists_elim {left; right} }
+  (* | EXISTS_ELIM; left=expr; right=expr;   { Ast.Exists_elim {left; right} } *)
  
  (* | let_pair *)
 
@@ -179,18 +179,11 @@ let let_expr ==
     { Ast.Let {abstraction={var_name; expr=binding; body}; ascribed_type=None} }
   | LET; ~=var_name; COLON; ascribed_type=expr; COLON_EQ; binding=expr; IN; body=expr;
     { Ast.Let {abstraction={var_name; expr=binding; body}; ascribed_type = Some ascribed_type} }
-  // | LET; LPAREN; left_var=var_name; COMMA; right_var=var_name; RPAREN; 
-  //   COLON_EQ; binding=expr; IN; body=expr; 
-  //   { 
-  //     let body = Location.locate @@ 
-  //       Ast.Let {abstraction={var_name=right_var; 
-  //                             expr=Location.locate (Ast.Snd binding); body};
-  //                ascribed_type=None} in
-  //     Ast.Let {abstraction={var_name=left_var; 
-  //                           expr=Location.locate (Ast.Fst binding);
-  //                           body}; 
-  //              ascribed_type=None}
-  //   } 
+    
+  | LET; (witness_var, witness_cert) =
+    delimited(LEFT_CURLY, separated_pair(var_name, COMMA, var_name), RIGHT_CURLY);
+    COLON_EQ; ~=expr; IN; body=expr;
+    { Ast.Exists_elim {expr; witness_var; witness_cert; body} }
 
 let sigma_expr == SIGMA; 
   (input_var, input_type) = sigma_arg;
@@ -210,7 +203,7 @@ let pair_expr ==
   { Ast.Pair {left; right} }
 
 let exists_pair_expr == 
-  (left, right) = delimited(EXISTS_LPAREN, separated_pair(expr, COMMA, expr), EXISTS_RPAREN);
+  (left, right) = delimited(LEFT_CURLY, separated_pair(expr, COMMA, expr), RIGHT_CURLY);
   { Ast.Exists_pair {left; right} }
 
 let sum_expr ==
@@ -235,6 +228,17 @@ let match_expr ==
      inl={match_var=var_left; match_body=body_left};
      inr={match_var=var_right; match_body=body_right}} }
 
+
+    (*
+    {
+      let inner_fn = Location.locate ~source_loc:$loc @@
+        Ast.Fun {input_type=Some prop; input_var=var_name_prop; body} in
+      let right = Location.locate ~source_loc:$loc @@
+        Ast.Fun {input_type=None; input_var=var_name; body=inner_fn} in
+      Ast.Exists_elim {left=expr; right}
+    }
+    *)
+    
 (*
 let let_pair == 
   LET; LPAREN; left_var=var_name; COMMA; right_var=var_name; RPAREN; 

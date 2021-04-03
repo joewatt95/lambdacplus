@@ -5,40 +5,11 @@
 open Containers
 open Common
 
-(* module PAst = Parsing.Ast
-module KAst = Kernel.Ast *)
-
 (******************************************************************************)
 (* Functions to convert from the parser's AST to our internal AST *)
 
 exception Unknown_var_name of string Ast.expr
 exception Underscore_var_name of Location.source_loc
-(* 
-let conv ctx : PAst.expr -> KAst.expr =
-  let v = 
-    object
-    inherit [_] PAst.ast_folder as super
-
-    method build_Var _ var_name = KAst.located_kind
-    method build_Type _ = KAst.Type
-    method build_Kind _ = KAst.Kind
-
-    method build_abstraction _ var_name expr body = assert false
-
-    method build_Pi _ = assert false
-    method build_Sigma _ = assert false
-    method build_Fun _ _ _ _ = assert false
-    method build_App _ _ = assert false
-    method build_Let _ = assert false
-    method build_Ascription _ = assert false
-    method build_Pair _ = assert false
-    method build_Fst _ = assert false
-    method build_Snd _ = assert false
-
-    method build_located _ _ _ _ = KAst.Kind
-    method visit_'a _ _ = KAst.located_kind
-    
-    end in v#visit_expr @@ Loc.locate ctx *)
 
 (* How to use Visitors package to clean up this boilerplate? *)
 let rec parser_to_internal_raw_expr ctx (expr : string Ast.expr) =
@@ -61,12 +32,6 @@ let rec parser_to_internal_raw_expr ctx (expr : string Ast.expr) =
     let new_ctx = Kernel.Context.add_binding input_var ctx in
     let body = parser_to_internal_expr new_ctx body in
     Ast.Fun {input_var; input_type; body}
-
-  (* | PAst.Pi {input_var; input_type; output_type} ->
-    let new_ctx = Kernel.Context.add_binding input_var ctx in
-    let input_type = parser_to_internal_expr ctx input_type in
-    let output_type = parser_to_internal_expr new_ctx output_type in
-    KAst.Pi {input_var; input_type; output_type} *)
 
   | Ast.App {left=fn; right=arg} ->
     let fn = parser_to_internal_expr ctx fn in
@@ -125,10 +90,12 @@ let rec parser_to_internal_raw_expr ctx (expr : string Ast.expr) =
     let ascribed_type = CCOpt.map (parser_to_internal_expr ctx) ascribed_type in
     Ast.Let {abstraction; ascribed_type}
   
-  | Ast.Exists_elim {left; right} ->
-    let left = parser_to_internal_expr ctx left in
-    let right = parser_to_internal_expr ctx right in
-    Ast.Exists_elim {left; right}
+  (* let {witness_var, witness_cert} := expr in body *)
+  | Ast.Exists_elim {expr; witness_var; witness_cert; body} ->
+    let expr = parser_to_internal_expr ctx expr in
+    let ctx = Kernel.Context.add_name_bindings ctx [witness_var; witness_cert] in
+    let body = parser_to_internal_expr ctx body in
+    Ast.Exists_elim {expr; witness_var; witness_cert; body}
 
   | Ast.Exists_pair {left; right} ->
     let left = parser_to_internal_expr ctx left in
@@ -290,11 +257,15 @@ let rec internal_to_parser_raw_expr ctx raw_expr =
   | Ast.Type -> Ast.Type
   | Ast.Kind -> Ast.Kind
 
-  | Ast.Exists_elim {left; right} ->
-    let left = internal_to_parser_expr ctx left in
-    let right = internal_to_parser_expr ctx right in
-    Ast.Exists_elim {left; right}
-
+  (* let {witness_var, witness_cert} := expr in body *)
+  | Ast.Exists_elim {expr; witness_var; witness_cert; body} ->
+    let expr = internal_to_parser_expr ctx expr in
+    let witness_var, ctx = pick_fresh_name witness_var ctx in
+    (* let witness_prop = internal_to_parser_expr ctx witness_prop in *)
+    let witness_cert, ctx = pick_fresh_name witness_cert ctx in
+    let body = internal_to_parser_expr ctx body in
+    Ast.Exists_elim {expr; witness_var; witness_cert; body}
+    
   | Ast.Exists_pair {left; right} ->
     let left = internal_to_parser_expr ctx left in
     let right = internal_to_parser_expr ctx right in
