@@ -29,27 +29,19 @@ def pf := λ (a : A) => snd (R_left_total a)
 check ((f, pf) : ∃ f : A -> B, ∀ a : A, R a (f a))
 |} *)
 
-let global_nctx = ref Kernel.Context.empty
-let global_ectx = ref Kernel.Context.empty
-
-let js_reset _ =
-  global_nctx := Kernel.Context.empty;
-  global_ectx := Kernel.Context.empty
-
-let js_run_repl str =
+let run_in_context str (nctx, ectx) =
   try
     let stmts, naming_ctx =
       str
       |> Parsing.Parser.parse_string
-      |> Fun.flip Ast_conv.parser_to_internal_stmts !global_nctx
+      |> Fun.flip Ast_conv.parser_to_internal_stmts nctx
     in
     try
       let stmts' , ctx' =
-        Fun.flip Kernel.Eval_statements.eval_stmts !global_ectx stmts
+        Fun.flip Kernel.Eval_statements.eval_stmts ectx stmts
       in
-      global_nctx := naming_ctx;
-      global_ectx := ctx';
-      Ok (Pretty_print.unparse_internal_expr naming_ctx stmts')
+      Ok ((naming_ctx, ctx'),
+      Pretty_print.unparse_internal_expr naming_ctx stmts')
     with exc ->
       Error (Error_reporting.fmt_eval_err_str naming_ctx exc)
   with exc ->
@@ -124,17 +116,19 @@ let internal_run_once () =
 let () =
   Js.export_all
   (object%js
-    method repl str = 
+    val ctx0 = (Kernel.Context.empty, Kernel.Context.empty)
+    method run_in_ctx str ctx = 
       str
       |> Js.to_string
-      |> js_run_repl
+      |> Fun.flip run_in_context ctx
       |> (fun x -> match x with
-      | Error str -> (false, str)
-      | Ok str -> (true, str))
-      |> (fun (flag, res) ->
+      | Error str -> (false, ctx, str)
+      | Ok (ctx', str) -> (true, ctx', str))
+      |> (fun (flag, fctx, res) ->
         (object%js
           val ok = Js.bool flag
+          val cmd = str
           val result = Js.string res
+          val ctx = fctx
         end))
-    method reset _ = js_reset (); Js._true
   end)
