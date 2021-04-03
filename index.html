@@ -1,0 +1,135 @@
+<html lang="en">
+<head>
+<title>Dependent Type Theory</title>
+<style type="text/css" media="screen">
+    #all { 
+        display: grid;
+        grid-template-columns: auto;
+        grid-template-rows : 4% 80% auto;
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+    }
+    #toolbar {
+      display: grid;
+      grid-template-columns: 5% auto;
+      grid-template-rows: auto;
+    }
+    #history {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      align-content: center;
+    }
+    #run {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color:whitesmoke;
+      opacity: 0.2;
+      transition: 0.3s;
+    }
+    #run:hover {
+      opacity: 1;
+    }
+    .node {
+      margin-left: 0.5em;
+    }
+    .node.valid:hover {
+      color: green;
+    }
+    .node.current {
+      border-style: solid;
+      border-width: thin;
+    }
+    .node.invalid {
+      color: red;
+    }
+    .node {
+      opacity: 0.5;
+      transition: 0.3s;
+    }
+    .node:hover {
+      opacity: 1;
+    }
+</style>
+<script src="https://kit.fontawesome.com/fa2321cbaa.js" crossorigin="anonymous"></script>
+<script src="main.bc.js"></script>
+</head>
+<body>
+<div id="all">
+<div id="toolbar">
+  <div id="run" onclick="execute()"><i class="far fa-play-circle"></i></div>
+  <div id="history"></div>
+</div>
+<div id="editor">constant P : Prop
+constant Q : Prop
+axiom p_or_q : P + Q
+check p_or_q
+</div>
+<div id="output"></div>
+</div>
+<script src="https://pagecdn.io/lib/ace/1.4.12/ace.min.js" type="text/javascript" charset="utf-8"></script>
+<script>
+    var editor = ace.edit("editor");
+    var output = ace.edit("output");
+    output.setOptions({
+      readOnly: true,
+      highlightActiveLine: false,
+      highlightSelectedWord: false,
+      highlightGutterLine: false,
+      showGutter: false,
+      showPrintMargin: false
+    })
+    editor.setOptions({
+      mode: "",
+    })
+
+
+    var initialObj = {
+      ok: true,
+      cmd: "",
+      result: "",
+      ctx: ctx0,
+      node: createDivNode(true, 0)
+    }
+    document.getElementById("history").appendChild(initialObj.node);
+    var results = [initialObj];
+    var head = 0;
+    function execute() {
+      var ctx = results[head].ctx;
+      var str = editor.getValue();
+      var newObj = run_in(str, ctx);
+      while(results.length > head + 1)
+        document.getElementById("history").removeChild(results.pop().node);
+      for(var i = 0; i < results.length; i++)
+        results[i].node.classList.remove("current");
+      newObj.node = createDivNode(newObj.ok, head + 1);
+      document.getElementById("history").appendChild(newObj.node);
+      results.push(newObj);
+      head++;
+      output.setValue(results[head].result);
+    }
+    function createDivNode(valid, idx) {
+      var icon = document.createElement("i");
+      icon.classList.add("node");
+      icon.classList.add("far");
+      icon.classList.add(valid ? "fa-dot-circle" : "fa-times-circle");
+      icon.classList.add(valid ? "valid" : "invalid");
+      icon.classList.add("current");
+      icon.onclick = () => {
+        head = idx;
+        editor.setValue(results[head].cmd);
+        output.setValue(results[head].result);
+        for(var i = 0; i < results.length; i++)
+          results[i].node.classList.remove("current");
+        results[head].node.classList.add("current");
+      }
+      return icon;
+    }
+</script>
+</body>
+</html>
