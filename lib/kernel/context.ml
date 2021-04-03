@@ -28,11 +28,18 @@ let length = CCRAL.length
 let add_binding var_name ?var_type ?binding =
   CCRAL.cons {var_name; var_type; binding}
 
+let add_name_bindings =
+  List.fold_left @@ fun ctx var_name -> add_binding var_name ctx
+
+(* Find the first index in the context corresponding to the variable name
+given by `str` *)
 let var_name_to_index ctx str =
   ctx
+  (* Map all indices where the variable name is not str to -1 *)
   |> CCRAL.mapi 
       ~f:(fun index {var_name; _} ->
             if Stdlib.(var_name = str) then index else -1) 
+  (* Remove all indices that are -1 *)
   |> CCRAL.filter ~f:((<=) 0)
   |> Fun.flip CCRAL.get 0
   

@@ -66,6 +66,21 @@ open Common
 
       method build_pair _ left right = (left, right)
 
+      method build_Exists _ (var_name, input_type, output_type) =
+        Printf.sprintf "(∃ %s : %s, %s)" var_name input_type output_type
+
+      method build_Let_pair _ expr left_var right_var binding =
+        Printf.sprintf "(let (%s, %s) := %s in %s)" left_var right_var expr binding
+
+      (* method build_Exists_elim _ = 
+        Fun.uncurry @@ Printf.sprintf "(exists_elim %s %s)" *)
+
+      method build_Exists_pair _ = Fun.uncurry @@ Printf.sprintf "{%s, %s}"
+
+      method build_Exists_elim _ expr witness_var witness_cert body=
+         Printf.sprintf "(let {%s, %s} := %s in %s)"
+         witness_var witness_cert expr body
+
       (* method build_Let_pair _ = Printf.sprintf "let (%s, %s) := %s in %s" *)
 
       (* These last 2 methods aren't used. *)

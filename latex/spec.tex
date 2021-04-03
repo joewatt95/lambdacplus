@@ -6,11 +6,29 @@
 \begin{document}
 
 \section{Introduction}
-Our language is a theorem prover for constructive logic, based on 
-the Calculus of Constructions (CoC), which is a dependently typed lambda calculus.
-CoC forms the foundation of many theorem provers like Coq, Lean and Agda, 
-though they also include many other features like inductive types and a 
-cumulative hierarchy of type universes.
+Our language is a playground for the Curry-Howard correspondence.
+At its core is the impredicative type theory known as the Calculus of
+Constructions (CoC). Syntactically, it feels much like the Lean theorem prover,
+which like Coq, is based on a predicative variant of CoC with inductive types.
+
+Following CoC, we stay true to the spirit of Curry-Howard and identify
+propositions as data types.
+Through this, all the logical connectives and quantifiers of intuitionistic
+logic are given a computational interpretation.
+The end result is a programming language which can be viewed as a theorem prover
+of sorts.
+
+Unfortunately, we are unsure if our language is logically consistent like the
+original CoC since we do implement many more types to model the various logical
+connectives more naturally. Still, we hope that it inspires others to discover
+the joy of Curry-Howard.
+
+% Our language is a theorem prover for constructive logic. It allows users to prove
+% theorems by way of the Curry-Howard correspondence. At its core is
+% the Calculus of Constructions (CoC), which is a dependently typed lambda calculus.
+% CoC forms the foundation of many theorem provers like Coq, Lean and Agda, 
+% though they also include many other features like inductive types and a 
+% cumulative hierarchy of type universes.
 
 In this document, we provide a big-step semantics for our language, upon which
 our interpreter was based.
@@ -20,9 +38,8 @@ Our approach to semantics is heavily inspired by
 
 Though our language specification is formal and mathematically
 intensive, we believe in the importance of rigour to ensure precision and clarity.
-This is especially important for our language since the theory behind
-dependent type theory is already rather complex.
-Even moreso is the mechanization and implementation of a type theory like CoC.
+This is especially important for our language since dependent type theory is
+rather complex.
 
 A benefit of this approach is that not only did our specification serve as a
 guide for our implementation, many of the rules we formalized here
@@ -38,6 +55,7 @@ relation to the Curry-Howard correspondence. Thereafter, we discuss where our
 language stands in relation to CoC.
 
 \subsection{Dependent type theory and Curry-Howard}
+\subsubsection{Pi type and universal quantification}
 Abstractly, CoC is a pure type system that sits atop of Barendregt's
 lambda cube.
 More concretely, it generalizes the simply typed and polymorphic
@@ -90,15 +108,29 @@ input, we recover the simple function type, which we write as $A \rightarrow B$
 or $\Pi_{x : A} B$. So we see that the Pi type allows us to model both
 logical implication as well as universal quantification. 
 
-As for the existential quantifier, a proof of $\exists x \in A, \, P(x)$
-corresponds to a pair, $\langle x, \, \text{pf} \rangle$ where $x$ is an element
-of type $A$ witnessing the existential and pf is a proof that for this $x$, 
-$P(x)$ holds. The type of the pair $\langle x, \, \text{pf}\rangle$ is the
-Sigma type, $\Sigma_{x : A} P(x)$. Such Sigma types generalize the ordinary pair
-type, by allowing the type of the second component to depend on the value of
-the first. 
+\subsubsection{Sigma and existential types}
 
-There is also another interesting interpretation of the Sigma type.
+As for the existential quantifier, the BHK interpretation says that a 
+proof of $\exists x \in A, \, P(x)$ corresponds to a pair, 
+$(x, \, p)$ where $x$ is an element
+of type $A$ witnessing the existential and pf is a proof that for this $x$, 
+$P(x)$ holds.
+
+The Sigma type, denoted $\Sigma_{x : A}B(x)$, generalizes the simple procuct 
+type for pairs in the simply typed lambda calculus. 
+The type of the second component is now allowed to depend on the
+value of the first.
+
+Now there are 2 ways in which the elimination rules can be formulated, each
+giving a different flavour of Sigma.
+
+If we define the first and second projections, ie \verb|fst| and \verb|snd|,
+that operate on a pair, say $(x, \, p) : \Sigma_{x : A} B(x)$, we get a
+generalization of the ordinary product type. We call this a ``strong'' Sigma type,
+since we are able to project out the explicit witness $x$ and $p$, the proof
+that it satisfies the property that is $B$. 
+
+Set theoretically, these Sigma types can be used to model subsets.
 Consider the notion of a subset, $\{x \in A \, | \, P(x) \}$, from set theory.
 By interpreting sets as types, we can model elements of this subtype of $A$ as
 pairs containing an element of type $A$ and a second element certifying that the
@@ -111,6 +143,128 @@ the usual pair (ie product) type, written $A \times B$ or $\Sigma_{x : A} B$.
 With this, we see that the Sigma type can encode 3 different notions, namely
 conjunction, existential quantification, and the subtype/subset relation!
 
+Now to model the existential quantifier from logic as we are familiar with, we
+need a weaker elimination rule.
+Recall that when we eliminate an existentially quantified formula, say
+$\exists x, \, \varphi(x)$, the witness we obtain is completely arbitrary save
+for the fact that it satisfies $\varphi$.
+
+To model this faithfully, we want a way for users to ``unpack'' pairs
+representing proofs of existentials in an opaque manner.
+This cannot be achieved via the elimination rule from the
+strong  Sigma type which we saw above, because that would give users the explicit witness
+stored in the pair!
+
+Thus we need dependent pairs, like Sigma types, but with a new elimination rule
+to enforce this layer of abstraction that prevents users from obtaining the
+original witness. What new kind of programming language construct can we use to
+model such pairs?
+
+The answer lies in a feature that modern functional languages like Ocaml offer
+-- existential types. 
+
+To see this, first recall that in Ocaml, we can define module signatures like
+
+\begin{verbatim}
+module type TY = sig
+  type t
+  val lst : t list
+end
+\end{verbatim}
+
+Such a signature can be identified with the \textit{existential type}
+$\exists t, \, \{ \text{lst} : t \, \text{list} \}$.
+The existential quantification here enforces an abstraction barrier, forcing
+users to manipulate such values opaquely, without knowing anything about \verb|t|.
+
+We can augment the polymorphic lambda calculus with these existential types
+with introduction and elimination rules.
+Note that in the rules below, $X$ may occur free in $T'$ here since $T'$ is
+existentially quantified over the type variable $X$.
+
+\begin{enumerate}
+  \item \textbf{Introduction} \\
+  \[
+  \begin{prooftree}
+    \hypo{\Gamma \vdash E : T'[X \mapsto T]}
+    \infer1[(T-Pack)]{\Gamma \vdash \{T, \, E\} \text{ as } T' : \exists X, \, T'}
+  \end{prooftree}
+  \]
+
+  Notice how this looks a lot like the rule of existential introduction, with $T$
+  being a witness and $T'[X \mapsto T]$ being the proposition that this $T$
+  satisfies the property $T'$. 
+ 
+  \item \textbf{Elimination} \\
+  \[
+   \begin{prooftree}
+     \hypo{\Gamma \vdash E : \exists X, \, T } 
+     \hypo{\Gamma, \, X, \, x : T \, \vdash E' : T'}
+     \infer2[(T-Unpack)]{\Gamma \vdash \text{let } \{X, \, x\} = E \text{ in } E' : T'}
+   \end{prooftree}
+  \]
+
+  Focusing on the types alone, we obtain
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash \exists X, \, T_{12} } 
+      \hypo{\Gamma, \, T_{12} \, \vdash T_2}
+      \infer2{\Gamma \vdash T_2}
+    \end{prooftree} 
+  \]
+
+  which resembles the usual rule of existential elimination from logic:
+  \[
+  \begin{prooftree}
+    \hypo{\Gamma \vdash \exists x, \, \varphi(x)}
+    \hypo{\Gamma, \, \varphi(x) \vdash \psi}
+    \infer2{\Gamma \vdash \psi}
+  \end{prooftree}
+  \]
+  provided $x$ does not occur free in $\Gamma$ and $\psi$.
+
+  This rule says that we may derive the desired conclusion, $\psi$, 
+  under the assumption that $x$ is completely arbitrary save for the fact that it 
+  satisfies $\varphi$. Note that we must also make sure to discharge the variable
+  so that the conclusion, $\psi$, does not contain $x$ free. 
+
+\end{enumerate}
+
+Modeling existential types as pairs denoted by $\{E_1, \, E_2\}$, we obtain the
+following introduction and elimination rules:
+
+\begin{enumerate}
+  \item \textbf{Introduction} \\
+  \[
+  \begin{prooftree}
+    \hypo{\Gamma \vdash E_1 : A}
+    \hypo{\Gamma \vdash E_2 : B[x \mapsto E_1]}
+    \infer2{\Gamma \vdash \{E_1, \, E_2\} : \exists x : A, \, B(x)}
+  \end{prooftree}
+  \]
+ 
+  \item \textbf{Elimination} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E : (\exists x : A, \, B(x)) }
+      \hypo{\Gamma, \, x : A, \, y : B(x) \vdash E' : T}
+      \infer2{\Gamma \vdash \text{let } \{x, \, y\} := E \text{ in } E' : T}
+    \end{prooftree}
+  \]
+  \end{enumerate}
+
+Thus we see that the Curry-Howard interpretation of the usual existential
+quantifier is a dependent variation of the existential type. 
+Its cousin, the Sigma type, can then
+be seen as a very strong, constructive version of existential quantification in
+which all the proofs themselves carry explicit witnesses which can be projected
+out.
+
+To distinguish this new variant of the Sigma from the previous, stronger one,
+we call these \textit{existentials} and we write $\exists x : A, \, B(x)$ instead of 
+$\Sigma_{x : A} B(x)$.
+
+\subsubsection{Summary of Curry-Howard correspondence}
 In essence, adding dependent types to the lambda calculus allows types to include
 expressions like variables.
 This give us the extra tools that we need to go beyond propositional logic and
@@ -120,17 +274,19 @@ The table below summarizes the correspondence between types and their Curry-Howa
 interpretation.
 
 \begin{center}
-\begin{tabular}{ |c|c|c|c| }
+\begin{tabular}{|c|c|c|c|}
   \hline
  Type & Formal notation & Alt notation & Curry-Howard interpretation \\ 
  \hline
  Pi & $\Pi_{x : A}B(x)$ & & $\forall x \in A, \, B(x)$ \\  
     & $\Pi_{x : A}B$ & $A \rightarrow B$ & $A \rightarrow B$ \\  
     \hline
- Sigma & $\Sigma_{x : A}B(x)$ & & $\exists x \in A, \, B(x)$ \\
+ Sigma
        & $\Sigma_{x : A}B(x)$ & & $\{ x \in A \, | \, B(x) \}$ \\
        & $\Sigma_{x : A}B$ & $A \times B$ & $A \wedge B$ \\
-       \hline
+ \hline
+ Existential & $\exists x : A, \, B(x)$ & & $\exists x \in A, \, B(x)$ \\
+ \hline
  Sum & $A + B$ & & $A \vee B$ \\
  \hline
  Unit & $\top$ & & $\top$ (ie logical truth) \\
@@ -139,6 +295,13 @@ interpretation.
  \hline
 \end{tabular}
 \end{center}
+
+Curry-Howard also tells us that we can model the introduction and elimination
+rules for each logical connective and quantifier by the introduction and elimination
+rules of the corresponding type. This means that proving, say a universally
+quantified statement, corresponds to defining a function of the appropriate
+\verb|Pi| type. Universal instantiation and modus ponens then correspond to
+function application.
 
 These are the types which we implement in our language.
 In the next section, we discuss how our language resembles and differs from
@@ -167,7 +330,7 @@ just here to prevent Girard's paradox, a type theoretic formulation of the set
 theoretic Burali-Forti argument.
 Through the construction of Girard's paradox, one can (in theory) provide a 
 proof of false, ie an expression that inhabits the empty type.
-In doing so, the logical consistency of the calculus is lost.
+This compromises the logical consistency of the calculus.
 
 It should also be noted that we focus on theorem proving via Curry-Howard over
 general programming. This means that our language does not have
@@ -179,9 +342,86 @@ In its original formulation as a pure type system, CoC only includes one built-i
 type, namely the Pi type. It does not have Sigmas or sums (ie coproducts).
 While there are ways to encode $\exists$, $\wedge$ and $\vee$ into CoC
 [insert ref to Type Theory and Formal Proof book], such encodings can be awkward
-to work with. Hence, we decided to also implement Sigma and sum types as built-ins
-so that $\exists$ and $\wedge$ can be modeled more naturally via Sigma and
-$\vee$ via the sum type.
+to work with. Hence, we decided to also implement Sigmas, sum types and
+existentials as built-ins so that these can be modelled more naturally.
+
+\subsection{Proofs in our language}
+Before we dive into a formal description of the syntax and semantics of our
+language, let's first explore how we can write proofs in Curry-Howard style.
+To see how our language can be used, let's see some sample proofs.
+To prove a theorem by way of Curry-Howard, we first write down the proposition
+we want to prove as a type. Then we provide an expression of that corresponding
+type.
+
+Below is a sample program which establishes the commutativity of disjunction. 
+\begin{verbatim}
+theorem or_comm :
+forall (P : Prop) (Q : Prop), (P \/ Q) -> Q \/ P :=
+  fun P Q (p_or_q : P \/ Q) =>
+    match p_or_q with
+    | inl p => (inr p : Q \/ P)
+    | inr q => (inl q : Q \/ P)
+    end
+\end{verbatim}
+
+Technically, the theorem named \verb|or_comm| is a function whose body is given
+after the \verb|:=| symbol. Its type is given on the second line, which amounts
+to the proposition that for any propositions $P$ and $Q$, $P \vee Q$ implies 
+$Q \vee P$.
+
+Note that \verb|forall| and \verb|->| are both
+syntactic sugar for the \verb|Pi| type, since the dependent function type
+allows us to encode both the universal quantifier and implication.
+
+Now, a proof of this proposition is then an expression of the corresponding type.
+It is a function which takes in 2 arbitrary propositions, ie types, say
+$P$ and $Q$, and then a proof of $P \vee Q$. 
+Thus we have on the third line, a function whose input parameters are named
+\verb|P|, \verb|Q| and \verb|p_or_q|. We type annotate \verb|p_or_q| with
+\verb|P \/ Q| to indicate, for readability purposes, that it is supposed to be
+a proof of $P \vee Q$.
+
+As for the output of the function, it should be a proof of $Q \vee P$. The
+most natural thing to do is to consider cases on $P \vee Q$ since that's the
+only useful assumption we have.
+By Curry-Howard, the rule of disjunction elimination, which lets us perform
+case analysis on a disjunct, is captured by the \verb|match| construct.
+
+Hence in the 4th line, we match on \verb|p_or_q|. We have 2 cases to consider,
+namely the case when $P$ is true and when $Q$ is true.
+The branch given by \verb#|inl p => ...# indicates that we want to consider the
+case when the left disjunct, $P$ is true. A proof of P, which we name \verb|p|
+is then bound in the expression after the arrow \verb|=>|.
+In this case, we return \verb|(inr p : Q \/ P)|. \verb|inr| is the data constructor
+which introduces the right disjunct for the sum type which models disjunction.
+The type annotation is used to indicate to the interpreter that we intend to
+return a proof of $Q \vee P$.
+
+For the other case, ie the branch with \verb#|inr q => ...#, we have a proof of
+$Q$, named \verb|q|, which is then bound in the expression after the \verb|=>|.
+In this case, we return \verb|(inl q : Q \/ P)|.
+
+Noting that lines beginning with \verb|--| are treated as comments and 
+using syntactic sugar borrowed from the Lean theorem prover, we may rewrite this
+as
+\begin{verbatim}
+theorem or_comm :
+forall (P : Prop) (Q : Prop), (P \/ Q) -> Q \/ P :=
+-- Assume that P and Q are propositions and that p_or_q 
+-- is a proof that P \/ Q.
+  assume P Q (p_or_q : P \/ Q),
+    -- We proceed by considering cases on P \/ Q.
+    match p_or_q with
+    -- In the event where P is true, ie p is a proof of P,
+    -- we may immediate conclude Q \/ P is true since 
+    -- (inr p) is a proof of it.
+    | inl p => show Q \/ P, from inr p
+    -- In the event where Q is true, ie q is a proof of Q,
+    -- we use (inl q) to show Q \/ P. 
+    | inr q => show Q \/ P, from inl q
+    end
+\end{verbatim}
+which may read more naturally to those who are more mathematically inclined.
 
 % Unfortunately, it should be noted that our formalization of the typing
 % judgments for the Sigma type does allow for Girard's paradox to creep back to our
@@ -201,6 +441,7 @@ $\vee$ via the sum type.
 % normalize all terms to full head normal form.
 
 \section{Syntax}
+
 In order to implement our rich type system, we promote types to the level of
 expressions in our language, so we no longer have separate syntactic categories 
 for them.
@@ -221,25 +462,26 @@ like Coq and Lean. These offer a way for users to interact with our system.
 Through statements, users can introduce global assumptions and definitions.
 
 \subsection{Syntax for expressions}
-We first define the set of valid expressions of our language as the initial algebra, 
-ie least prefixed point, of the endofunctor
-\begin{align*}
-  F : X \mapsto \{ E \, | \, \{ E_0, E_1, \dots, E_n \} \subseteq X \text{ and }
-    \begin{prooftree}   
-      \hypo{E_0}
-      \hypo{E_1}
-      \hypo{\dots}
-      \hypo{E_n}
-      \infer4{E}
-    \end{prooftree}
-    \text{ is a rule instance}
-  \} 
-\end{align*}
-on some complete powerset lattice.
-Such a construction can be justified by the famous fixed point theorems of Tarski
-and Kleene.
+% We first define the set of valid expressions of our language as the initial algebra, 
+% ie least prefixed point, of the endofunctor
+% \begin{align*}
+%   F : X \mapsto \{ E \, | \, \{ E_0, E_1, \dots, E_n \} \subseteq X \text{ and }
+%     \begin{prooftree}   
+%       \hypo{E_0}
+%       \hypo{E_1}
+%       \hypo{\dots}
+%       \hypo{E_n}
+%       \infer4{E}
+%     \end{prooftree}
+%     \text{ is a rule instance}
+%   \} 
+% \end{align*}
+% on some complete powerset lattice.
+% Such a construction can be justified by the famous fixed point theorems of Tarski
+% and Kleene.
 
-Before we list the full set of rules, we first introduce some metavariables.
+The syntax for our language and syntactic sugar are heavily inspried by the
+Lean theorem prover.
 
 \subsubsection{Metavariables}
 \begin{enumerate}
@@ -289,21 +531,14 @@ Before we list the full set of rules, we first introduce some metavariables.
       \infer2{\fun \, x => E}
     \end{prooftree}
   \]
-  \[
-    \begin{prooftree}
-      \hypo{x_0}
-      \hypo{x_1}
-      \hypo{\dots}
-      \hypo{x_n}
-      \hypo{E}
-      \infer5{\fun \, x_0 \,\, x_1 \, \dots \, x_n => E}
-    \end{prooftree}
-  \]
-  Note that all functions in our language are unary and so
-  $\fun \, x_0 \, x_1 \, \dots \, x_n => E$ is syntactic sugar for
-  \[ \fun \, x_0 => (\fun \, x_1 => \dots (\fun x_n => E)) \]
 
-  Simimarly, one can also provide optional type annotations for input variables.
+  Note that all functions in our language are unary. However, we allow users
+  to enter \verb|fun x_0 x_1 ... x_n => E|, which is desugared into
+  \begin{verbatim}
+    fun x_0 => (fun x_1 => ... (fun x_n => E))
+  \end{verbatim}
+
+  Similarly, one can also provide optional type annotations for input variables.
   This is to help the type checker infer the type of a function.
   \[
     \begin{prooftree}
@@ -314,20 +549,12 @@ Before we list the full set of rules, we first introduce some metavariables.
     \end{prooftree}
   \]
 
-  \[
-    \begin{prooftree}
-      \hypo{x_i}
-      \hypo{T_i}
-      \hypo{E}
-      \infer3{\fun \, (x_0 : T_0) \,\, (x_1 : T_1) \, \dots \, (x_n : T_n) => E}
-    \end{prooftree}
-  \]
-  We also treat $\fun \, (x_0 : T_0) \,\, (x_1 : T_1) \, \dots \, (x_n : T_n) => E$
-  as syntactic sugar for
-  \[ \fun \, (x_0 : T_0) => (\fun \, (x_1 : T_1) => \dots (\fun (x_n : T_n) => E)) \]
-
-  As syntactic sugar, we allow users to use \verb|lambda| and $\lambda$ in place
-  of \verb|fun|. 
+  Users can enter a mixture of typed and untyped input parameters, like for
+  instance \verb|fun x y (h : T) => E|
+  which is desugared into 
+  \begin{verbatim}
+    fun x => (fun y => (fun (h : T) => E))
+  \end{verbatim}
 
 \item \textbf{Pi and Sigma type} \\
   \[
@@ -337,30 +564,29 @@ Before we list the full set of rules, we first introduce some metavariables.
       \hypo{B}
       \infer3{\Pii \, (x : A), \, B}
     \end{prooftree}
-  \] 
+ \]
 
-  \[
-    \begin{prooftree}
-      \hypo{x_i}
-      \hypo{A_i}
-      \hypo{B}
-      \infer3{\Pii \, (x_0 : A_0) \, (x_1 : A_1) \, \dots \, (x_n : A_n), \, B}
-    \end{prooftree}
-  \] 
-  As with functions, this is syntactic sugar for
-  \[ \Pii \, (x_0 : A_0), \, (\Pii \, (x_1 : A_1), \,  \dots \, (\Pii \, (x_n : A_n), \, B)) \]
+  As with functions, we provide
+  \begin{verbatim}
+    Pi (x0 : A0) (x1 : A1) ... (xn : An), B
+  \end{verbatim}
+
+  as syntactic sugar for
+
+  \begin{verbatim}
+      Pi (x0 : A0), (Pi (x1 : A1), ... (Pi (xn : An), B))
+  \end{verbatim}
 
   If there is only one pair of input type and type annotation following the \verb|Pi|,
   the brackets may be ommitted so users can enter \verb|Pi x : A, B| instead of
   \verb|Pi (x : A), B|.
 
-  The syntax rules for Sigma, ie $\Sigmaa\, (x : A), B$ and the above syntactic
+  The syntax rules for Sigma, ie \verb|Sigma (x : A), B| and the above syntactic
   sugar work the same as with Pi above. 
 
   We also allow users to enter, in place of \verb|Pi|, \verb|forall| or using
   unicode, $\forall$ and $\Pi$.
-  Similarly, users can enter \verb|exists|, $\Sigma$ and $\exists$ instead of
-  \verb|Sigma|.
+  Similarly, users can enter $\Sigma$ instead of \verb|Sigma|.
 
   In the event that the output type does not depend on the input type, users
   may enter \verb|A -> B| in place of \verb|Pi (x : A), B|.
@@ -375,6 +601,7 @@ Before we list the full set of rules, we first introduce some metavariables.
       \infer2{(E_1, \, E_2)}
     \end{prooftree}  
   \]
+  This constructs a pair of some Sigma type.
 
   \item \textbf{Sigma eliminators} \\
   \[
@@ -390,6 +617,44 @@ Before we list the full set of rules, we first introduce some metavariables.
     \infer1{\snd \, E}
    \end{prooftree}
  \]
+ 
+ \verb|fst| is used to obtain the first component of a pair and \verb|snd| is used
+ to obtain the second component.
+
+ \item \textbf{Existential} \\
+  \[
+  \begin{prooftree}
+    \hypo{E}
+    \infer1{\text{exists } E}
+  \end{prooftree}   
+  \]
+  We allow users to enter $\exists$ in unicode instead of \verb|exists|.
+
+ \item \textbf{Existential constructor} \\
+ \[
+  \begin{prooftree}
+   \hypo{E_1}
+   \hypo{E_2}
+   \infer2{\{ E_1, \, E_2 \}} 
+  \end{prooftree}  
+ \]
+ This constructs an existential, ie the weaker cousin of the Sigma.
+
+ \item \textbf{Existential eliminator} \\
+ \[
+ \begin{prooftree}
+  \hypo{x}
+  \hypo{y}
+  \hypo{E}
+  \hypo{E'}
+  \infer4{\text{let } \{x, \, y\} := E \text{ in } E'}
+ \end{prooftree}  
+ \]
+
+ As discussed in the intro, this models the rule of existential elimination.
+ $x$ and $y$ are binders for $E'$ but not $E$.
+ Note that this is not the same as pair destructuring since this is used for
+ unpacking the existential rather than the Sigma.
 
 \item \textbf{Type ascriptions} \\
   \[
@@ -412,6 +677,17 @@ Before we list the full set of rules, we first introduce some metavariables.
     \infer3{\text{let } x := E \text{ in } E'}
   \end{prooftree}
 \]
+Local let bindings behave the same way as in ML-like languages.
+This binds the expression \verb|E| to \verb|x| in the body that is \verb|E'|.
+
+In the event that the user does not provide a type annotation for the binding
+$E$, it will be inferred by the interpreter. Users can also provide an optional
+annotation via
+\begin{verbatim}
+  let x : T := E in E'
+\end{verbatim}
+
+which is desugared into \verb|let x := (E : T) in E'|
 
 \item \textbf{Sum type} \\
 \[
@@ -422,7 +698,8 @@ Before we list the full set of rules, we first introduce some metavariables.
   \end{prooftree}
 \]
 
-As syntactic sugar, users can write \verb|A \/ B| instead.
+As syntactic sugar, users can write \verb|A \/ B| instead since sum types
+model disjunction.
 
 \item \textbf{Sum type constructor} \\
 \[
@@ -444,26 +721,24 @@ ie $\inl E$ constructs an expression of type $A + B$ given an expression $E$ of
 type $A$. Similarly, $\inr E$ constructs an $A + B$ given $E$ of type $B$.
 
 \item \textbf{Sum type eliminator} \\
-Given expressions $E$ and variables $x$ and $y$, users can perform case analysis
-on a sum type via the \verb|match| construct below
+Given expressions $E$, and variables $x$ and $y$, users can perform case analysis
+on a sum type via the \verb|match| construct below.
+Note that this corresponds to the rule of disjunction elimination.
 
 \begin{verbatim}
   match E with
-  | inl x -> E1
-  | inr y -> E2
+  | inl x => E1
+  | inr y => E2
   end
 \end{verbatim}
 
 The ordering of both clauses can be swapped so users can also enter
 \begin{verbatim}
   match E with
-  | inr y -> E2
-  | inl x -> E1
+  | inr y => E2
+  | inl x => E1
   end
 \end{verbatim}
-
-Note here that $x$ is bound in the expression that is $E_1$, while $y$ is bound
-in $E_2$.
 
 This \verb|match| construct is fashioned after the similarly named pattern
 matching construct in ML like languages.
@@ -472,13 +747,18 @@ matching for dependent types is not an easy problem.
 Our \verb|match| construct serves the sole purpose of allowing one to perform
 case analysis on sums.
 
+Note here that \verb|x| and \verb|y| are binders, with \verb|x| being bound in
+\verb|E1| and \verb|y| being bound in \verb|E2|.
+\verb|inl| and \verb|inr| are used to indicate which case we are
+considering.
+
 For convenience, we write 
 $\match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)$ to denote this
 construct.
 
 \end{enumerate}
 
-\subsubsection{Syntactic sugar: wildcard variables}
+\subsubsection{Wildcard variables}
 In the event where the user does not intend to use the variable being bound,
 like say in a lambda expression, the underscore, \verb|_|, can be used in place
 of a variable name.
@@ -488,15 +768,19 @@ anywhere else in an expression. It can only be used in place of a variable in a
 binder.
 
 \subsubsection{A word about notation}
-Note that we often write $\lambda x, \, E$ instead of $\fun \, x => E$ as in the
+Note that we often write $\lambda x, \, E$ instead of \verb|fun x => E| as in the
 concrete syntax. Similarly, we also write $\lambda (x : T), \, E$ in place of
-$\fun \, (x : T) => x$.
-Finally, we use $\Pi_{x : A}B(x)$ to abbreviate $\Pii \, (x : A), \, B$.
+\verb|fun (x : T) => x|.
+Finally, we use $\Pi_{x : A}B(x)$ to abbreviate 
+\verb|Pi (x : A), B|, and
+$\exists x : A, \, B(x)$ to abbreviate \verb|exists x : A, B(x)|.
 
-\subsection{Syntax for statements}
+\subsection{Syntax for statements and programs}
 Statements are top level commands through which users interact with our
 language. Programs in our language will be \textit{nonempty} sequences of
-these statements.
+these statements. Lines that begin with \verb|--| are treated as comments.
+
+We have 4 key statements in our language, fashioned after Coq and Lean.
 
 \begin{enumerate}
 \item \textbf{Def} \\
@@ -509,6 +793,15 @@ these statements.
 \]
 This creates a top level, global definition, binding the variable $x$ to the
 expression given by $E$.
+
+Like with local \verb|let| bindings, we also allow type annotations on def.
+Similarly, we treat \verb|def x : T := E| as syntactic sugar for
+\verb|def x := (E : T)|.
+
+Since Curry-Howard allows us to interpret \verb|(E : T)| as an assertion
+that \verb|E| is a proof of the proposition that is \verb|T|, we also allow
+users to write \verb|lemma x : T := E| and \verb|theorem x : T := E| instead of
+\verb|def x : T := E|.
 
 \item \textbf{Axiom} \\
 \[
@@ -552,6 +845,44 @@ performed.
 
 \end{enumerate}
 
+
+
+\subsection{Lean-esque syntactic sugar}
+Following \href{https://leanprover.github.io/reference/expressions.html#structured-proofs}
+{Lean}, we provide some lightweight syntactic sugar that allows users to write
+structured proofs in a manner more akin to how one would do so on paper.
+
+\begin{enumerate}
+  \item \verb|assume x0 ... xn, E| is syntactic sugar for \verb|fun x0 ... xn => E| 
+
+  Similarly, type annotations can be given, so
+
+  \verb|assume (x0 : T0) ... (xn : Tn), E| desugars into 
+  
+  \verb|fun (x0 : T0) ... (xn : Tn) => E|
+
+  Users can write \verb|assume ...| in place of \verb|fun ...| to introduce an 
+  arbitrary variable or hypothesis into the context to prove a universally
+  quantified statement or implication.
+
+  \item \verb|have x : T, from E, E'| is sugar for \verb|let x : T := E in E'|
+
+  This models how we write ``We have ... because of ..." in pen and paper proofs.
+  The variable \verb|x| is used to bind the expression \verb|E| that is the proof
+  of the proposition \verb|T| in the remainder of the proof that is \verb|E'|. 
+
+  \item \verb|have T, from E, E'| is sugar for \verb|let this : T := E in E'|
+
+  In the event that the expression is not named, an implicit \verb|"this"| name is
+  given to the expression.
+
+  \item \verb|show T, from E| is sugar for \verb|(E : T)|
+
+  This models how we would conclude a pen and paper proof by writing something
+  along the lines of ``Finally we have shown that ... because of ...'' 
+\end{enumerate}
+
+
 \section{Capture avoiding substitutions}
 In this section, we define the concept of free variables and capture avoiding
 substitutions. This will be important when we later define normalization and
@@ -577,8 +908,8 @@ free there.
  \FV (\Sigma_{x : A} B(x) &:= \FV(\Pi_{x : A} B(x))
 \end{align*}
 
-Sigma expressions follow the same rules as with Pi expressions, with $x$ being
-bound in the output type $B$ but not in the input type $A$.
+\verb|Sigma| and existential expressions follow the same rules as with \verb|Pi|
+expressions, with $x$ being bound in the output type $B$ but not in the input type $A$.
 
 \begin{align*}
   \FV (A + B) &:= \FV(A) \cup \FV(B) \\
@@ -590,6 +921,13 @@ Note that in match expressions, $x$ is bound in $E_1$ and $y$ is bound in $E_2$.
 For the expressions $\fst \, E$, $\snd \, E$, $\inl \, E$ and $\inr \, E$, the
 set of free variables is precisely $\FV(E)$, since those keywords are treated
 like constants.
+
+Finally, for existential elimination, we have
+\begin{align*}
+  \FV(\text{let } \{x, \, y\} := E \text{ in } E') := 
+    \FV(E) \cup (\FV(E') \setminus \{x, \, y\}) 
+\end{align*}
+since $x$ and $y$ are bound in $E'$ but not $E$.
 
 \subsection{Substitution}
 Here we define $E [x \mapsto E'] := E''$ to mean substituting all free
@@ -618,20 +956,24 @@ $T$. Note that we do not treat $x$ as being bound in $T$ here.
                  &\quad \quad \quad (\text{if } z \notin FV(B) \cup FV(B') \cup \{x\})
 \end{align*}
 
-For Pi expressions, $A$ is an expression and thus when substituting $x$ by
+For \verb|Pi| expressions, $A$ is an expression and thus when substituting $x$ by
 $B'$, we must also perform the substitution in the input type $A$. However, as
 $x$ is not bound there, we need not worry about capturing it when substituting there. 
 
-For Sigma expressions, we define $(\Sigma_{x : A} B(x)) [x \mapsto B']$ in a
-similar fashion as with the case of Pi.
+For \verb|Sigma| and \verb|Exists| expressions, we define 
+$(\Sigma_{x : A} B(x)) [x \mapsto B']$ and $\exists x : A, \, B(x)$ in a 
+similar fashion as with the case of \verb|Pi|.
 
 The substitution rules for \verb|fst|, \verb|snd|, \verb|inl| and \verb|inr| are
 trivial and thus ommitted.
 
-Finally, we avoid specifying substitution formally for match expressions since it's
+We avoid specifying substitution formally for match expressions since it's
 tedious. The key thing to note is that in the expression
 $\match(E, x \rightarrow E_1, y \rightarrow E_2)$, $x$ is bound in $E_1$ and $y$
 is bound in $E_2$.
+
+For existential elimination, ie $\text{let } \{x, \, y\} := E \text{ in } E'$,
+note that $x$ and $y$ are bound in $E'$ but not $E$.
 
 \section{Semantics}
 We define the semantics for expressions first and statements later.
@@ -709,8 +1051,8 @@ We will then be in a position to discuss normalization.
 \subsubsection{Neutral expressions, head normal form, beta equivalence}
 Informally, neutral expressions are those which cannot be reduced via one of the 
 elimination rules (ie the ones for \verb|Pi|, \verb|Sigma| and \verb|Sum| types)
-because  the expression to be eliminated is a free variable rather than an
-expression of the appropriate type.
+because the expression to be eliminated is a free variable of the appropriate
+type.
 
 With this, we generalize the notion of head normal form to be one in which
 the expression cannot be further simplified by applying any of the 3
@@ -848,9 +1190,7 @@ statements and when we want to add a binding for type checking purposes.
 In such scenarios, we don't particularly care about the actual binding. We're
 only interested in the type of the variable. 
 
-We should mention that whenever we write, say
-$(x, \, \tau, \, \nu) \in \Gamma$, we allow the metavariable $\nu$ to be 
-\verb|und| as well. Also if there are multiple occurrences of $x$ in $\Gamma$,
+If there are multiple occurrences of $x$ in $\Gamma$,
 as is the case when there is variable shadowing, we refer to the first occurrence
 of $x$.
 
@@ -886,7 +1226,9 @@ overview of them.
   inference using constraint solving and unification. It's a form of lightweight
   type inference that can infer simple stuff like the return type of a function
   application but not the type parameter in the polymorphic identity function
-  $\lambda \, (T : \Type) (x : T), \, x$.
+  $\lambda \, (T : \Type) (x : T), \, x$. Unfortunately, this means that our
+  language can be rather verbose as a lot of explicit type parameters must be
+  provided.
 
 \item $\Gamma \vdash E \Downarrow \nu$ \\
   The $\cdot \vdash \cdot \Downarrow \cdot$ relation is our big-step normalization
@@ -968,7 +1310,7 @@ be covered later.
   \]
   This says type ascriptions do not play a role in computation. They're just
   there to help the type checker figure things out. Users can also use these as
-  a form of documentation.
+  a way to document their intentions.
  
 \item \textbf{Pi elimination, ie function application} \\
   \[
@@ -998,13 +1340,14 @@ be covered later.
   Remember that such variables can exist because users are allowed to introduce
   indeterminate constants as the top level via \verb|axiom| statements.
 
-\item \textbf{Normalizing under lambdas} \\
+  \item \textbf{Normalizing under lambdas} \\
   \[
     \begin{prooftree}
-      \hypo{\Gamma \vdash E \Downarrow \nu}
+      \hypo{(x, \, \text{und}, \, \text{und}) :: \Gamma \vdash E \Downarrow \nu}
       \infer1{\Gamma \vdash \lambda x, \, E, \, \Downarrow \lambda x, \, \nu}
     \end{prooftree}
   \]
+
   \[
     \begin{prooftree}
       \hypo{\Gamma \vdash \lambda x, \, E \Downarrow \nu}
@@ -1039,8 +1382,7 @@ be covered later.
       \begin{prooftree}
         \hypo{\Gamma \vdash E_1 \Downarrow \nu_1}
         \hypo{\Gamma \vdash E_2 \Downarrow \nu_2}
-        \infer2{\Gamma \vdash \langle E_1, \, E_2 \rangle \Downarrow \langle
-          \nu_1, \, \nu_2 \rangle}
+        \infer2{\Gamma \vdash (E_1, \, E_2) \Downarrow (\nu_1, \, \nu_2)}
       \end{prooftree}
     \]
 
@@ -1082,6 +1424,34 @@ be covered later.
    \end{prooftree}
   \]
 
+  \item \textbf{Existential type constructor} \\
+    \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash A \Downarrow \tau}
+        \hypo{\Gamma \vdash B \Downarrow \tau'(x)}
+        \infer2{\Gamma \vdash \exists x : A, \, B(x) \Downarrow \exists x : \tau, \, \tau'(x)}
+      \end{prooftree}
+    \]
+
+  \item \textbf{Normalizing under existential pair constructor} \\
+   \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E_1 \Downarrow \nu_1}
+        \hypo{\Gamma \vdash E_2 \Downarrow \nu_2}
+        \infer2{\Gamma \vdash \{E_1, \, E_2\} \Downarrow \{\nu_1, \, \nu_2\}}
+      \end{prooftree}
+    \]
+  
+  \item \textbf{Existential eliminator} \\
+   \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E \Downarrow \nu}
+        \hypo{\Gamma \vdash \lambda x, \, \lambda y, \, E' \Downarrow \lambda x, \, \lambda y, \nu'}
+        \infer2{\Gamma \vdash \text{let } \{x, \, y\} := E \text{ in } E' \Downarrow
+                \text{let } \{x, \, y\} := \nu \text{ in } \nu'}
+      \end{prooftree}
+    \]
+
   % \[
   %   \begin{prooftree}
   %     \hypo{\Gamma \vdash E \Downarrow \langle \nu_1, \, \nu_2 \rangle}
@@ -1109,7 +1479,7 @@ be covered later.
 
   \[
     \begin{prooftree}
-     \hypo{\Gamma \vdash E \Downarrow \inl \nu}
+     \hypo{\Gamma \vdash E \Downarrow \nu}
      \infer1{\Gamma \vdash \inr \, E \Downarrow \nu}
     \end{prooftree}  
   \]
@@ -1131,7 +1501,7 @@ be covered later.
      \hypo{\Gamma \vdash E_2[y \mapsto \nu] \Downarrow \nu_2}
      \infer2{\Gamma \vdash 
        \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)
-       \Downarrow E_2[y \mapsto \nu_2]}
+       \Downarrow \nu_2}
    \end{prooftree}  
   \]
 
@@ -1219,337 +1589,369 @@ normalize an expression before checking that it has a well formed type.
       \end{prooftree}
     \]
 
-    \[
-      \begin{prooftree}
-        \hypo{\wf(\Gamma)}
-        \hypo{\Gamma \vdash \tau \Leftarrow s}
-        \infer2{\wf ((x, \, \tau, \, \text{und}) :: \Gamma)}
-      \end{prooftree}
-    \]
+    Here we allow both $\tau$ and $\nu$ to be undefined.
+
   \end{enumerate}
 \end{definition}
 
 \subsubsection{Static semantics, ie typing rules}
-\begin{definition} [Bidrectional typechecking]
-  Here we define the 2 \textit{mutually recursive} relations
-  \begin{enumerate}
-  \item$\cdot \vdash \cdot \Rightarrow \cdot $ which corresponds to \textit{inference}
-  \item$\cdot \vdash \cdot \Leftarrow \cdot$ which corresponds to \textit{checking}
-  \end{enumerate}
+Here we define the 2 \textit{mutually recursive} relations in our bidirectional
+typechecking algorithm.
+\begin{enumerate}
+\item$\cdot \vdash \cdot \Rightarrow \cdot $ which corresponds to \textit{inference}
+\item$\cdot \vdash \cdot \Leftarrow \cdot$ which corresponds to \textit{checking}
+\end{enumerate}
 
-  The idea is that there are some expressions for which it is easier to
-  \textit{infer},
-  ie compute the type directly, while for others, it is easier to have the user
-  supply a type annotation and then \textit{check} that it is correct.
+The idea is that there are some expressions for which it is easier to
+\textit{infer},
+ie compute the type directly, while for others, it is easier to have the user
+supply a type annotation and then \textit{check} that it is correct.
 
-  As a rule of thumb, it is often easier to check the type for
-  introduction rules while for elimination rules, it is usually easier to infer
-  the type.
+As a rule of thumb, it is often easier to check the type for
+introduction rules while for elimination rules, it is usually easier to infer
+the type.
 
-  \begin{enumerate}
-  \item \textbf{Var} \\
-    \[
-      \begin{prooftree}
-        \hypo{\wf(\Gamma)}
-        \hypo{(x, \, \tau, \, v) \in \Gamma}
-        \infer2{\Gamma \vdash x \Rightarrow \tau}
-      \end{prooftree}
-    \]
-    This says that we may infer the type of a variable if the type information
-    is already in our context.
-
-  \item \textbf{Type} \\
-    \[
-      \begin{prooftree}
-        \hypo{\wf(\Gamma)}
-        \infer1{\Gamma \vdash \Type \Rightarrow \Kind}
-      \end{prooftree}
-    \]
-
-    % \[
-    %   \begin{prooftree}
-    %     \hypo{\wf(\Gamma)}
-    %     \infer1{\Gamma \vdash \Type \Rightarrow \Type}
-    %   \end{prooftree}
-    % \]
-
-  \item \textbf{Type ascriptions} \\
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash T \Rightarrow s}
-        \hypo{\Gamma \vdash T \Downarrow \tau}
-        \hypo{\Gamma \vdash E \Leftarrow \tau}
-        \infer3{\Gamma \vdash (E : T) \Rightarrow \tau}
-      \end{prooftree}
-    \]
-    Optional type ascriptions allow the interpreter to infer the type of an
-    expression. This is useful for lambda abstractions in particular because it's
-    kinda hard to infer the type of a function like $\lambda x, \, x$ without any
-    further contextual information.
-
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash E \Leftarrow \Kind}
-        \infer1{\Gamma \vdash (E : \Kind) \Rightarrow \Kind}
-      \end{prooftree}
-    \]
-    Note that the first rule doesn't allow users to assert that $(E : \Kind)$
-    since there is no $s$ with $\Gamma \vdash \Kind \Rightarrow s$.
-    This second rule allows users to assert that \verb|Type| and type constructors
-    have type \verb|Kind|.
-    
-  \item \textbf{Check} \\
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash E \Rightarrow \tau'}
-        \hypo{\tau \equiv_{\alpha \beta} \tau'}
-        \infer2{\Gamma \vdash E \Leftarrow \tau}
-      \end{prooftree}
-    \]
-
-    This says that to check if $E$ has type $\tau$ with respect to a context
-    $\Gamma$, we may first infer the type of $E$. Suppose it is $\tau'$. Then
-    if we also find that $\tau$ and $\tau'$ are $\alpha$ and $\beta$ equivalent
-    to each other, we may conclude that $E$ indeed has type $\tau$.
-
-    \begin{remark}
-      This rule, together with the one on type ascriptions, is precisely the reason
-      why we eagerly normalize types and maintain the 2 invariants required
-      for our contexts to be well formed.
-
-      To see this, suppose the user requests that we typecheck an expression
-      of the form $(x : T)$
-      where $T$ is some complicated expression entered by the user.
-      Intuitively, we want to grab the type of $x$ from the context and then
-      check that it is equal to the annotated type of $T$.
-
-      Unlike the simply typed and polymorphic lambda calculi, our type system is
-      much richer and so checking types for equality is not so simple.
-      In fact, ``types'' are just expressions!
-
-      Ah but since we always normalize types before dealing with them, assuming
-      that terms have a unique head normal form 
-      (we'll discuss this later in the section on metatheoretic properties), we 
-      will normalize $T$ and $T'$ to $\tau$ and $\tau'$ respectively.
-      After that, we need only compare them for structural equality,
-      modulo alpha equivalence. Such an operation is trivial to implement using
-      an implementation that represets variables by de bruijn indices.
-    \end{remark}
-
-  \item \textbf{Pi formation} \\
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash A \Rightarrow s_1}
-        \hypo{\Gamma \vdash A \Downarrow \tau}
-        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash B(x) \Rightarrow s_2}
-        \infer3{\Gamma \vdash \Pi_{x : A}B(x) \Rightarrow s_2}
-      \end{prooftree}
-    \]
-    Note that this is a rule schema with the metavariables 
-    $s_1, \, s_2 \in \{\Type, \, \Kind\}$.
-
-    % \[
-    %   \begin{prooftree}
-    %     \hypo{\Gamma \vdash A \Leftarrow \Type}
-    %     \hypo{\Gamma \vdash A \Downarrow \tau}
-    %     \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash B(x) \Leftarrow \Type}
-    %     \infer3{\Gamma \vdash \Pi_{x : A}B(x) \Rightarrow \Type}
-    %   \end{prooftree}
-    % \]
-
-  \item \textbf{Pi introduction} \\
-    \[
-      \begin{prooftree}
-        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash E \Leftarrow \tau'(x)}
-        \infer1{\Gamma \vdash \lambda x, \, E \Leftarrow \Pi_{x : \tau}\tau'(x)}
-      \end{prooftree}
-    \]
-    Note that in the event that the input variable of the lambda abstraction and
-    Pi are different, then we must perform an $\alpha$ renaming so that the
-    variable being bound in $(\lambda x, \, E)$ and $\Pi_{y : \tau} \tau'(y)$
-    are the same.
-
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash T \Rightarrow s}
-        \hypo{\Gamma \vdash T \Downarrow \tau}
-        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash E \Rightarrow \tau'(x)}
-        \infer3{\Gamma \vdash \lambda \, (x : T), \, E \Rightarrow \Pi_{x : \tau}\tau'(x)}
-      \end{prooftree}
-    \]
-    The second rule says that if the user type annotates the input argument of
-    the function, then we can try to infer the type of the output and
-    consequently, the type of the function as a whole.
-
-  \item \textbf{Function application, ie Pi elimination} \\
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash E_1 \Rightarrow \Pi_{x : \tau}\tau'(x)}
-        \hypo{\Gamma \vdash E_2 \Leftarrow \tau}
-        \hypo{\Gamma \vdash \tau'[x \mapsto E_2] \Downarrow \tau''}
-        \infer3{E_1 \,\, E_2 \Rightarrow \tau''}
-      \end{prooftree}
-    \]
-
-  \item \textbf{Local let binding} \\
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash E \Rightarrow \tau}
-        \hypo{\Gamma \vdash E \Downarrow \nu}
-        \hypo{(x, \, \tau, \, \nu) :: \Gamma \vdash E' \Rightarrow \tau'}
-        % \hypo{\Gamma \vdash \tau'[x \mapsto \nu] \Downarrow \tau''}
-        \infer3{\Gamma \vdash \text{let } x := E \text{ in } E' \Rightarrow \tau'}
-      \end{prooftree}
-    \]
-
-  \item \textbf{Sigma formation} \\
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash A \Rightarrow s_1}
-        \hypo{\Gamma \vdash A \Downarrow \tau}
-        \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash B(x) \Rightarrow s_2}
-        \infer3{\Gamma \vdash \Sigma_{x : A}B(x) \Rightarrow s_2}
-      \end{prooftree}
-    \]
-
-    As with the rule for Pi formation, $s_1, \, s_2 \in \{\Type, \, \Kind\}$.
-
-  \item \textbf{Sigma introduction} \\
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash E_1 \Leftarrow \tau_1}
-        \hypo{\Gamma \vdash \tau_2[x \mapsto E_1] \Downarrow \tau_2'}
-        \hypo{\Gamma \vdash E_2 \Leftarrow \tau_2'}
-        \infer3{\Gamma \vdash \langle  E_1, \, E_2 \rangle \Leftarrow 
-          \Sigma_{x : \tau_1}\tau_2(x)}
-      \end{prooftree}
-    \]
-   
-  \item \textbf{Sigma elimination} \\
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
-        \infer1{\Gamma \vdash \fst E \Rightarrow \tau_1}
-      \end{prooftree}
-    \]
-
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
-        \hypo{\Gamma \vdash \tau_2[x \mapsto \fst E] \Downarrow \tau_2'}
-        \infer2{\Gamma \vdash \snd E \Rightarrow \tau_2'}
-      \end{prooftree}
-    \]
-
-    % \[
-    %   \begin{prooftree}
-    %     \hypo{E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
-    %     \hypo{\Gamma \vdash \tau_2[x \mapsto \fst E] \Downarrow \tau_2'}
-    %     \hypo{(y, \, \tau_2', \, \text{und}) :: (x, \, \tau_1, \, \text{und}) :: \Gamma
-    %           \vdash E' \rightarrow \tau}
-    %     \infer3{\Gamma \vdash \text{let } (x, \, y) := E \text{ in } E' \Rightarrow \tau}
-    %   \end{prooftree} 
-    % \]
-
-    % \item \textbf{Pair destructuring} \\
-    % \[
-    %   \begin{prooftree}
-    %     \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
-    %     % \hypo{(x_2, \, \tau_2[x \mapsto x_1], \text{und}) :: 
-    %     %   (x_1, \, \tau_1, \, \text{und}) :: 
-    %     %   \Gamma \vdash E' \Rightarrow \tau(x_1, \, x_2)}
-    %     \hypo{\Gamma \vdash E' [x_1 \mapsto \fst E][x_2 \mapsto \snd E]
-    %       \Rightarrow \tau}
-    %     \infer2{\Gamma \vdash (\text{let } (x_1, \, x_2) := E
-    %       \text{ in } E') \Rightarrow \tau}
-    %   \end{prooftree}
-    % \]
-
-    \item \textbf{Sum formation} \\
-    \[
-      \begin{prooftree}
-       \hypo{\Gamma \vdash A \Leftarrow \Type} 
-       \hypo{\Gamma \vdash B \Leftarrow \Type} 
-       \infer2{\Gamma \vdash A + B \Rightarrow \Type} 
-      \end{prooftree}
-    \]
-    Note that this rule says that users can only make construct a sum, aka 
-    coproduct, out of types that live in the universe \verb|Type|, not 
-    \verb|Kind|.
-
-    Recalling the Curry-Howard correspondence which identifies types and
-    propositions, we see sum types as a way to model disjunction. Hence we do
-    not see a need to allow users to construct sums out of large types like
-    type constructors found in \verb|Kind|.
-
-    Also we are unsure if the logical consistency of the system can be preserved
-    if we allow for $A + B$ to be formed when one is of type \verb|Type| while
-    the other has type \verb|Kind|. 
-
-    \item \textbf{Sum introduction} \\
-    \[
-      \begin{prooftree}
-       \hypo{\Gamma \vdash E \Leftarrow \tau_1} 
-       \infer1{\Gamma \vdash \inl E \Leftarrow \tau_1 + \tau_2} 
-      \end{prooftree}
-    \]
-
-    \[
-     \begin{prooftree}
-      \hypo{\Gamma \vdash E \Leftarrow \tau_2} 
-      \infer1{\Gamma \vdash \inr E \Leftarrow \tau_1 + \tau_2} 
-     \end{prooftree}
-   \]
-
-   \item \textbf{Sum elimination} \\
-    \[
+\begin{enumerate}
+\item \textbf{Var} \\
+  \[
     \begin{prooftree}
-      \hypo{\Gamma \vdash E \Rightarrow \tau_1 + \tau_2}
-      \hypo{(x, \, \tau_1, \, \text{und}) :: \Gamma \vdash E_1 \Rightarrow \tau_1'}
-      \hypo{(y, \, \tau_2, \, \text{und}) :: \Gamma \vdash E_2 \Rightarrow \tau_2'}
-      \hypo{\tau_1' \equiv_{\alpha \beta} \tau_2'}
-      \infer4{\Gamma \vdash \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)
-               \Rightarrow \tau_1'}
-    \end{prooftree}  
+      \hypo{\wf(\Gamma)}
+      \hypo{(x, \, \tau, \, v) \in \Gamma}
+      \infer2{\Gamma \vdash x \Rightarrow \tau}
+    \end{prooftree}
+  \]
+  $\nu$ is allowed to be undefined here.
+  This says that we may infer the type of a variable if the type information
+  is already in our context.
+
+\item \textbf{Type} \\
+  \[
+    \begin{prooftree}
+      \hypo{\wf(\Gamma)}
+      \infer1{\Gamma \vdash \Type \Rightarrow \Kind}
+    \end{prooftree}
   \]
 
-  % \item \textbf{Local let binding} \\
-  %   \[
-  %     \begin{prooftree}
-  %       \hypo{\Gamma \vdash E \Rightarrow \tau}
-  %       \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E' \Rightarrow \tau'(x)}
-  %       \hypo{\Gamma \vdash \tau'[x \mapsto E] \Downarrow \tau''}
-  %       \infer3{\Gamma \vdash (\text{let } x := E \text{ in } E') \Rightarrow \tau''}
-  %     \end{prooftree}
-  %   \]
+  % \[
+  %   \begin{prooftree}
+  %     \hypo{\wf(\Gamma)}
+  %     \infer1{\Gamma \vdash \Type \Rightarrow \Type}
+  %   \end{prooftree}
+  % \]
 
-  %   \[
-  %     \begin{prooftree}
-  %       \hypo{\Gamma \vdash (\text{let } x := (E : T)) \text{ in } E' \Rightarrow \tau}
-  %       \infer1{\Gamma \vdash (\text{let } (x : T) := E \text{ in } E') \Rightarrow \tau}
-  %     \end{prooftree}
-  %   \]
-  %   This second rule handles the case when an optional type annotation is given
-  %   for the variable $x$.
+\item \textbf{Type ascriptions} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash T \Rightarrow s}
+      \hypo{\Gamma \vdash T \Downarrow \tau}
+      \hypo{\Gamma \vdash E \Leftarrow \tau}
+      \infer3{\Gamma \vdash (E : T) \Rightarrow \tau}
+    \end{prooftree}
+  \]
+  Optional type ascriptions allow the interpreter to infer the type of an
+  expression. This is useful for lambda abstractions in particular because it's
+  hard to infer the type of a function like $\lambda x, \, x$ without any
+  further contextual information.
+
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Leftarrow \Kind}
+      \infer1{\Gamma \vdash (E : \Kind) \Rightarrow \Kind}
+    \end{prooftree}
+  \]
+  Note that the first rule doesn't allow users to assert that $(E : \Kind)$
+  since there is no $s$ with $\Gamma \vdash \Kind \Rightarrow s$.
+  This second rule allows users to assert that \verb|Type| and type constructors
+  have type \verb|Kind|.
+  
+\item \textbf{Check} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Rightarrow \tau'}
+      \hypo{\tau \equiv_{\alpha \beta} \tau'}
+      \infer2{\Gamma \vdash E \Leftarrow \tau}
+    \end{prooftree}
+  \]
+
+  This says that to check if $E$ has type $\tau$ with respect to a context
+  $\Gamma$, we may first infer the type of $E$. Suppose it is $\tau'$. Then
+  if we also find that $\tau$ and $\tau'$ are $\alpha$ and $\beta$ equivalent
+  to each other, we may conclude that $E$ indeed has type $\tau$.
+
+  \begin{remark}
+    This rule, together with the one on type ascriptions, is precisely the reason
+    why we eagerly normalize types and maintain the 2 invariants required
+    for our contexts to be well formed.
+
+    To see this, suppose the user requests that we typecheck an expression
+    of the form $(x : T)$
+    where $T$ is some complicated expression entered by the user.
+    Intuitively, we want to grab the type of $x$ from the context and then
+    check that it is equal to the annotated type of $T$.
+
+    Unlike the simply typed and polymorphic lambda calculi, our type system is
+    much richer and so checking types for equality is not so simple.
+    In fact, ``types'' are just expressions!
+
+    Ah but since we always normalize types before dealing with them, assuming
+    that terms have a unique head normal form, we 
+    will normalize $T$ and $T'$ to $\tau$ and $\tau'$ respectively.
+    After that, we need only compare them for structural equality,
+    modulo alpha equivalence. Such an operation is trivial to implement using
+    an implementation that represets variables by de bruijn indices.
+  \end{remark}
+
+\item \textbf{Pi formation} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash A \Rightarrow s_1}
+      \hypo{\Gamma \vdash A \Downarrow \tau}
+      \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash B(x) \Rightarrow s_2}
+      \infer3{\Gamma \vdash \Pi_{x : A}B(x) \Rightarrow s_2}
+    \end{prooftree}
+  \]
+  Note that this is a rule schema with the metavariables 
+  $s_1, \, s_2 \in \{\Type, \, \Kind\}$.
+
+  % \[
+  %   \begin{prooftree}
+  %     \hypo{\Gamma \vdash A \Leftarrow \Type}
+  %     \hypo{\Gamma \vdash A \Downarrow \tau}
+  %     \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash B(x) \Leftarrow \Type}
+  %     \infer3{\Gamma \vdash \Pi_{x : A}B(x) \Rightarrow \Type}
+  %   \end{prooftree}
+  % \]
+
+\item \textbf{Pi introduction} \\
+  \[
+    \begin{prooftree}
+      \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash E \Leftarrow \tau'(x)}
+      \infer1{\Gamma \vdash \lambda x, \, E \Leftarrow \Pi_{x : \tau}\tau'(x)}
+    \end{prooftree}
+  \]
+  Note that in the event that the input variable of the lambda abstraction and
+  Pi are different, then we must perform an $\alpha$ renaming so that the
+  variable being bound in $(\lambda x, \, E)$ and $\Pi_{y : \tau} \tau'(y)$
+  are the same.
+
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash T \Rightarrow s}
+      \hypo{\Gamma \vdash T \Downarrow \tau}
+      \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash E \Rightarrow \tau'(x)}
+      \infer3{\Gamma \vdash \lambda \, (x : T), \, E \Rightarrow \Pi_{x : \tau}\tau'(x)}
+    \end{prooftree}
+  \]
+  The second rule says that if the user type annotates the input argument of
+  the function, then we can try to infer the type of the output and
+  consequently, the type of the function as a whole.
+
+\item \textbf{Function application, ie Pi elimination} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E_1 \Rightarrow \Pi_{x : \tau}\tau'(x)}
+      \hypo{\Gamma \vdash E_2 \Leftarrow \tau}
+      \hypo{\Gamma \vdash \tau'[x \mapsto E_2] \Downarrow \tau''}
+      \infer3{E_1 \,\, E_2 \Rightarrow \tau''}
+    \end{prooftree}
+  \]
+
+\item \textbf{Local let binding} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Rightarrow \tau}
+      \hypo{\Gamma \vdash E \Downarrow \nu}
+      \hypo{(x, \, \tau, \, \nu) :: \Gamma \vdash E' \Rightarrow \tau'}
+      % \hypo{\Gamma \vdash \tau'[x \mapsto \nu] \Downarrow \tau''}
+      \infer3{\Gamma \vdash \text{let } x := E \text{ in } E' \Rightarrow \tau'}
+    \end{prooftree}
+  \]
+
+\item \textbf{Sigma formation} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash A \Rightarrow s_1}
+      \hypo{\Gamma \vdash A \Downarrow \tau}
+      \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash B(x) \Rightarrow s_2}
+      \infer3{\Gamma \vdash \Sigma_{x : A}B(x) \Rightarrow s_2}
+    \end{prooftree}
+  \]
+
+  As with the rule for Pi formation, $s_1, \, s_2 \in \{\Type, \, \Kind\}$.
+
+\item \textbf{Sigma introduction} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E_1 \Leftarrow \tau_1}
+      \hypo{\Gamma \vdash \tau_2[x \mapsto E_1] \Downarrow \tau_2'}
+      \hypo{\Gamma \vdash E_2 \Leftarrow \tau_2'}
+      \infer3{\Gamma \vdash (E_1, \, E_2) \Leftarrow 
+        \Sigma_{x : \tau_1}\tau_2'(x)}
+    \end{prooftree}
+  \]
+  % The data constructor for Sigma, ie the pair constructor, does not come
+  % with any type annotation and thus we are unable to infer the type of the
+  % constructed pair.
+  % Users will need to ascribe a type, like \verb|((E1, E2) : T)| in order to help
+  % the interpreter infer the type of the pair.
+  
+\item \textbf{Sigma elimination} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+      \infer1{\Gamma \vdash \fst E \Rightarrow \tau_1}
+    \end{prooftree}
+  \]
+
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+      \hypo{\Gamma \vdash \tau_2[x \mapsto \fst E] \Downarrow \tau_2'}
+      \infer2{\Gamma \vdash \snd E \Rightarrow \tau_2'}
+    \end{prooftree}
+  \]
+
+\item \textbf{Existential formation} \\
+\[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash A \Rightarrow s_1}
+      \hypo{\Gamma \vdash A \Downarrow \tau}
+      \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash B(x) \Rightarrow s_2}
+      \infer3{\Gamma \vdash \exists x : A, \, B(x) \Rightarrow s_2}
+    \end{prooftree}
+\]
+
+\item \textbf{Existential introduction} \\
+\[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E_1 \Leftarrow \tau_1}
+      \hypo{\Gamma \vdash \tau_2[x \mapsto E_1] \Downarrow \tau_2'}
+      \hypo{\Gamma \vdash E_2 \Leftarrow \tau_2'}
+      \infer3{\Gamma \vdash \{E_1, \, E_2\} \Leftarrow 
+        \exists x : \tau_1, \, \tau_2'(x)}
+    \end{prooftree}
+\]
+
+\item \textbf{Existential elimination} \\
+\[
+  \begin{prooftree}
+   \hypo{\Gamma \vdash E \Rightarrow \exists x : \tau, \, \tau'(x)} 
+   \hypo{(y, \, \tau'(x), \, \text{und}) :: (x, \, \tau, \text{und}) :: \Gamma \vdash
+          E' \Rightarrow \tau''}
+   \hypo{x, \, y \notin \FV(\tau'')}
+   \infer3{\Gamma \vdash \text{let } \{x, \, y\} := E \text{ in } E' \Rightarrow \tau''}
+  \end{prooftree}
+\]
+
+Here we write $x, \, y \notin \FV(\tau'')$ to emphasize that $x$ and $y$ 
+should not occur free in the output type that is $\tau''$.
+
+By adding a fresh, unknown variable $x$, of the right type to the context, we
+essentially abstract away the first component of the underlying pair.
+
+Notice how the rules for existentials in our language are similar to the typing
+rules for existential types.
+Also, take note of how this elimination rule models the rule 
+of existential elimination in natural deduction as we discussed in the intro
+\[
+\begin{prooftree}
+  \hypo{\Gamma \vdash \exists x, \, \varphi(x)}
+  \hypo{\Gamma, \, \varphi(x) \vdash \psi}
+  \infer2{\Gamma \vdash \psi}
+\end{prooftree}
+\]
+provided $x$ does not occur free in $\Gamma$ and $\psi$.
+
+  % \[
+  %   \begin{prooftree}
+  %     \hypo{E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+  %     \hypo{\Gamma \vdash \tau_2[x \mapsto \fst E] \Downarrow \tau_2'}
+  %     \hypo{(y, \, \tau_2', \, \text{und}) :: (x, \, \tau_1, \, \text{und}) :: \Gamma
+  %           \vdash E' \rightarrow \tau}
+  %     \infer3{\Gamma \vdash \text{let } (x, \, y) := E \text{ in } E' \Rightarrow \tau}
+  %   \end{prooftree} 
+  % \]
 
   % \item \textbf{Pair destructuring} \\
-  %   \[
-  %     \begin{prooftree}
-  %       % \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
-  %       \hypo{\Gamma \vdash (\lambda z, \, E'[x_1 \mapsto \fst z][x_2 \mapsto
-  %         \snd z]) \,\, E
-  %         \Rightarrow \tau}
-  %         \hypo{z \notin \FV(E')}
-  %         \infer2{\Gamma \vdash (\text{let } \langle x_1, \, x_2 \rangle := E
-  %         \text{ in } E') \Rightarrow \tau}
-  %       \end{prooftree}
-  %     \]
+  % \[
+  %   \begin{prooftree}
+  %     \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+  %     % \hypo{(x_2, \, \tau_2[x \mapsto x_1], \text{und}) :: 
+  %     %   (x_1, \, \tau_1, \, \text{und}) :: 
+  %     %   \Gamma \vdash E' \Rightarrow \tau(x_1, \, x_2)}
+  %     \hypo{\Gamma \vdash E' [x_1 \mapsto \fst E][x_2 \mapsto \snd E]
+  %       \Rightarrow \tau}
+  %     \infer2{\Gamma \vdash (\text{let } (x_1, \, x_2) := E
+  %       \text{ in } E') \Rightarrow \tau}
+  %   \end{prooftree}
+  % \]
 
-  \end{enumerate}
-\end{definition}
+  \item \textbf{Sum formation} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash A \Leftarrow \Type} 
+      \hypo{\Gamma \vdash B \Leftarrow \Type} 
+      \infer2{\Gamma \vdash A + B \Rightarrow \Type} 
+    \end{prooftree}
+  \]
+  Note that this rule says that users can only construct a sum, aka 
+  coproduct, out of types that live in the universe \verb|Type|, not 
+  \verb|Kind|.
 
-The nice thing about these rules is that we can translate it almost directly
-into a typechecking and inference algorithm!
+  Recalling the Curry-Howard correspondence which identifies types and
+  propositions, we see sum types as a way to model disjunction. Hence we do
+  not see a need to allow users to construct sums out of large types like
+  type constructors found in \verb|Kind|.
+
+  % Also we are unsure if the logical consistency of the system can be preserved
+  % if we allow for $A + B$ to be formed when one is of type \verb|Type| while
+  % the other has type \verb|Kind|. 
+
+  \item \textbf{Sum introduction} \\
+  \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash E \Leftarrow \tau_1} 
+      \infer1{\Gamma \vdash \inl E \Leftarrow \tau_1 + \tau_2} 
+    \end{prooftree}
+  \]
+
+  \[
+    \begin{prooftree}
+    \hypo{\Gamma \vdash E \Leftarrow \tau_2} 
+    \infer1{\Gamma \vdash \inr E \Leftarrow \tau_1 + \tau_2} 
+    \end{prooftree}
+  \]
+
+  Without the appropriate type ascription, we can't infer the type of \verb|inl E|
+  and \verb|inr E|. These are meant to be used in conjunction with a type
+  ascription, eg \verb|(inl E : A + B)|.
+  \item \textbf{Sum elimination} \\
+  \[
+  \begin{prooftree}
+    \hypo{\Gamma \vdash E \Rightarrow \tau_1 + \tau_2}
+    \hypo{(x, \, \tau_1, \, \text{und}) :: \Gamma \vdash E_1 \Rightarrow \tau_1'}
+    \hypo{(y, \, \tau_2, \, \text{und}) :: \Gamma \vdash E_2 \Rightarrow \tau_2'}
+    \hypo{\tau_1' \equiv_{\alpha \beta} \tau_2'}
+    \infer4{\Gamma \vdash \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)
+              \Rightarrow \tau_1'}
+  \end{prooftree}  
+\]
+
+Note that the data constructors \verb|(. , .)|, \verb|{. , .}|, \verb|inl| and 
+\verb|inr| do not come with type annotations and thus we are unable to infer the
+type of the constructed term.
+Hence they will need to be paired with type ascriptions to
+help the interpreter figure out what type the expression has.
+
+For instance, to help the interpreter figure out what type \verb|inl E| should be,
+we can ascribe \verb|(inl E : A + B)| and the interpreter will then check if
+\verb|E| has type \verb|A|.
+
+Similarly, we can't infer the type of an unannotated lambda like $\lambda x, \, x$.
+Users must either annotate the input type or ascribe a type to the whole function.
+
+Fortunately, the nice thing about these rules is that we may translate them almost
+directly into a typechecking and inference algorithm!
 More precisely, we may translate $\Gamma \vdash E \Leftarrow T$ into a
 function called $\text{check}(\Gamma, \, E, \, T)$ which checks if the
 expression $E$ really has the type $T$ given a context $\Gamma$.
@@ -1560,6 +1962,42 @@ the context $\Gamma$.
 
 In the literature, such rules are called \textit{syntax directed}, as the
 algorithm closely follows the formalization of the corresponding judgments.
+
+
+% \item \textbf{Local let binding} \\
+%   \[
+%     \begin{prooftree}
+%       \hypo{\Gamma \vdash E \Rightarrow \tau}
+%       \hypo{(x, \, \tau, \, \text{undefined}) :: \Gamma \vdash E' \Rightarrow \tau'(x)}
+%       \hypo{\Gamma \vdash \tau'[x \mapsto E] \Downarrow \tau''}
+%       \infer3{\Gamma \vdash (\text{let } x := E \text{ in } E') \Rightarrow \tau''}
+%     \end{prooftree}
+%   \]
+
+%   \[
+%     \begin{prooftree}
+%       \hypo{\Gamma \vdash (\text{let } x := (E : T)) \text{ in } E' \Rightarrow \tau}
+%       \infer1{\Gamma \vdash (\text{let } (x : T) := E \text{ in } E') \Rightarrow \tau}
+%     \end{prooftree}
+%   \]
+%   This second rule handles the case when an optional type annotation is given
+%   for the variable $x$.
+
+% \item \textbf{Pair destructuring} \\
+%   \[
+%     \begin{prooftree}
+%       % \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
+%       \hypo{\Gamma \vdash (\lambda z, \, E'[x_1 \mapsto \fst z][x_2 \mapsto
+%         \snd z]) \,\, E
+%         \Rightarrow \tau}
+%         \hypo{z \notin \FV(E')}
+%         \infer2{\Gamma \vdash (\text{let } \langle x_1, \, x_2 \rangle := E
+%         \text{ in } E') \Rightarrow \tau}
+%       \end{prooftree}
+%     \]
+
+\end{enumerate}
+
 
 % Another kind of equivalence is \textit{eta equivalence}. To explain this,
 % consider the terms $\lambda x, \, B \, x$ and $B$. Both of them have exactly the
@@ -1723,7 +2161,8 @@ In other words, the expression output to the user is the expression obtained by
 beginning with the initial configuration and then recursively evaluating
 until we reach a final configuration.
 
-\section{Metatheoretic discussion -- TODO}
+\section{Metatheoretic discussion}
+\todo[inline] {TODO: flesh out this part}
 The original Calculus of Constructions is known to be strongly normalizing in
 that the normalization process, when applied to any well typed term, always
 terminates. Furthermore, it has decidable typechecking and is logically
@@ -1783,5 +2222,8 @@ this.
 % http://www2.tcs.ifi.lmu.de/~abel/lfsigma.pdf
 
 \section{Technical implementation}
+\todo[inline] {Work in progress}
+Mention the pains of de bruijn indices.
 
+\section{More sample proofs}
 \end{document}

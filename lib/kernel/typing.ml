@@ -1,6 +1,7 @@
 open Containers
 open Common
 
+(* This module implements the typing judgments. *)
 module Norm = Normalization
 
 exception Cannot_infer_type of int Ast.expr
@@ -29,29 +30,8 @@ let rec infer ctx (expr : int Ast.expr) =
  | Ast.Type -> Location.set_data expr Ast.Kind
  | Ast.Var index -> Context.get_type ctx index
 
- (* Do we want to allow users to assert that the type of Type, and type
-    constructors is Kind? *)
  | Ast.Ascription {expr=inner_expr; ascribed_type} ->
- infer_annotation ~outer_expr:expr ctx inner_expr ascribed_type
-  (* begin
-    match ascribed_type.data with
-    | Ast.Kind -> 
-      check ~outer_expr:expr ctx expr' Ast.located_kind; 
-      ascribed_type
-    | _ ->
-      check_well_formed_type ctx ascribed_type;
-      let ascribed_type = Norm.normalize ctx ascribed_type in
-      (* print_endline "Ascribed:";
-      print_endline @@ Ast.show_expr Format.pp_print_int ascribed_type; *)
-      check ~outer_expr:expr ctx expr' ascribed_type;
-      ascribed_type
-  end *)
-
- (* | Ast.Pi {var_name=input_var; expr=input_type; body=output_type} ->
-  check_well_formed_type ctx input_type;
-  let input_type = Norm.normalize ctx input_type in
-  let ctx = Context.add_binding input_var ~var_type:input_type ctx in
-  get_well_formed_type ctx output_type *)
+  infer_annotation ~outer_expr:expr ctx inner_expr @@ Some ascribed_type
 
  | Ast.App {left=fn; right=arg} ->
   let inferred_type = infer ctx fn in
@@ -75,34 +55,17 @@ let rec infer ctx (expr : int Ast.expr) =
   (* What source location info should be used here? *)
   Location.set_data expr @@ Ast.Pi {var_name=input_var; expr=input_ty; body=output_type}
 
- | Ast.Let {abstraction={var_name; expr=binding; body}; ascribed_type=None} ->
-  (* let var_type = infer ctx binding in
-  let fn = Location.locate @@ Ast.Fun {input_var=var_name; input_type=Some var_type; body} in
-  let expr = Location.set_data expr @@ Ast.App {left=fn; right=binding} in
-  infer ctx expr *)
-  let var_type = infer ctx binding in
-  let binding = Norm.normalize ctx binding in
-  let ctx = Context.add_binding var_name ~var_type:var_type ~binding ctx in
-  (* let ctx = Context.add_binding var_name ~var_type:var_type ctx in *)
-  (* print_endline @@ Ast.show_expr Format.pp_print_int binding; *)
-  body 
-  |> infer ctx
-  (* Need to shift here? This is kinda like Match where we need to correct the
-    indices when we move back out the binder. *)
-  |> Fun.flip Norm.beta_reduce binding
-   (* |> fun expr -> Norm.subst 0 expr binding *)
-  (* |> Norm.normalize ctx *)
-
- | Ast.Let {abstraction={var_name; expr=binding; body}; 
-            ascribed_type=Some ascribed_type} ->
-  let var_type = infer_annotation ~outer_expr:expr ctx binding ascribed_type in
+ | Ast.Let {abstraction={var_name; expr=binding; body}; ascribed_type} ->
+  let var_type = infer_annotation ~outer_expr:expr ctx binding ascribed_type in 
   let binding = Norm.normalize ctx binding in
   let ctx = Context.add_binding var_name ~var_type:var_type ~binding ctx in
   body 
   |> infer ctx
   |> Fun.flip Norm.beta_reduce binding
 
- | Ast.Pi abstraction | Ast.Sigma abstraction-> infer_pi_sigma ctx abstraction
+  (* Pi/Sigma/Exists type formation *)
+ | Ast.Pi abstraction | Ast.Sigma abstraction | Ast.Exists abstraction ->
+  infer_pi_sigma_exists ctx abstraction
 
  | Ast.Fst _ | Ast.Snd _ ->
   expr
@@ -140,16 +103,32 @@ let rec infer ctx (expr : int Ast.expr) =
         |> Context.add_binding match_var ~var_type:ty
         |> Fun.flip infer match_body
       in
+      (* Infer the return type in both branches. *)
       let inl_type = infer_match_binding inl left in
       let inr_type = infer_match_binding inr right in
       if equal_expr inl_type inr_type 
         (* It's important to shift the indices by -1 here to avoid an off-by-one
-           bug. *)
+        bug. This is because we added a binding to the context when inferring the
+        type of the body. *)
       then Ast.shift (-1) inl_type
       else assert false
     | _ -> raise @@ Type_mismatch
             {expr; outer_expr=expr; inferred_type; expected_type=Family "Sum"}
   end
+
+  | Ast.Exists_elim {expr; witness_var; witness_cert; body; _} ->
+    let inferred_type = infer ctx expr in
+    begin match inferred_type.data with
+    | Ast.Exists {expr=witness_type; body=witness_prop; _} ->
+      ctx
+      |> Context.add_binding witness_var ~var_type:witness_type
+      |> Context.add_binding witness_cert ~var_type:witness_prop
+      |> Fun.flip infer body
+      |> Fun.tap @@ Ast.do_if_index_present 1 (fun _ -> raise Not_found)
+      |> Fun.tap @@ Ast.do_if_index_present 0 (fun _ -> raise Not_found)
+      |> Ast.shift (-2)
+    | _ -> assert false
+    end
 
   (* | Ast.Let_pair {left_var; right_var; binding; body} ->
     expr
@@ -176,9 +155,12 @@ let rec infer ctx (expr : int Ast.expr) =
        end
   *)
 
- | Ast.Kind | Ast.Pair _ | Ast.Fun {input_type=None; _} | Ast.Inl _ | Ast.Inr _ -> 
+ | Ast.Kind | Ast.Pair _ | Ast.Exists_pair _ | Ast.Fun {input_type=None; _}
+ | Ast.Inl _ | Ast.Inr _ -> 
   raise @@ Cannot_infer_type expr
 
+(* This used to ensure that the expression that Fst and Snd are applied to is
+really a Sigma. *)
 and infer_sigma_exn ctx (outer_expr : int Ast.expr) =
   match outer_expr.data with
   | Ast.Fst expr | Ast.Snd expr ->
@@ -192,24 +174,32 @@ and infer_sigma_exn ctx (outer_expr : int Ast.expr) =
     end
   | _ -> assert false
 
-and infer_pi_sigma ctx ({var_name; expr=type1; body=type2} : int Ast.abstraction) =
+(* Check if a Pi/Sigma/Exists is well formed. If it is, we return the sort of
+  the type. If it's not, an exception is thrown. *)
+and infer_pi_sigma_exists ctx ({var_name; expr=type1; body=type2} : int Ast.abstraction) =
   check_well_formed_type ctx type1;
   let type1 = Norm.normalize ctx type1 in
   let ctx = Context.add_binding var_name ~var_type:type1 ctx in
   get_well_formed_type ctx type2
 
-and infer_annotation ~outer_expr ctx expr (ascribed_type : int Ast.expr) =
-  match ascribed_type.data with
-  | Ast.Kind -> 
-    check ~outer_expr ctx expr Ast.located_kind; 
-    ascribed_type
-  | _ ->
-    check_well_formed_type ctx ascribed_type;
-    let ascribed_type = Norm.normalize ctx ascribed_type in
-    (* print_endline "Ascribed:";
-    print_endline @@ Ast.show_expr Format.pp_print_int ascribed_type; *)
-    check ~outer_expr:expr ctx expr ascribed_type;
-    ascribed_type
+and infer_annotation ~outer_expr ctx expr ascribed_type =
+(* If `ascribed_type` is Some, check that it's well formed and that `expr` has
+that type. Otherwise, try to infer the type of `expr` from `ctx` directly. *)
+  ascribed_type
+  |> CCOpt.map @@ begin
+    fun (ascribed_type : int Ast.expr) ->
+      match ascribed_type.data with
+      (* Here we allow for Kind to be in annotations. *)
+      | Ast.Kind ->
+        check ~outer_expr ctx expr Ast.located_kind; 
+        ascribed_type
+      | _ ->
+        ascribed_type
+        |> Fun.tap @@ check_well_formed_type ctx
+        |> Norm.normalize ctx
+        |> Fun.tap @@ check ~outer_expr:expr ctx expr
+    end
+  |> CCOpt.get_lazy @@ fun _ -> infer ctx expr
   
 and check ~outer_expr ctx expr expected_type =
   match expr.data, expected_type.data with
@@ -219,14 +209,17 @@ and check ~outer_expr ctx expr expected_type =
     |> Context.add_binding input_var ~var_type:input_type
     |> fun ctx -> check ~outer_expr ctx body output_type
 
-  | Ast.Pair {left; right},  
-    Ast.Sigma {expr=left_type; body=right_type; _} ->
-    check ctx ~outer_expr left left_type;
-    right_type
-    |> Fun.flip Norm.beta_reduce left
-    |> Norm.normalize ctx
-    |> check ctx ~outer_expr right 
-    (* check ctx ~outer_expr expr2 @@ Norm.normalize ctx @@ Norm.beta_reduce expr2_type expr1 *)
+  | Ast.Pair {left; right}, Ast.Sigma abstraction
+  | Ast.Exists_pair {left; right}, Ast.Exists abstraction ->
+    begin
+    match abstraction with {expr=left_type; body=right_type; _} ->
+      check ctx ~outer_expr left left_type;
+      right_type
+      |> Fun.flip Norm.beta_reduce left
+      |> Norm.normalize ctx
+      |> check ctx ~outer_expr right 
+      (* check ctx ~outer_expr expr2 @@ Norm.normalize ctx @@ Norm.beta_reduce expr2_type expr1 *)
+    end
 
   | Ast.Inl expr, Sum {left=expected_type; _}
   | Ast.Inr expr, Sum {right=expected_type; _} -> 
@@ -234,17 +227,13 @@ and check ~outer_expr ctx expr expected_type =
 
   | _, _ ->
     let inferred_type = infer ctx expr in
-    (* print_endline "Inferred:";
-    print_endline @@ Ast.show_expr Format.pp_print_int inferred_type;
-    print_endline "Expected:";
-    print_endline @@ Ast.show_expr Format.pp_print_int expected_type; *)
     (* Here we need to check if the inferred type and expr_type are equal *)
     if not @@ equal_expr inferred_type expected_type
     then
       let expected_type = Exact expected_type in
       raise @@ Type_mismatch {expr; inferred_type; expected_type; outer_expr}
 
-(* Check if expr is a well-formed type wrt ctx. In other words, this checks
+(* Check if `expr` is a well-formed type wrt `ctx`. In other words, this checks
   if the type of expr is Type or Kind. If so, we return it. Otherwise, we throw
   an exception. *)
 and get_well_formed_type ctx expr =
@@ -254,7 +243,4 @@ and get_well_formed_type ctx expr =
   | _ -> raise @@ Ill_formed_type {expr; inferred_type}
 
 and check_well_formed_type ctx expr = 
-  ignore @@ get_well_formed_type ctx expr 
-  (* match expr.data with
-  | Ast.Kind -> ()
-  | _ -> ignore @@ get_well_formed_type ctx expr *)
+  ignore @@ get_well_formed_type ctx expr

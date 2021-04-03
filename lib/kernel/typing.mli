@@ -30,17 +30,24 @@ exception Type_mismatch of {
 }
 
 (* Given a context and expression, compute the type of the expression.
-   An exception is thrown if we have insufficient information to compute the type. *)
+An exception is thrown if we have insufficient information to compute the type. *)
 val infer : Context.t -> int Common.Ast.expr -> int Common.Ast.expr
 
+(* `infer_annotation ~outer_expr ctx expr ascribed_type` implements the typing
+judgment for type ascriptions. 
+
+If `ascribed_type` is Some, check that it's well formed and that `expr` has
+that type. Otherwise, try to infer the type of `expr` from `ctx` directly.
+If all goes well, a normalized form of the inferred type is returned.
+Otherwise, an exception is thrown. *)
 val infer_annotation : 
-  outer_expr:int Common.Ast.expr -> Context.t -> int Common.Ast.expr -> int Common.Ast.expr -> int Common.Ast.expr 
+  outer_expr:int Common.Ast.expr -> Context.t -> int Common.Ast.expr -> int Common.Ast.expr option -> int Common.Ast.expr 
 
 (* This is thrown by `infer` if we're unable to infer the type of an expression. *)
 exception Cannot_infer_type of int Common.Ast.expr
 
 (* Check if expr is a well formed type (ie it has type Type or Kind) wrt to
-   a given context. *)
+a given context. *)
 val check_well_formed_type : Context.t -> int Common.Ast.expr -> unit
 
 (* This is thrown by check_well_formed_type if an expression which we expect to
