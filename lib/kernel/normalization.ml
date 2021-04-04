@@ -132,7 +132,7 @@ let normalize ctx =
             |> Fun.flip beta_reduce left
             |> Fun.flip beta_reduce right
             |> Location.data
-            |> self#visit_raw_expr ctx 
+            |> self#visit_raw_expr ctx
            | _ ->
             body
             |> super#visit_Exists_elim_body ctx witness_var witness_cert

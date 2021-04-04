@@ -66,4 +66,11 @@ theorem cantor :
     -- has a fixed point.
     show has_fixed_point Y f, from {g x x, this}
 
+axiom g : X -> X -> Y
+axiom g_surj : surjective X (X -> Y) g
+
+def h : exists g : X -> X -> Y, surjective X (X -> Y) g := {g, g_surj}
+
+eval cantor h
+
 check cantor

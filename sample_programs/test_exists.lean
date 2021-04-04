@@ -42,6 +42,21 @@ forall (T : Type) (P : T -> Prop) (Q : T -> Prop),
   have exists_qx : exists x : T, Q x, from {x, qx},
   show (exists x : T, P x) /\ (exists x : T, Q x), from (exists_px, exists_qx)
 
+axiom T : Type
+axiom x : T
+axiom P : T -> Prop
+axiom Q : T -> Prop
+axiom h : (P x) /\ (Q x)
+
+def h2 : exists x : T, (P x) /\ (Q x) := {x, h}
+
+eval h1 T P Q h2
+
+-- Some trouble normalizing existentials:
+-- ({{x, h}, (fst {Q, h})}, {{x, h}, (snd {Q, h})})
+
+eval h1 T P
+
 -- This is acceptable because x does not occur free in P.
 theorem _ :
 forall (T : Type) (P : Prop), (exists x : T, P) -> P :=

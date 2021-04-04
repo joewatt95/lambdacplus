@@ -163,6 +163,12 @@ class virtual ['self] ast_mapper =
          | _ -> assert false
          end
 
+    method! visit_Exists_elim cutoff expr witness_var witness_cert body =
+      let expr = self#visit_expr cutoff expr in
+      let body =
+        self#visit_Exists_elim_body cutoff witness_var witness_cert body in
+      Exists_elim {expr; witness_var; witness_cert; body}
+
     (* These are never called. *)
     method visit_'a _ _ = located_kind
     method build_located _ _ _ _ = located_kind
@@ -208,11 +214,6 @@ let shift shift_by =
       method! visit_match_binding cutoff {match_var; match_body} =
         let match_body = self#shift_under_binder cutoff match_body in
         {match_var; match_body}
-
-      method! visit_Exists_elim cutoff expr witness_var witness_cert body =
-        let expr = self#visit_expr cutoff expr in
-        let body = self#visit_Exists_elim_body cutoff witness_var witness_cert body in
-        Exists_elim {expr; witness_var; witness_cert; body}
 
       (* method! visit_Let_pair cutoff left_var right_var binding body = 
         let binding = self#visit_expr cutoff binding in
