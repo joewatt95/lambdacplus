@@ -83,16 +83,16 @@ let get_and_shift_indices ctx accessor_fn index =
   index
   |> CCRAL.get_exn ctx
   |> accessor_fn
-  |> CCOpt.map @@ Ast.shift @@ index + 1
+  |> Option.map @@ Ast.shift @@ index + 1
 
 let get_binding ctx = get_and_shift_indices ctx binding
 
 let get_type ctx index =
   index
   |> get_and_shift_indices ctx var_type
-  |> CCOpt.get_lazy @@ fun _ -> raise Not_found
+  |> Option.get_lazy @@ fun _ -> raise Not_found
 
 let is_var_name_bound var_name ctx =
     ctx 
     |> var_name_to_index var_name
-    |> CCOpt.is_some
+    |> Option.is_some

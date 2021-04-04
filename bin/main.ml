@@ -2,33 +2,6 @@ open Containers
 open Cs4215_dependent_types
 open Js_of_ocaml
 
-(* let prog = {|
-// Assume that A and B are types.
-constant A : Type
-constant B : Type
-
-// Assume that R is a binary relation on A x B.
-// Technically speaking, R is a predicate symbol and these are
-// represented by type constructors in the Curry Howard interpretation of
-// logic.
-constant R : A -> B -> Prop
-
-// Further assume that every (a : A) is related to some (b : B).
-axiom R_left_total : ∀ a : A, ∃ b : B, R a b
-
-// We define a choice function using the explicit witness provided by the
-// constructive existential quantifier.
-def f := λ (a : A) =>
-  let exists_b_Rab := R_left_total a in
-  fst exists_b_Rab
-
-// pf is a proof that given an arbitrary (a : A), a is really related to (f a). 
-def pf := λ (a : A) => snd (R_left_total a)
-
-// Use f and pf to witness the existential below.
-check ((f, pf) : ∃ f : A -> B, ∀ a : A, R a (f a))
-|} *)
-
 let run_in_context str (nctx, ectx) =
   try
     let stmts, naming_ctx =
@@ -43,7 +16,7 @@ let run_in_context str (nctx, ectx) =
       Ok ((naming_ctx, ctx'),
       Pretty_print.unparse_internal_expr naming_ctx stmts')
     with exc ->
-      Error (Error_reporting.fmt_eval_err_str naming_ctx exc)
+      Error (Error_reporting.fmt_eval_err_str str exc)
   with exc ->
     Error (Error_reporting.fmt_parse_err_str exc)
 
@@ -74,35 +47,48 @@ let rec internal_run_repl nctx ectx =
         |> fun str -> print_endline @@ "\n" ^ str ^ "\n";
         flush stdout;
         internal_run_repl naming_ctx ctx'
-      with exc ->
-        print_endline @@ Error_reporting.fmt_eval_err_str naming_ctx exc;
+      with exn ->
+        print_endline @@ fst @@ Error_reporting.fmt_eval_err_str str exn;
         internal_run_repl nctx ectx
-    with exc ->
-      print_endline @@Error_reporting.fmt_parse_err_str exc;
+    with exn ->
+      print_endline @@ fst @@ Error_reporting.fmt_parse_err_str exn;
       internal_run_repl nctx ectx
 
-let internal_run_once () =
+(* let internal_run_once () =
 
 
     print_endline @@ Error_reporting.fmt_eval_err_str naming_ctx exc;
-    exit 2
+    exit 2 *)
+
+(* let () = internal_run_repl Kernel.Context.empty Kernel.Context.empty *)
   
-let () =
-  Js.export_all
-  (object%js
-    val ctx0 = (Kernel.Context.empty, Kernel.Context.empty)
+let () = Js.export_all @@
+  object%js
+    val ctx0 = Kernel.Context.(empty, empty)
     method run_in_ctx str ctx = 
       str
       |> Js.to_string
       |> Fun.flip run_in_context ctx
-      |> (fun x -> match x with
-      | Error str -> (false, ctx, str)
-      | Ok (ctx', str) -> (true, ctx', str))
-      |> (fun (flag, fctx, res) ->
-        (object%js
+      |> begin function
+         | Error (str, err_loc) -> (false, ctx, str, Some err_loc)
+         | Ok (ctx, str) -> (true, ctx, str, None)
+         end
+      |> begin fun (flag, fctx, res, err_loc) ->
+          object%js
           val ok = Js.bool flag
           val cmd = str
           val result = Js.string res
           val ctx = fctx
-        end))
-  end)
+          val errLoc = 
+            match err_loc with
+            | Some {start_row; end_row; start_col; end_col} -> 
+              Js.def @@ object%js
+                val errStartRow = start_row 
+                val errEndRow = end_row 
+                val errStartCol = start_col
+                val errEndCol = end_col 
+                end
+            | None -> Js.undefined
+          end
+      end
+  end

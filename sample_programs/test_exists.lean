@@ -25,7 +25,6 @@ forall (T : Type) (P : T -> Prop), (exists x : T, P x) -> (exists x : T, P x) :=
   let {x, px} := this in
     show exists x : T, P x, from {x, px}
 
-
 -- This is also valid.
 theorem h1 :
 forall (T : Type) (P : T -> Prop) (Q : T -> Prop),
@@ -42,3 +41,9 @@ forall (T : Type) (P : T -> Prop) (Q : T -> Prop),
   have exists_px : exists x : T, P x, from {x, px},
   have exists_qx : exists x : T, Q x, from {x, qx},
   show (exists x : T, P x) /\ (exists x : T, Q x), from (exists_px, exists_qx)
+
+-- This is acceptable because x does not occur free in P.
+theorem _ :
+forall (T : Type) (P : Prop), (exists x : T, P) -> P :=
+  assume T P h,
+  let {x, p} := h in p

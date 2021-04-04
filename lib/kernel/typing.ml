@@ -4,11 +4,13 @@ open Common
 (* This module implements the typing judgments. *)
 module Norm = Normalization
 
+type expr_with_ctx = {expr : int Ast.expr; ctx : Context.t}
+
 exception Cannot_infer_type of int Ast.expr
 
 exception Ill_formed_type of {
   expr : int Ast.expr;
-  inferred_type : int Ast.expr;
+  inferred_type : expr_with_ctx;
 }
 
 type expected_type =
@@ -18,8 +20,20 @@ type expected_type =
 exception Type_mismatch of {
   outer_expr : int Ast.expr;
   expr : int Ast.expr;
-  inferred_type : int Ast.expr;
+  inferred_type : expr_with_ctx;
   expected_type : expected_type;
+}
+
+exception Type_mismatch_in_match of {
+  outer_expr : int Common.Ast.expr;
+  inl_type : expr_with_ctx;
+  inr_type : expr_with_ctx;
+}
+
+exception Type_contains_free_var of {
+  outer_expr : int Common.Ast.expr;
+  inferred_type : expr_with_ctx;
+  free_var : string
 }
 
 (* Compare syntactic equality of de bruijn ASTs. *)
@@ -44,7 +58,8 @@ let rec infer ctx (expr : int Ast.expr) =
       |> Norm.normalize ctx
     | _ -> 
       raise @@ Type_mismatch
-        {expr=fn; outer_expr=expr; inferred_type; expected_type=Family "Pi"}
+        { expr=fn; outer_expr=expr; inferred_type={expr=inferred_type; ctx}; 
+          expected_type=Family "Pi"}
   end
 
  | Ast.Fun {input_var; input_type=Some input_ty; body} ->
@@ -83,8 +98,8 @@ let rec infer ctx (expr : int Ast.expr) =
           |> Norm.normalize ctx
 
         (* No other cases are possible since expr came from the outer match
-           where we already guaranteed that it will be a Ast.Fst or 
-           Ast.Snd. *)
+        where we already guaranteed that it will be a Ast.Fst or 
+        Ast.Snd. *)
         | _ -> assert false
      end
 
@@ -93,8 +108,8 @@ let rec infer ctx (expr : int Ast.expr) =
   check_type left; check_type right;
   Location.set_data expr Ast.Type
 
- | Ast.Match {expr; inl; inr} ->
-  let inferred_type = infer ctx expr in
+ | Ast.Match {expr=expr'; inl; inr} ->
+  let inferred_type = infer ctx expr' in
   begin
     match inferred_type.data with
     | Sum {left; right} ->
@@ -102,32 +117,55 @@ let rec infer ctx (expr : int Ast.expr) =
         ctx
         |> Context.add_binding match_var ~var_type:ty
         |> Fun.flip infer match_body
+        (* It's important to shift the indices by -1 here to avoid an off-by-one
+        bug. This is because we added a binding to the context when inferring the
+        type of the body. *)
+        |> Ast.shift (-1)
       in
       (* Infer the return type in both branches. *)
       let inl_type = infer_match_binding inl left in
       let inr_type = infer_match_binding inr right in
       if equal_expr inl_type inr_type 
-        (* It's important to shift the indices by -1 here to avoid an off-by-one
-        bug. This is because we added a binding to the context when inferring the
-        type of the body. *)
-      then Ast.shift (-1) inl_type
-      else assert false
+  
+      then inl_type
+      (* then Ast.shift (-1) inl_type *)
+      else
+        let inl_type = {expr=inl_type; ctx} in
+        let inr_type = {expr=inr_type; ctx} in
+        raise @@ Type_mismatch_in_match { outer_expr=expr; inl_type; inr_type }
     | _ -> raise @@ Type_mismatch
-            {expr; outer_expr=expr; inferred_type; expected_type=Family "Sum"}
+            { expr=expr'; outer_expr=expr; inferred_type={expr=inferred_type; ctx}; 
+              expected_type=Family "Sum" }
   end
 
-  | Ast.Exists_elim {expr; witness_var; witness_cert; body; _} ->
-    let inferred_type = infer ctx expr in
+  | Ast.Exists_elim {expr=expr'; witness_var; witness_cert; body; _} ->
+    let inferred_type = infer ctx expr' in
     begin match inferred_type.data with
     | Ast.Exists {expr=witness_type; body=witness_prop; _} ->
-      ctx
-      |> Context.add_binding witness_var ~var_type:witness_type
-      |> Context.add_binding witness_cert ~var_type:witness_prop
-      |> Fun.flip infer body
-      |> Fun.tap @@ Ast.do_if_index_present 1 (fun _ -> raise Not_found)
-      |> Fun.tap @@ Ast.do_if_index_present 0 (fun _ -> raise Not_found)
+      let ctx = ctx
+                |> Context.add_binding witness_var ~var_type:witness_type
+                |> Context.add_binding witness_cert ~var_type:witness_prop
+      in 
+      let body_type = infer ctx body in
+      let raise_err_if_index_found index = 
+        let free_var = Context.index_to_var_name ctx index in
+        let raise_free_var_err _ = raise @@ 
+          Type_contains_free_var { outer_expr=expr; free_var; 
+                                   inferred_type={expr=body_type; ctx} }  
+        in
+        raise_free_var_err
+        |> Ast.do_if_index_present index
+        |> Fun.tap
+      in
+      body_type
+      |> raise_err_if_index_found 1
+      |> raise_err_if_index_found 0
+      (* |> Fun.tap @@ Ast.do_if_index_present 1 (fun _ -> raise Not_found)
+      |> Fun.tap @@ Ast.do_if_index_present 0 (fun _ -> raise Not_found) *)
       |> Ast.shift (-2)
-    | _ -> assert false
+    | _ -> raise @@ Type_mismatch
+            { expr=expr'; outer_expr=expr; inferred_type={expr=inferred_type; ctx}; 
+              expected_type=Family "Sum" }
     end
 
   (* | Ast.Let_pair {left_var; right_var; binding; body} ->
@@ -165,13 +203,16 @@ and infer_sigma_exn ctx (outer_expr : int Ast.expr) =
   match outer_expr.data with
   | Ast.Fst expr | Ast.Snd expr ->
     let inferred_type = infer ctx expr in
-    begin
-      match inferred_type.data with
-      |  Sigma abstraction -> abstraction
-      | _ -> 
-        raise @@ Type_mismatch 
-          {outer_expr; expr; inferred_type; expected_type=Family "Sigma"}
+    begin match inferred_type.data with
+    |  Sigma abstraction -> abstraction
+    | _ -> 
+      raise @@ Type_mismatch 
+        { outer_expr; expr; inferred_type={expr=inferred_type; ctx}; 
+          expected_type=Family "Sigma" }
     end
+
+  (* This case should never occur since this function is only used to infer
+  the type of Fst and Snd. *)
   | _ -> assert false
 
 (* Check if a Pi/Sigma/Exists is well formed. If it is, we return the sort of
@@ -186,7 +227,7 @@ and infer_annotation ~outer_expr ctx expr ascribed_type =
 (* If `ascribed_type` is Some, check that it's well formed and that `expr` has
 that type. Otherwise, try to infer the type of `expr` from `ctx` directly. *)
   ascribed_type
-  |> CCOpt.map @@ begin
+  |> Option.map @@ begin
     fun (ascribed_type : int Ast.expr) ->
       match ascribed_type.data with
       (* Here we allow for Kind to be in annotations. *)
@@ -199,7 +240,7 @@ that type. Otherwise, try to infer the type of `expr` from `ctx` directly. *)
         |> Norm.normalize ctx
         |> Fun.tap @@ check ~outer_expr:expr ctx expr
     end
-  |> CCOpt.get_lazy @@ fun _ -> infer ctx expr
+  |> Option.get_lazy @@ fun _ -> infer ctx expr
   
 and check ~outer_expr ctx expr expected_type =
   match expr.data, expected_type.data with
@@ -231,7 +272,8 @@ and check ~outer_expr ctx expr expected_type =
     if not @@ equal_expr inferred_type expected_type
     then
       let expected_type = Exact expected_type in
-      raise @@ Type_mismatch {expr; inferred_type; expected_type; outer_expr}
+      raise @@ Type_mismatch { expr; inferred_type={expr=inferred_type; ctx}; 
+                               expected_type; outer_expr }
 
 (* Check if `expr` is a well-formed type wrt `ctx`. In other words, this checks
   if the type of expr is Type or Kind. If so, we return it. Otherwise, we throw
@@ -240,7 +282,7 @@ and get_well_formed_type ctx expr =
   let inferred_type = infer ctx expr in
   match inferred_type.data with
   | Ast.Type | Ast.Kind -> inferred_type
-  | _ -> raise @@ Ill_formed_type {expr; inferred_type}
+  | _ -> raise @@ Ill_formed_type {expr; inferred_type={expr=inferred_type; ctx}}
 
 and check_well_formed_type ctx expr = 
   ignore @@ get_well_formed_type ctx expr

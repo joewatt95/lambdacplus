@@ -22,13 +22,13 @@ let rec parser_to_internal_raw_expr ctx (expr : string Ast.expr) =
         | var_name -> var_name
        end
     |> Kernel.Context.var_name_to_index ctx
-    |> CCOpt.get_lazy (fun () -> raise @@ Unknown_var_name expr)
+    |> Option.get_lazy (fun _ -> raise @@ Unknown_var_name expr)
     |> fun index -> Ast.Var index
 
   (* For Fun and Pi, we add the input var to the context to get a new one, which
      we then use to convert the body. *)
   | Ast.Fun {input_var; input_type; body} ->
-    let input_type = CCOpt.map (parser_to_internal_expr ctx) input_type in
+    let input_type = Option.map (parser_to_internal_expr ctx) input_type in
     let new_ctx = Kernel.Context.add_binding input_var ctx in
     let body = parser_to_internal_expr new_ctx body in
     Ast.Fun {input_var; input_type; body}
@@ -58,7 +58,7 @@ let rec parser_to_internal_raw_expr ctx (expr : string Ast.expr) =
 
   | Ast.Match {expr; inl; inr} ->
     let expr = parser_to_internal_expr ctx expr in
-    let conv_match_binding ctx ({match_var; match_body} : string Ast.match_binding) =
+    let conv_match_binding ctx Ast.{match_var; match_body} =
       let ctx = Kernel.Context.add_binding match_var ctx in
       let match_body = parser_to_internal_expr ctx match_body in
       ({match_var; match_body} : int Ast.match_binding)
@@ -87,7 +87,7 @@ let rec parser_to_internal_raw_expr ctx (expr : string Ast.expr) =
     Ast.Exists (parser_to_internal_abstraction ctx abstraction)
   | Ast.Let {abstraction; ascribed_type} ->
     let abstraction = parser_to_internal_abstraction ctx abstraction in
-    let ascribed_type = CCOpt.map (parser_to_internal_expr ctx) ascribed_type in
+    let ascribed_type = Option.map (parser_to_internal_expr ctx) ascribed_type in
     Ast.Let {abstraction; ascribed_type}
   
   (* let {witness_var, witness_cert} := expr in body *)
@@ -125,7 +125,7 @@ and parser_to_internal_expr ctx expr =
 let rec parser_to_internal_raw_stmt raw_stmt ctx =
   match raw_stmt with
   | Ast.Def {var_name; binding; ascribed_type} ->
-    let ascribed_type = CCOpt.map (parser_to_internal_expr ctx) ascribed_type in
+    let ascribed_type = Option.map (parser_to_internal_expr ctx) ascribed_type in
     let binding = parser_to_internal_expr ctx binding in
     let new_ctx = Kernel.Context.add_binding var_name ctx in
     Ast.Def {var_name; binding; ascribed_type}, new_ctx
@@ -274,8 +274,8 @@ let rec internal_to_parser_raw_expr ctx raw_expr =
 and internal_to_parser_expr ctx expr =
   Location.update_data expr @@ internal_to_parser_raw_expr ctx
 
-and internal_to_parser_abstraction ctx ({var_name; expr; body} : int Ast.abstraction) =
+and internal_to_parser_abstraction ctx {var_name; expr; body} =
   let expr = internal_to_parser_expr ctx expr in
   let var_name, new_ctx = pick_fresh_name var_name ctx in 
   let body = internal_to_parser_expr new_ctx body in
-  ({var_name; expr; body} : string Ast.abstraction)
+  {var_name; expr; body}

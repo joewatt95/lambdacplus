@@ -228,6 +228,17 @@ existentially quantified over the type variable $X$.
   satisfies $\varphi$. Note that we must also make sure to discharge the variable
   so that the conclusion, $\psi$, does not contain $x$ free. 
 
+  Some authors instead write this rule as
+  \[
+  \begin{prooftree}
+    \hypo{\Gamma \vdash \exists x, \, \varphi(x)}
+    \hypo{\Gamma, \, \forall x, \, \varphi(x) \vdash \psi}
+    \infer2{\Gamma \vdash \psi}
+  \end{prooftree}
+  \]
+  Note that both rules are equivalent by the Deduction and Generalization
+  theorems, or alternatively, from the rules of natural deduction.
+
 \end{enumerate}
 
 Modeling existential types as pairs denoted by $\{E_1, \, E_2\}$, we obtain the
@@ -1433,7 +1444,7 @@ be covered later.
       \end{prooftree}
     \]
 
-  \item \textbf{Normalizing under existential pair constructor} \\
+  \item \textbf{Normalizing under existential constructor} \\
    \[
       \begin{prooftree}
         \hypo{\Gamma \vdash E_1 \Downarrow \nu_1}
@@ -1442,15 +1453,26 @@ be covered later.
       \end{prooftree}
     \]
   
-  \item \textbf{Existential eliminator} \\
-   \[
+  \item \textbf{Existential elimination} \\
+    \[
       \begin{prooftree}
-        \hypo{\Gamma \vdash E \Downarrow \nu}
-        \hypo{\Gamma \vdash \lambda x, \, \lambda y, \, E' \Downarrow \lambda x, \, \lambda y, \nu'}
-        \infer2{\Gamma \vdash \text{let } \{x, \, y\} := E \text{ in } E' \Downarrow
-                \text{let } \{x, \, y\} := \nu \text{ in } \nu'}
+        \hypo{\Gamma \vdash E \Downarrow \{\nu_1, \, \nu_2\}}
+        \hypo{\Gamma \vdash E'[x \mapsto \nu_1][y \mapsto \nu_2] \Downarrow \nu}
+        \infer2{\Gamma \vdash \text{let } \{x, \, y\} := E \text{ in } E' \Downarrow \nu}
       \end{prooftree}
     \]
+
+   \[
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E \Downarrow n}
+        \hypo{\Gamma \vdash \lambda x, \, \lambda y, \, E' \Downarrow \lambda x, \, \lambda y, \nu'}
+        \infer2{\Gamma \vdash \text{let } \{x, \, y\} := E \text{ in } E' \Downarrow
+                \text{let } \{x, \, y\} := n \text{ in } \nu'}
+      \end{prooftree}
+    \]
+    Notice how although the value of the witness is abstracted away during the
+    typechecking phase, the interpreter has full access to it while it's
+    performing computations with it.
 
   % \[
   %   \begin{prooftree}
@@ -1848,9 +1870,9 @@ should not occur free in the output type that is $\tau''$.
 
 By adding a fresh, unknown variable $x$, of the right type to the context, we
 essentially abstract away the first component of the underlying pair.
+This enforces a layer of abstraction similar to the unpacking rules for
+existential types in other languages.
 
-Notice how the rules for existentials in our language are similar to the typing
-rules for existential types.
 Also, take note of how this elimination rule models the rule 
 of existential elimination in natural deduction as we discussed in the intro
 \[
@@ -2108,7 +2130,7 @@ afterwards.
       \hypo{\Gamma \vdash T \Rightarrow s}
       \hypo{\Gamma \vdash T \Downarrow \tau}
       \infer2{(\Gamma, \, \langle \axiom x : T \rangle, \, E) \Downarrow
-        ((x, \, \tau, \, \text{und}) :: \Gamma, \, \langle \rangle, \, x)}
+        ((x, \, \tau, \, \text{und}) :: \Gamma, \, \langle \rangle, \, \tau)}
     \end{prooftree}
   \]
 
@@ -2118,7 +2140,7 @@ afterwards.
       \hypo{\Gamma \vdash E \Rightarrow s}
       \hypo{\Gamma \vdash E \Downarrow \nu}
       \infer2{(\Gamma, \, \langle \deff x := E \rangle, \, E') \Downarrow
-        ((x, \, \tau, \, \nu) :: \Gamma, \, \langle \rangle, \, x)}
+        ((x, \, \tau, \, \nu) :: \Gamma, \, \langle \rangle, \, (\nu : \tau))}
     \end{prooftree}
   \]
 

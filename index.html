@@ -52,9 +52,15 @@
       opacity: 0.5;
       transition: 0.3s;
     }
-    .node:hover {
+.node:hover {
       opacity: 1;
     }
+
+.error {
+  position: absolute;
+  border-bottom: 3px solid red;
+}
+
 </style>
 <script src="https://kit.fontawesome.com/fa2321cbaa.js" crossorigin="anonymous"></script>
 <script src="main.bc.js"></script>
@@ -86,11 +92,13 @@ check p_or_q
     })
     editor.setOptions({
       mode: "",
-    })
-
+    });
+    
+    var Range = ace.require("ace/range").Range;
 
     var initialObj = {
       ok: true,
+      errLoc: undefined,
       cmd: "",
       result: "",
       ctx: ctx0,
@@ -99,7 +107,12 @@ check p_or_q
     document.getElementById("history").appendChild(initialObj.node);
     var results = [initialObj];
     var head = 0;
+    var errMarker = undefined;
     function execute() {
+      // Clear all the error markers and annotations when the button is pressed.
+     this.editor.getSession().removeMarker(errMarker);
+     editor.getSession().clearAnnotations();
+
       var ctx = results[head].ctx;
       var str = editor.getValue();
       var newObj = run_in(str, ctx);
@@ -112,6 +125,17 @@ check p_or_q
       results.push(newObj);
       head++;
       output.setValue(results[head].result);
+
+      if (!results[head].ok) {
+        const {errLoc: {errStartRow, errEndRow, errStartCol, errEndCol}} = results[head];
+        editor.getSession().setAnnotations([{
+          row: errStartRow, column: errStartCol, text: "Error!", type: "error"
+        }]);
+        errMarker = editor.getSession().addMarker(
+          new Range(errStartRow, errStartCol - 1, errEndRow, errEndCol - 1),
+          "error", "text",
+        )
+      }
     }
     function createDivNode(valid, idx) {
       var icon = document.createElement("i");

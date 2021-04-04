@@ -143,9 +143,8 @@ class virtual ['self] ast_mapper =
     `fun witness_var => fun witness_cert => E'`
     and then map over that.
     This saves us the trouble of having to worry about binders and shifting
-    indices.
-    *)
-    method! visit_Exists_elim env expr witness_var witness_cert body =
+    indices. *)
+    method visit_Exists_elim_body env witness_var witness_cert body =
       let make_fun input_var body = Fun {input_var; body; input_type=None} in
       body
       (* Construct fun witness_cert => body*)
@@ -153,17 +152,14 @@ class virtual ['self] ast_mapper =
       |> Location.locate
       (* Construct fun witness_var => fun witness_cert => body *)
       |> make_fun witness_var
-      (* Map over thjis new AST node *)
+      (* Map over this new AST node *)
       |> self#visit_raw_expr env
       (* Pull apart fun witness_var => fun witness_cert => body and grab the 
       body *)
       |> begin function
-         | Fun {body={data=Fun {body; _}; _}; _} -> 
-            (* Map over expr and reconstruct the new AST node for
-            `let {witness_var, witness_cert} := expr in body` *)
-            let expr = self#visit_expr env expr in
-            Exists_elim {expr; witness_var; witness_cert; body}
+         | Fun {body={data=Fun {body; _}; _}; _} -> body 
 
+         (* Nothing else is possible. *)
          | _ -> assert false
          end
 
@@ -184,7 +180,7 @@ class virtual ['self] ast_folder =
 (* Shift operation for de bruijn ASTs. The main thing to bear in mind is that
 the cutoff index must be incremented whenever we go under a binder. *)
 let shift shift_by =
-  let v = 
+  let visitor = 
     object (self) 
       inherit [_] ast_mapper
 
@@ -194,7 +190,7 @@ let shift shift_by =
         if index >= cutoff then Var (index + shift_by) else Var index 
 
       method! visit_Fun cutoff input_var input_type body =
-        let input_type = CCOpt.map (self#visit_expr cutoff) input_type in
+        let input_type = Option.map (self#visit_expr cutoff) input_type in
         let body = self#shift_under_binder cutoff body in
         Fun {input_var; input_type; body}
 
@@ -205,13 +201,18 @@ let shift shift_by =
         {var_name; expr; body}
 
       method! visit_Let cutoff abstraction ascribed_type =
-        let ascribed_type = CCOpt.map (self#visit_expr cutoff) ascribed_type in
+        let ascribed_type = Option.map (self#visit_expr cutoff) ascribed_type in
         let abstraction = self#visit_abstraction cutoff abstraction in
         Let {abstraction; ascribed_type} 
 
       method! visit_match_binding cutoff {match_var; match_body} =
         let match_body = self#shift_under_binder cutoff match_body in
         {match_var; match_body}
+
+      method! visit_Exists_elim cutoff expr witness_var witness_cert body =
+        let expr = self#visit_expr cutoff expr in
+        let body = self#visit_Exists_elim_body cutoff witness_var witness_cert body in
+        Exists_elim {expr; witness_var; witness_cert; body}
 
       (* method! visit_Let_pair cutoff left_var right_var binding body = 
         let binding = self#visit_expr cutoff binding in
@@ -222,15 +223,15 @@ let shift shift_by =
       method shift_under_binder {data=cutoff; _} expr =
         let new_cutoff = Location.locate @@ cutoff + 1 in
         self#visit_expr new_cutoff expr
-
-  end in v#visit_expr @@ Location.locate 0
+      
+  end in visitor#visit_expr @@ Location.locate 0
 
 (* Search for variables with de bruijn index of `index` in the AST. If
 any such indices are found, `f` is called.
 As before, the key thing is to increment the indices whenever we go under a 
 binder. *)
 let do_if_index_present index f =
-  let v =
+  let visitor =
     object (self)
       inherit [_] iter as super
 
@@ -239,9 +240,9 @@ let do_if_index_present index f =
         Printf.printf "Looking for: %d\n" index; *)
         if var_index = index then f index
 
-      method! visit_Fun cutoff _ input_type body =
-        CCOpt.iter (self#visit_expr cutoff) input_type;
-        self#check_under_binder cutoff body
+      method! visit_Fun index _ input_type body =
+        Option.iter (self#visit_expr index) input_type;
+        self#check_under_binder index body
         (* let body = self#visit_expr (self#incr_cutoff cutoff) body in *)
 
       method! visit_abstraction index {expr; body; _} =
@@ -250,11 +251,18 @@ let do_if_index_present index f =
         (* let body = self#visit_expr (self#incr_cutoff cutoff) body in *)
 
       method! visit_Let index abstraction ascribed_type =
-        CCOpt.iter (self#visit_expr index) ascribed_type;
+        Option.iter (self#visit_expr index) ascribed_type;
         self#visit_abstraction index abstraction
 
-      method! visit_match_binding cutoff {match_body; _} =
-        self#check_under_binder cutoff match_body
+      method! visit_match_binding index {match_body; _} =
+        self#check_under_binder index match_body
+
+      (* Here we need to increment the index by 2 since the body is hidden under
+      2 binders. *)
+      method! visit_Exists_elim index expr _ _ body =
+        self#visit_expr index expr;
+        let index = Location.update_data index @@ (+) 2 in
+        self#visit_expr index body
 
       (* Increment the index whenever we go under a binder. *)
       method check_under_binder {data=index; _} expr =
@@ -265,7 +273,7 @@ let do_if_index_present index f =
       (* Unused dummies. *)
       method visit_'a _ _ = ()
       method build_located _ _ _ _ = ()
-  end in v#visit_expr @@ Location.locate index
+  end in visitor#visit_expr @@ Location.locate index
 
 type 'a list_of_exprs = 'a expr list
 [@@deriving show]

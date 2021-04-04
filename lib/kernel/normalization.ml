@@ -17,7 +17,7 @@ let subst from_index to_expr =
         if index = from_index then to_expr.data else Var index
 
       method! visit_Fun from_to input_var input_type body =
-        let input_type = CCOpt.map (self#visit_expr from_to) input_type in
+        let input_type = Option.map (self#visit_expr from_to) input_type in
         let body = self#subst_under_binder from_to body in
         Ast.Fun {input_var; input_type; body}
 
@@ -58,15 +58,15 @@ let beta_reduce body arg =
 let normalize ctx =
   let v =
     object (self)
-      inherit [_] Ast.ast_mapper
+      inherit [_] Ast.ast_mapper as super
 
       (* Lookup the variable in the context. If it's there, take the binding.
       Otherwise, return the original variable *)
       method! visit_Var {data=ctx; _} index =
         index
         |> Context.get_binding ctx
-        |> CCOpt.map Location.data
-        |> CCOpt.get_or ~default:(Ast.Var index)
+        |> Option.map Location.data
+        |> Option.get_or ~default:(Ast.Var index)
 
       method! visit_Ascription ctx expr _ =
         self#visit_raw_expr ctx expr.data
@@ -98,22 +98,46 @@ let normalize ctx =
         {match_var; match_body}
 
       method! visit_Match ctx expr inl inr =
-        expr
-        |> self#visit_expr ctx
-        |> Location.data
-        |> begin
-            function 
-            | Ast.Inl expr -> 
-              let inl_body = beta_reduce inl.match_body expr in
-              self#visit_raw_expr ctx inl_body.data
-            | Ast.Inr expr ->
-              let inr_body = beta_reduce inr.match_body expr in
-              self#visit_raw_expr ctx inr_body.data
-            | _ ->
+        let expr = self#visit_expr ctx expr in
+        let normalize_branch expr branch =
+          branch
+          |> Ast.match_body
+          |> Fun.flip beta_reduce expr
+          |> Location.data
+          |> self#visit_raw_expr ctx
+        in expr
+           |> Location.data
+           |> begin function 
+              | Ast.Inl expr -> normalize_branch expr inl
+              | Ast.Inr expr -> normalize_branch expr inr
+             (* let inl_body = beta_reduce inl.match_body expr in
+             self#visit_raw_expr ctx inl_body.data *)
+           (* | Ast.Inr expr ->
+             let inr_body = beta_reduce inr.match_body expr in
+             self#visit_raw_expr ctx inr_body.data *)
+              (* Handle the case when expr normalizes to a neutral term. *)
+              | _ ->
                 let inl = self#visit_match_binding ctx inl in
                 let inr = self#visit_match_binding ctx inr in
                 Ast.Match {expr; inl; inr}
           end
+
+      method! visit_Exists_elim ctx expr witness_var witness_cert body =
+        let expr = self#visit_expr ctx expr in
+        expr
+        |> Location.data
+        |> begin function
+           | Ast.Exists_pair {left; right} ->
+            body
+            |> Fun.flip beta_reduce left
+            |> Fun.flip beta_reduce right
+            |> Location.data
+            |> self#visit_raw_expr ctx 
+           | _ ->
+            body
+            |> super#visit_Exists_elim_body ctx witness_var witness_cert
+            |> fun body -> Ast.Exists_elim {expr; witness_var; witness_cert; body}
+           end
 
       (* Handy method for adding bindings to contexts wrapped with a location. *)
       method add_binding input_var ctx =
