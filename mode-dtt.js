@@ -18,23 +18,21 @@ ace.define("ace/mode/dtt_highlighting_rules", ["require", "exports", "module", "
               {
                   token: "keyword.operator",
                   regex: "match|with|end|let|in|\\:|\\:\\=|\\=>|⇒|\\|"
+              },
+              {
+                token: 'punctuation.definition.comment',
+                regex: '--.*',
+                push_: [
+                  {
+                    token: 'comment.line.double-dash',
+                    regex: '$',
+                    next: 'pop'
+                  },
+                  {
+                    defaultToken: 'comment.line.double-dash'
+                  }
+                ]
               }
-          ],
-          "#comments": [
-            {
-              token: 'punctuation.definition.comment',
-              regex: '--.*',
-              push_: [
-                {
-                  token: 'comment.line.double-dash',
-                  regex: '$',
-                  next: 'pop'
-                },
-                {
-                  defaultToken: 'comment.line.double-dash'
-                }
-              ]
-            }
           ]
       };
 
