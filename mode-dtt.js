@@ -20,7 +20,7 @@ ace.define("ace/mode/dtt_highlighting_rules", ["require", "exports", "module", "
                   regex: "match|with|end|let|in|\\:|\\:\\=|\\=>|⇒|\\|"
               }
           ],
-          "comments": [
+          "#comments": [
             {
               token: 'punctuation.definition.comment',
               regex: '--.*',
