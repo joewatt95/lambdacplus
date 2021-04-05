@@ -13,7 +13,7 @@ ace.define("ace/mode/dtt_highlighting_rules", ["require", "exports", "module", "
               },
               {
                   token: "keyword.other",
-                  regex: "fun|λ|lambda|Pi|Π|∏|∀|forall|∃|exists|fst|snd|inl|inr|->|→|*|⨯|∧|/\\|+|∨|\\/|Type|Prop|Kind"
+                  regex: "fun|λ|lambda|Pi|Π|∏|∀|forall|∃|exists|fst|snd|inl|inr|->|→|\*|⨯|∧|/\\|+|∨|\\/|Type|Prop|Kind"
               },
               {
                   token: "keyword.operator",
