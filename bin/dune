@@ -1,5 +1,8 @@
 (executable
  (name main)
  (libraries containers
+            js_of_ocaml
             cs4215_dependent_types)
- (modes js))
+ (modes js)
+ (preprocess (pps js_of_ocaml-ppx))
+ )

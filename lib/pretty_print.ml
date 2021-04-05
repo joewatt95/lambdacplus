@@ -2,9 +2,8 @@ open Containers
 open Common
 
  let unparse =
-  let uncurry3_sprintf = Fun.(Printf.sprintf %> Common.Utils.uncurry3) in
   let v = 
-    object
+    object (self)
       inherit [_] Ast.ast_folder as super
       (* To unparse variables, simply return the variable name associated with
          them. *)
@@ -14,9 +13,16 @@ open Common
 
       method build_abstraction _ var_name expr body = (var_name, expr, body) 
 
-      method build_Pi _ = uncurry3_sprintf "(∏ (%s : %s), %s)"
+      method build_pi_sigma fmt1 fmt2 (var_name, input_type, output_type) =
+         match var_name with
+        | "_" -> Printf.sprintf fmt1 input_type output_type
+        | _ -> Printf.sprintf fmt2 var_name input_type output_type
 
-      method build_Sigma _ = uncurry3_sprintf "(Σ (%s : %s), %s)"
+      method build_Pi _ =
+        self#build_pi_sigma "(%s → %s)" "(∏ (%s : %s), %s)"
+
+      method build_Sigma _ =
+        self#build_pi_sigma "(%s * %s)" "(Σ (%s : %s), %s)"
 
       method build_Fun env input_var input_type body = 
         match input_type with
@@ -30,7 +36,15 @@ open Common
 
       method build_App _ = Fun.uncurry @@ Printf.sprintf "(%s %s)"
 
-      method build_Let _ = uncurry3_sprintf "(let %s := %s in %s)"
+      method build_Let env (var_name, binding, body) ascribed_type = 
+          match ascribed_type with
+        | Some input_type ->
+          input_type
+          |> super#visit_expr env
+          |> fun ascribed_type -> 
+              Printf.sprintf "let %s : %s := %s in %s" var_name ascribed_type binding body
+        | None ->
+          Printf.sprintf "(let %s := %s in %s)" var_name binding body
 
       method build_Ascription _ = Printf.sprintf "(%s : %s)"
 
@@ -51,6 +65,21 @@ open Common
       method build_Inr _ = Printf.sprintf "(inr %s)" 
 
       method build_pair _ left right = (left, right)
+
+      method build_Exists _ (var_name, input_type, output_type) =
+        Printf.sprintf "(∃ %s : %s, %s)" var_name input_type output_type
+
+      method build_Let_pair _ expr left_var right_var binding =
+        Printf.sprintf "(let (%s, %s) := %s in %s)" left_var right_var expr binding
+
+      (* method build_Exists_elim _ = 
+        Fun.uncurry @@ Printf.sprintf "(exists_elim %s %s)" *)
+
+      method build_Exists_pair _ = Fun.uncurry @@ Printf.sprintf "{%s, %s}"
+
+      method build_Exists_elim _ expr witness_var witness_cert body=
+         Printf.sprintf "(let {%s, %s} := %s in %s)"
+         witness_var witness_cert expr body
 
       (* method build_Let_pair _ = Printf.sprintf "let (%s, %s) := %s in %s" *)
 

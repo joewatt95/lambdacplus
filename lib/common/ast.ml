@@ -27,11 +27,10 @@ and 'a abstraction = {
 }
 
 (* Used to represent the 2 clauses of match expressions, ie: 
-   inl `match_var` -> `match_body`
-   inr `match_var` -> `match_body`
-  *)
+inl `match_var` -> `match_body`
+inr `match_var` -> `match_body` *)
 and 'a match_binding = {
-  match_var : (string [@visitors.opaque]);
+  match_var : (string [@visitors.opaque] [@equal Utils.always_true]);
   match_body : 'a expr;
 }
 
@@ -45,16 +44,18 @@ and 'a pair = {
 (* Raw expressions *)
 and 'a raw_expr =
   (* 2 sorted universe *)
-  | Type
-  | Kind
-  (* Variables *)
+  | Type | Kind
+
+  (* Variables
+  'a is string for the parser's AST and int for the internal AST using de
+  bruijn indices.  *)
   | Var of ('a [@visitors.opaque])
 
   (* Pi types *)
   | Pi of 'a abstraction 
   | Fun of
     { input_var : (string [@visitors.opaque] [@equal Utils.always_true]);
-      input_type : ('a expr option [@visitors.opaque]);
+      input_type : ('a expr option [@visitors.opaque] [@equal Utils.always_true]);
       body : 'a expr }
   | App of 'a pair
 
@@ -64,10 +65,26 @@ and 'a raw_expr =
   | Fst of 'a expr
   | Snd of 'a expr
 
+  (* Existential quantifier *)
+  | Exists_pair of 'a pair
+  | Exists of 'a abstraction
+
+  (* let {witness_var, witness_cert} := expr in body *)
+  | Exists_elim of 
+    { expr : 'a expr; 
+      witness_var : (string [@visitors.opaque] [@equal Utils.always_true]);
+      witness_cert: (string [@visitors.opaque] [@equal Utils.always_true]);
+      (* witness_prop : 'a expr; *)
+      body : 'a expr }
+
   (* Sum types *)
   | Sum of 'a pair
   | Inl of 'a expr
   | Inr of 'a expr
+
+  (* match expr with
+     | inl
+     | inr *)
   | Match of 
     { expr : 'a expr; 
       inl : 'a match_binding; 
@@ -77,7 +94,9 @@ and 'a raw_expr =
   | Ascription of { expr : 'a expr; ascribed_type : 'a expr }
 
   (* Local let binding *)
-  | Let of 'a abstraction
+  | Let of 
+    { abstraction : 'a abstraction; 
+      ascribed_type : ('a expr option [@visitors.opaque]) }
 
   (* | Let_pair of
     { left_var : (string [@visitors.opaque]);
@@ -85,22 +104,70 @@ and 'a raw_expr =
       binding : 'a expr;
       body : 'a expr } *)
 
+(* Derive show, fields and eq methods ala Haskell. *)
 [@@deriving show, fields, eq,
-  visitors {variety="map"; ancestors=["Location.fold"]}, 
-  visitors {variety="fold"; ancestors=["Location.fold"]}]
+  (* Use the visitors package to derive functions that map and fold over our AST. *)
+  visitors {variety="map"; ancestors=["Location.fold"]},
+  visitors {variety="fold"; ancestors=["Location.fold"]},
+  visitors {variety="iter"; ancestors=["Location.fold"]}]
 
 let located_kind = Location.locate Kind
 
 (* Template for defining functions that map over the AST while preserving source
-   locations. *)
+locations. This is used by the functions which traverse our AST and perform
+the shift, substitute and normalize operations.
+
+Note that we don't need to impement the visit_App, visit_Type,
+visit_Kind and visit_Ascription methods since the Visitors package
+automatically handles all that boilerplate for us.
+
+We only need to override methods that visit AST nodes which contain binders
+since that is where we need to do something that differs from the default
+visiting strategy.
+
+`env` is a parameter that is threaded through all the mapping operations.
+We use this to carry information as we traverse deeper into our AST.
+*)
 class virtual ['self] ast_mapper =
-  object (_ : 'self)
+  object (self : 'self)
     inherit [_] map as super
 
-    method! visit_expr env ({data; _} as expr) = 
-      data
-      |> super#visit_raw_expr env
-      |> Location.set_data expr
+    (* Map over the underlying raw expression and preserve the source location. *)
+    method! visit_expr env expr =
+      Location.update_data expr @@ super#visit_raw_expr env
+
+    (* Existential elimination expressions are to be treated as binary functions
+    for mapping operations like shifting, substitution and normalization.
+    To map over `let {witness_var, witness_cert} := expr in body`, we 
+    map over expr and then we transform the body to
+    `fun witness_var => fun witness_cert => E'`
+    and then map over that.
+    This saves us the trouble of having to worry about binders and shifting
+    indices. *)
+    method visit_Exists_elim_body env witness_var witness_cert body =
+      let make_fun input_var body = Fun {input_var; body; input_type=None} in
+      body
+      (* Construct fun witness_cert => body*)
+      |> make_fun witness_cert
+      |> Location.locate
+      (* Construct fun witness_var => fun witness_cert => body *)
+      |> make_fun witness_var
+      (* Map over this new AST node *)
+      |> self#visit_raw_expr env
+      (* Pull apart fun witness_var => fun witness_cert => body and grab the 
+      body *)
+      |> begin function
+         | Fun {body={data=Fun {body; _}; _}; _} -> body 
+
+         (* Nothing else is possible. *)
+         | _ -> assert false
+         end
+
+    method! visit_Exists_elim cutoff expr witness_var witness_cert body =
+      let expr = self#visit_expr cutoff expr in
+      let body =
+        self#visit_Exists_elim_body cutoff witness_var witness_cert body in
+      Exists_elim {expr; witness_var; witness_cert; body}
 
     (* These are never called. *)
     method visit_'a _ _ = located_kind
@@ -116,19 +183,21 @@ class virtual ['self] ast_folder =
     method! visit_expr env {data; _} = super#visit_raw_expr env data
   end
 
-(* Shift operation for de bruijn ASTs. *)
+(* Shift operation for de bruijn ASTs. The main thing to bear in mind is that
+the cutoff index must be incremented whenever we go under a binder. *)
 let shift shift_by =
-  let v = 
+  let visitor = 
     object (self) 
       inherit [_] ast_mapper
 
+      (* If the index at the variable is at least `cutoff`, we shift it by
+      `shift_by`. *)
       method! visit_Var {data=cutoff; _} index =
         if index >= cutoff then Var (index + shift_by) else Var index 
 
       method! visit_Fun cutoff input_var input_type body =
-        let input_type = CCOpt.map (self#visit_expr cutoff) input_type in
+        let input_type = Option.map (self#visit_expr cutoff) input_type in
         let body = self#shift_under_binder cutoff body in
-        (* let body = self#visit_expr (self#incr_cutoff cutoff) body in *)
         Fun {input_var; input_type; body}
 
       method! visit_abstraction cutoff {var_name; expr; body} =
@@ -136,6 +205,11 @@ let shift shift_by =
         let body = self#shift_under_binder cutoff body in
         (* let body = self#visit_expr (self#incr_cutoff cutoff) body in *)
         {var_name; expr; body}
+
+      method! visit_Let cutoff abstraction ascribed_type =
+        let ascribed_type = Option.map (self#visit_expr cutoff) ascribed_type in
+        let abstraction = self#visit_abstraction cutoff abstraction in
+        Let {abstraction; ascribed_type} 
 
       method! visit_match_binding cutoff {match_var; match_body} =
         let match_body = self#shift_under_binder cutoff match_body in
@@ -149,21 +223,68 @@ let shift shift_by =
       (* Increment the cutoff whenever we go under a binder. *)
       method shift_under_binder {data=cutoff; _} expr =
         let new_cutoff = Location.locate @@ cutoff + 1 in
-        self#visit_expr new_cutoff expr 
+        self#visit_expr new_cutoff expr
+      
+  end in visitor#visit_expr @@ Location.locate 0
 
-      (* method shift_under_single_binder = self#shift_under_binder 1 *)
+(* Search for variables with de bruijn index of `index` in the AST. If
+any such indices are found, `f` is called.
+As before, the key thing is to increment the indices whenever we go under a 
+binder. *)
+let do_if_index_present index f =
+  let visitor =
+    object (self)
+      inherit [_] iter as super
 
-      (* Note that we don't need to impement the visit_App, visit_Type,
-         visit_Kind and visit_Ascription methods since the Visitors package
-         automatically handles all that boilerplate for us. *)
-  end in v#visit_expr @@ Location.locate 0
+      method! visit_Var {data=index; _} var_index =
+        (* Printf.printf "Var index: %d\n" var_index;
+        Printf.printf "Looking for: %d\n" index; *)
+        if var_index = index then f index
+
+      method! visit_Fun index _ input_type body =
+        Option.iter (self#visit_expr index) input_type;
+        self#check_under_binder index body
+        (* let body = self#visit_expr (self#incr_cutoff cutoff) body in *)
+
+      method! visit_abstraction index {expr; body; _} =
+        self#visit_expr index expr;
+        self#check_under_binder index body
+        (* let body = self#visit_expr (self#incr_cutoff cutoff) body in *)
+
+      method! visit_Let index abstraction ascribed_type =
+        Option.iter (self#visit_expr index) ascribed_type;
+        self#visit_abstraction index abstraction
+
+      method! visit_match_binding index {match_body; _} =
+        self#check_under_binder index match_body
+
+      (* Here we need to increment the index by 2 since the body is hidden under
+      2 binders. *)
+      method! visit_Exists_elim index expr _ _ body =
+        self#visit_expr index expr;
+        let index = Location.update_data index @@ (+) 2 in
+        self#visit_expr index body
+
+      (* Increment the index whenever we go under a binder. *)
+      method check_under_binder {data=index; _} expr =
+        self#visit_expr (Location.locate @@ index + 1) expr 
+
+      method! visit_expr index {data; _} = super#visit_raw_expr index data
+
+      (* Unused dummies. *)
+      method visit_'a _ _ = ()
+      method build_located _ _ _ _ = ()
+  end in visitor#visit_expr @@ Location.locate index
 
 type 'a list_of_exprs = 'a expr list
 [@@deriving show]
 
-type 'a stmt = 'a raw_stmt Location.located 
+(* Statements *)
+type 'a stmt = 'a raw_stmt Location.located
 and 'a raw_stmt =
-  | Def of {var_name : string; binding : 'a expr}
+  | Def of {var_name : string; 
+            binding : 'a expr; 
+            ascribed_type : ('a expr option [@visitors.opaque] [@Utils.always_true])}
   | Axiom of {var_name : string; var_type : 'a expr}
   | Check of 'a expr
   | Eval of 'a expr
@@ -171,41 +292,3 @@ and 'a raw_stmt =
 
 type 'a list_of_stmts = 'a stmt list
 [@@deriving show]
-
-(* let shift shift_by (expr : expr) =
-  let rec shift_raw_expr cutoff raw_expr =
-    match raw_expr with
-    | Type | Kind -> raw_expr
-
-    | Var index as var ->
-      if index >= cutoff then Var (index + shift_by) else var
-
-    | Pi {input_var; input_type; output_type} ->
-      let input_type = shift_expr cutoff input_type in
-      let output_type = shift_expr (cutoff + 1) output_type in
-      Pi {input_var; input_type; output_type}
-
-    | Fun {input_var; input_type; body} ->
-      let input_type = CCOpt.map (shift_expr cutoff) input_type in
-      let body = shift_expr (cutoff + 1) body in
-      Fun {input_var; input_type; body}
-
-    | App {fn; arg} ->
-      let fn = shift_expr cutoff fn in
-      let arg = shift_expr cutoff arg in
-      App {fn; arg}
-
-    | Ascription {expr; expr_type} ->
-      let expr = shift_expr cutoff expr in
-      let expr_type = shift_expr cutoff expr_type in
-      Ascription {expr; expr_type}
-    
-    | Let {var_name; binding; body} ->
-      let binding = shift_expr cutoff binding in
-      let body = shift_expr (cutoff + 1) body in
-      Let {var_name; binding; body}
-
-  and shift_expr cutoff expr =
-    Loc.update_data expr @@ shift_raw_expr cutoff
-
-  in shift_expr 0 expr *)

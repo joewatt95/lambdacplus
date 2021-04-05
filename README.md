@@ -9,6 +9,85 @@ intuitionistic logic.
 ### Specs
 Refer to the `latex` directory.
 
+## Web interface
+For an easy to use this language, download the `index.html` and `main.bc.js`
+files found in the main project directory. Then open the html file in your
+preferred browser. A friendly web-based IDE powered by the ACE editor will be
+there to greet you.
+
+## Sample proof
+```lean
+-- Formalization of Lawvere's fixed point theorem, which captures the essence of
+-- the diagonal argument as found in Cantor's famous theorem on cardinality.
+
+constant X : Type
+constant Y : Type
+
+-- Definition of equality.
+-- Technically it's a type constructor parameterized by X : Type.
+constant eq : forall (X : Type) (x : X) (y : X), Prop
+
+-- Reflexivity of =
+axiom eq_refl : forall (X : Type) (x : X), eq X x x
+
+-- Symmetry of =
+axiom eq_symm : forall (X : Type) (x : X) (y : X), (eq X x y) -> (eq X y x)
+
+-- Transitivity of =
+axiom eq_trans : 
+    forall (X : Type) (x : X) (y : X) (z : X),
+        (eq X x y) -> (eq X y z) -> (eq X x z)
+
+-- If 2 functions are equal f = g, then f x = g x for every x : X.
+axiom congr_fun :
+  forall (f : X -> Y) (g : X -> Y),
+    (eq (X -> Y) f g) -> (forall x : X, eq Y (f x) (g x))
+
+-- f has a fixed point if f x = x for some x : X.
+def has_fixed_point :=
+  fun (X : Type) (f : X -> X) => exists x : X, eq X (f x) x
+
+-- f is surjective
+def surjective :=
+  fun (X : Type) (Y : Type) (f : X -> Y) => forall y : Y, exists x : X, eq Y (f x) y
+
+theorem cantor :
+(exists g : X -> X -> Y, surjective X (X -> Y) g) -> forall f : Y -> Y, has_fixed_point Y f := 
+  assume h (f : Y -> Y),
+    -- Existential elimination to pull apart h.
+    let {g, this} := h in
+
+    -- Define the diagonal function. This picks out the elements along the diagonal
+    -- and flips them around using f.
+    let diag : X -> Y := fun x => f (g x x) in
+
+    -- Since g : X -> X -> Y, there must be some x : X with g x = diag
+    -- Grab the witness, x, and the proof that g x = diag.
+    have exists x : X, eq (X -> Y) (g x) diag, from this diag,
+    let {x, this} := this in
+
+    -- Next we have some boring manipulations using the axioms of equality to
+    -- establish that (g x x) = f (g x x) and then flip the equality around.
+
+    -- Since (g x) and diag are equal as functions, g x x = diag x
+    have h1 : eq Y (g x x) (diag x), from congr_fun (g x) diag this x,
+
+    -- diag x = f (g x x) must hold for this specific x we're working with because
+    -- that's the definition of the diagonal function, diag
+    have h2 : eq Y (diag x) (f (g x x)), from eq_refl Y (diag x),
+    -- By transitivity, g x x = f (g x x)
+    have eq Y (g x x) (f (g x x)), from 
+      eq_trans Y (g x x) (diag x) (f (g x x)) h1 h2,
+    -- By symmetry, f (g x x) = g x x
+    have eq Y (f (g x x)) (g x x), from eq_symm Y (g x x) (f (g x x)) this,
+ 
+    -- Use (g x x) and h to witness the existentially quantified statement that f
+    -- has a fixed point.
+    show has_fixed_point Y f, from {g x x, this}
+```
+
+More sample programs can be found in the `sample_programs` directory.
+
 ## Usage
 This section is heavily based on [this example](https://github.com/esy-ocaml/hello-ocaml).
 
@@ -50,61 +129,19 @@ $ node ./_esy/default/build/default/bin/main.bc.js
 To ease testing, the `run_main.sh` script has been provided with the command
 `esy ./_esy/default/build/default/bin/main.bc`.
 
-## Sample execution
-```shell
-$ ./run_main.sh 
-Enter input:
-// Assume that A and B are types.
-constant A : Type
-constant B : Type
-
-// Assume that R is a binary relation on A x B.
-// Technically speaking, R is a predicate symbol and these are
-// represented by type constructors in the Curry Howard interpretation of
-// logic.
-constant R : A -> B -> Prop
-
-// Further assume that every (a : A) is related to some (b : B).
-axiom R_left_total : ∀ a : A, ∃ b : B, R a b
-
-// We define a choice function using the explicit witness provided by the
-// constructive existential quantifier.
-def f := λ (a : A) =>
-  let exists_b_Rab := R_left_total a in
-  fst exists_b_Rab
-
-// pf is a proof that given an arbitrary (a : A), a is really related to (f a). 
-def pf := λ (a : A) => snd (R_left_total a)
-
-// Use f and pf to witness the existential below.
-check ((f, pf) : ∃ f : A -> B, ∀ a : A, R a (f a))
-
-Here's the output:
-(Σ (f' : (∏ (_ : A), B)), (∏ (a : A), ((R a) (f' a))))
-
-```
-
-More sample programs can be found in the `sample_programs` directory.
-
-## Current status
-### Implemented types
+## Implemented types
 - Pi types for universal quantification
 - Sigma types for
-  - existential quantifier
   - subtype
   - conjunction
+- Existential type for existential quantifier
 - Sum types (aka coproduct or tagged union) for disjunction
 
-### What needs working on
-  - [ ] More testing
-  - [x] Better error reporting and error messages
-  - [x] Better pretty printing
-  - [ ] Glue code for tying everything together
-  - [ ] REPL environment
-  - [ ] Tie our code into Typescript frontend
-  - [ ] Unit, aka the singleton type, aka logical truth
-  - [ ] Void, aka the empty type, aka logical falsity
+## Project structure (Work in progress)
+### Overview of what happens when you enter a program
+Programs entered by the user are first parsed by the parser (found in `lib/parsing`).
 
+### Detailed breakdown of directory structure
 - `bin` currently contains only `main.ml` which contains the main entry point to
   interact with our language.
 - `lib` is our library which contains all the code making our language work.
@@ -118,16 +155,11 @@ More sample programs can be found in the `sample_programs` directory.
     statements. These include normalization, type checking and context management
     using de bruijn indices.
         - `context.ml` is the module implementing the context/environment.
-        The level of abstraction is controlled via the module signature found in
-        `context.mli`.
-        Contexts function like a list of triples of triples of the form
-                (var name string, type of var, binding)
-        - `normalization.ml` currently contains the `shift` and `subst`
-        functions for working with our AST using de bruijn indices.
-        We aim to implement the `normalize` function for expressions soon.
-        - `typing.ml` is currently empty. Eventually we will implement our
-        bidirectional typechecking algorithm here.
-        This will include the 2 key functions `check` and `infer`, where `infer`
+        - `normalization.ml` currently contains the `normalize`, `subst` and
+        `beta_reduce` functions. The latter 2 implement the substitution operation
+        for de bruijn ASTs.
+        - `typing.ml` implements our bidirectional typechecking algorithm.
+        This indluces the 2 key functions `check` and `infer`, where `infer`
         involves synthesizing the type, while `check` involves verifying if an
         expression has a given type.
         - `eval_statements.ml` contains functions for evaluating statements.
@@ -139,3 +171,5 @@ More sample programs can be found in the `sample_programs` directory.
    the internal AST and vice versa.
    - `error_reporting.ml` contains functions for handling errors that occur while
    running programs in our language. These include pretty printing of errors.
+   - `pretty_printing.ml` contains utilities for unparsing expressions and pretty
+   printing them.

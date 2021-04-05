@@ -3,11 +3,11 @@ constant Q : Prop
 
 axiom p_or_q : P + Q
 
-// proof of Q ∨ P
+-- proof of Q ∨ P
 def q_or_p :=
     match p_or_q with
-    | inr q -> (inl q : Q + P)
-    | inl p -> (inr p : Q + P)
+    | inr q => (inl q : Q + P)
+    | inl p => (inr p : Q + P)
     end
 
 check q_or_p

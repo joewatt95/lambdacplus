@@ -25,3 +25,4 @@ def pf := λ (a : A) => snd (R_left_total a)
 
 // Use f and pf to witness the existential below.
 check ((f, pf) : ∃ f : A -> B, ∀ a : A, R a (f a))
+

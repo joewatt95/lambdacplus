@@ -1,7 +1,12 @@
 open Containers
 open Common
 
-let fmt_err_encountered_str ((start_pos, end_pos) : Location.source_loc) =
+type err_loc = {
+    start_row : int; end_row : int;
+    start_col : int; end_col : int;
+}
+
+let fmt_err_encountered_str (start_pos, end_pos) err_str =
   let get_col (pos : Lexing.position) = pos.pos_cnum - pos.pos_bol + 1 in
   let start_char = get_col start_pos in
   let end_char = get_col end_pos in
@@ -12,7 +17,9 @@ let fmt_err_encountered_str ((start_pos, end_pos) : Location.source_loc) =
           else Printf.sprintf "line %d, col " end_line
   in
   Printf.sprintf "\nError encountered at line %d, col %d to %s%d.\n%s" 
-    start_line start_char s end_char
+    start_line start_char s end_char err_str,
+    { start_row = start_line - 1; end_row = end_line - 1; 
+      start_col = start_char; end_col = end_char }
 
 let fmt_parse_err_str = function
   | Parsing.Lexer.Syntax_error {lexeme; source_loc} ->
@@ -30,50 +37,103 @@ let fmt_parse_err_str = function
   
   | exc -> raise exc
 
-let fmt_eval_err_str naming_ctx exc =
-  let unparse = Pretty_print.unparse_internal_expr naming_ctx in
-  let unparse_raw = Fun.(Location.locate %> unparse) in
-  let unparse_expected_type = function
-    | Kernel.Typing.Exact expr -> unparse expr
-    | Kernel.Typing.Family str -> str
-  in
-  match exc with
+let unparse Kernel.Typing.{expr; ctx} = 
+  Pretty_print.unparse_internal_expr ctx expr
+
+(* Return the substring of `source_str` corresponding the source locations given
+by the `(start_pos, end_pos)`
+Note that `source_str` is an Ocaml string encoded in UTF8 and so some
+conversion needs to be done when slicing it.
+*)
+let get_from_source_str source_str 
+  Lexing.({pos_cnum=start_pos; _}, {pos_cnum=end_pos; _}) =
+   let open CCUtf8_string in
+   source_str
+   (* Convert the string to a utf8 bytestring *)
+   |> unsafe_of_string
+   (* Convert to a seq, starting from the index given by `start_pos` *)
+   |> to_seq ~idx:start_pos
+   (* Slice the seq until `end_pos` *)
+   |> Seq.take @@ end_pos - start_pos
+   (* Convert the string back to a utf8 bytestring *)
+   |> of_seq
+   (* Convert the string back to a normal Ocaml string *)
+   |> to_string
+
+let fmt_eval_err_str source_str =
+  let get_from_source_str = get_from_source_str source_str in
+  function
   | Kernel.Typing.Cannot_infer_type {data; source_loc} ->
-    let data_str = unparse_raw data in
+    (* let data_str = unparse_raw data in *)
     data
-    |> begin 
-        function
-        | Ast.Kind -> "'Kind' does not have a type."
-        | Ast.Fun _ -> Printf.sprintf
-          {|Unable to infer the type of the function '%s'.
+    |> begin function
+       | Ast.Kind -> "'Kind' does not have a type."
+       | Ast.Fun _ -> Printf.sprintf
+         {|Unable to infer the type of the function '%s'.
 Please either annotate the inputs or ascribe a type to the whole function.|}
-          data_str
-        | Ast.Pair _ -> Printf.sprintf
-          {|Unable to infer the type of the pair '%s'.contents
-Please ascribe a type to the pair constructor. |}
-          data_str
-        | _ -> assert false
-        end
+        (get_from_source_str source_loc)
+       | Ast.Pair _ -> Printf.sprintf
+         {|Unable to infer the type of the pair '%s'.
+Please ascribe a type to the it. |}
+        (get_from_source_str source_loc)
+       | Ast.Inl _  | Ast.Inr _ -> Printf.sprintf
+         {|Unable to infer the type of the sum constructor '%s'.
+Please ascribe a type to it. |}
+        (get_from_source_str source_loc)
+       | _ -> assert false
+       end
     |> fmt_err_encountered_str source_loc 
 
-  | Kernel.Typing.Ill_formed_type {expr={data; source_loc}; inferred_type} ->
-    (data, inferred_type)
-    |> fun (x, y) -> (unparse_raw x, unparse y)
-    |> Fun.uncurry @@ Printf.sprintf 
+  | Kernel.Typing.Ill_formed_type {expr={source_loc; _}; inferred_type} ->
+    let inferred_type = unparse inferred_type in
+    source_loc
+    |> get_from_source_str
+    |> fun str -> Printf.sprintf 
       {|'%s' is not a valid type or type constructor.
-It should have type 'Type' or 'Kind' but we inferred the type to be '%s' instead.|}
-  |> fmt_err_encountered_str source_loc  
+Its type was inferred to be '%s' but it should be 'Type' or 'Kind'.|}
+      str inferred_type
+  |> fmt_err_encountered_str source_loc
 
   | Kernel.Typing.Type_mismatch 
-    {outer_expr={data=outer_expr_data; source_loc};
-     expr={data=expr_data; _}; inferred_type; expected_type} ->
-    (* print_endline @@ Ast.show_expr Format.pp_print_int inferred_type;
-    print_endline @@ Kernel.Context.show naming_ctx; *)
-    (outer_expr_data, expr_data, inferred_type, expected_type)
-    |> fun (w, x, y, z) -> (unparse_raw w, unparse_raw x, unparse y, unparse_expected_type z)
-    |> fun (w, x, y, z) -> Printf.sprintf
-    {|While typechecking '%s', '%s' was inferred to have type '%s'.
-However, the expected type is '%s'.|} w x y z
+    { outer_expr={source_loc=outer_source_loc; _};
+      expr={source_loc=inner_source_loc; _};
+      expected_type; inferred_type} -> 
+    (* let outer_expr = get_from_source_str outer_source_loc in *)
+    let inner_expr = get_from_source_str inner_source_loc in
+    let inferred_type = unparse inferred_type in
+    let expected_type =
+      begin match expected_type with
+      | Family str -> str
+      | Exact {source_loc; _} -> get_from_source_str source_loc
+      end
+    in
+    Printf.sprintf
+    {|Type mismatch! While typechecking the underlined expression, 
+'%s' was inferred to have type '%s'. 
+It was expected to be '%s'.|}
+    inner_expr inferred_type expected_type
+    |> fmt_err_encountered_str outer_source_loc
+
+    | Kernel.Typing.Type_mismatch_in_match
+      { outer_expr={source_loc; _};
+        inl_type; inr_type} ->
+      Printf.sprintf
+      {|Type mismatch! While typechecking the underlined match expression, 
+the left and right branches were found to have different types.
+Type of left branch: %s
+Type of right branch: %s.|}
+      (unparse inl_type) (unparse inr_type)
+    |> fmt_err_encountered_str source_loc
+    
+  | Kernel.Typing.Type_contains_free_var
+    { outer_expr={source_loc; _}; free_var; inferred_type } -> 
+    Printf.sprintf
+    {|While typechecking the underlined expression, the body was inferred to 
+have type '%s' which contains '%s' free.
+The variable used for the witness must be discharged before you can conclude a
+proof by existential elimination!
+|}
+    (unparse inferred_type) free_var
     |> fmt_err_encountered_str source_loc
 
-  | exc -> raise exc
+  | exn -> raise exn

@@ -1,11 +1,9 @@
 open Containers
 
-(* Implementation of Ast.shift, subst and normalize for expressions.
-   These closely follow those found in the Types and Programming Languages book,
-   with adjustments made to handle the dependent Pi type.
-
-   The key idea is that Ast.shifting need only be done whenever we go underneath a
-   binder, so we don't Ast.shift when we handle the input_type in Pi.
+(* Implementation of subst and normalize for expressions.
+   These closely follow those found in the Types and Programming Languages book.
+   The key modification is that we now have many more kinds of binders than just
+   lambdas.
 *)
 open Common
 
@@ -19,17 +17,17 @@ let subst from_index to_expr =
         if index = from_index then to_expr.data else Var index
 
       method! visit_Fun from_to input_var input_type body =
-        let input_type = CCOpt.map (self#visit_expr from_to) input_type in
-        let body = self#subst_under_single_binder from_to body in
+        let input_type = Option.map (self#visit_expr from_to) input_type in
+        let body = self#subst_under_binder from_to body in
         Ast.Fun {input_var; input_type; body}
 
       method! visit_abstraction from_to {var_name; expr; body} =
         let expr = self#visit_expr from_to expr in
-        let body = self#subst_under_single_binder from_to body in
+        let body = self#subst_under_binder from_to body in
         {var_name; expr; body}
 
       method! visit_match_binding from_to {match_var; match_body} =
-        let match_body = self#subst_under_single_binder from_to match_body in
+        let match_body = self#subst_under_binder from_to match_body in
         {match_var; match_body}
 
       (* method! visit_Let_pair from_to left_var right_var binding body =
@@ -39,12 +37,10 @@ let subst from_index to_expr =
 
       (* Handy helper function for performing substitutions under binders.
          These include lambda and Pi. *)
-      method subst_under_binder num_binders {data=(from_index, to_expr); _} = 
+      method subst_under_binder {data=(from_index, to_expr); _} = 
         to_expr
-        |> Ast.shift num_binders
-        |> fun to_expr -> self#visit_expr @@ Location.locate (from_index + num_binders, to_expr)
-      
-      method subst_under_single_binder = self#subst_under_binder 1
+        |> Ast.shift 1
+        |> fun to_expr -> self#visit_expr @@ Location.locate (from_index + 1, to_expr)
 
       (* Note that we don't need to override the default methods that the Visitors
          package generates for visit_Type, visit_Kind, visit_App and 
@@ -62,20 +58,23 @@ let beta_reduce body arg =
 let normalize ctx =
   let v =
     object (self)
-      inherit [_] Ast.ast_mapper
+      inherit [_] Ast.ast_mapper as super
 
+      (* Lookup the variable in the context. If it's there, take the binding.
+      Otherwise, return the original variable *)
       method! visit_Var {data=ctx; _} index =
         index
         |> Context.get_binding ctx
-        |> CCOpt.map Location.data
-        |> CCOpt.get_or ~default:(Ast.Var index)
+        |> Option.map Location.data
+        |> Option.get_or ~default:(Ast.Var index)
 
       method! visit_Ascription ctx expr _ =
         self#visit_raw_expr ctx expr.data
 
       method! visit_App ctx {left=fn; right=arg} =
+        let fn = self#visit_expr ctx fn in
         let arg = self#visit_expr ctx arg in
-        match self#visit_raw_expr ctx fn.data with
+        match fn.data with
         | Ast.Fun {body; _} ->
           let body = beta_reduce body arg in
           self#visit_raw_expr ctx body.data
@@ -99,30 +98,69 @@ let normalize ctx =
         {match_var; match_body}
 
       method! visit_Match ctx expr inl inr =
-        expr
-        |> self#visit_expr ctx
-        |> Location.data
-        |> begin
-            function 
-            | Ast.Inl expr -> 
-              let inl_body = beta_reduce inl.match_body expr in
-              self#visit_raw_expr ctx inl_body.data
-            | Ast.Inr expr ->
-              let inr_body = beta_reduce inr.match_body expr in
-              self#visit_raw_expr ctx inr_body.data
-            | _ ->
+        let expr = self#visit_expr ctx expr in
+        let normalize_branch expr branch =
+          branch
+          |> Ast.match_body
+          |> Fun.flip beta_reduce expr
+          |> Location.data
+          |> self#visit_raw_expr ctx
+        in expr
+           |> Location.data
+           |> begin function 
+              | Ast.Inl expr -> normalize_branch expr inl
+              | Ast.Inr expr -> normalize_branch expr inr
+             (* let inl_body = beta_reduce inl.match_body expr in
+             self#visit_raw_expr ctx inl_body.data *)
+           (* | Ast.Inr expr ->
+             let inr_body = beta_reduce inr.match_body expr in
+             self#visit_raw_expr ctx inr_body.data *)
+              (* Handle the case when expr normalizes to a neutral term. *)
+              | _ ->
                 let inl = self#visit_match_binding ctx inl in
                 let inr = self#visit_match_binding ctx inr in
                 Ast.Match {expr; inl; inr}
           end
 
-      method add_binding input_var ctx =
-          Location.update_data ctx @@ fun ctx -> Context.add_binding input_var ctx
+      method! visit_Exists_elim ctx expr witness_var witness_cert body =
+        let expr = self#visit_expr ctx expr in
+        expr
+        |> Location.data
+        |> begin function
+           | Ast.Exists_pair {left; right} ->
+            body
+            |> Fun.flip beta_reduce left
+            |> Fun.flip beta_reduce right
+            |> Location.data
+            |> self#visit_raw_expr ctx
+           | _ ->
+            body
+            |> super#visit_Exists_elim_body ctx witness_var witness_cert
+            |> fun body -> Ast.Exists_elim {expr; witness_var; witness_cert; body}
+           end
 
-      method! visit_Let ctx {expr=binding; body; _} =
+      (* Handy method for adding bindings to contexts wrapped with a location. *)
+      method add_binding input_var ctx =
+          Location.update_data ctx @@ Context.add_binding input_var
+
+      method! visit_Let ctx {expr=binding; body; _} _ =
+        (* let fn = Location.locate @@ Ast.Fun {input_type=None; input_var="dummy"; body} in 
+        self#visit_App ctx {left=fn; right=binding} *)
         let binding = self#visit_expr ctx binding in
         let body = beta_reduce body binding in
         self#visit_raw_expr ctx body.data
+
+      method! visit_Fst ctx expr =
+        let expr = self#visit_expr ctx expr in
+        match expr.data with
+        | Ast.Pair {left; _} -> self#visit_raw_expr ctx left.data
+        | _ -> Ast.Fst expr
+
+      method! visit_Snd ctx expr =
+        let expr = self#visit_expr ctx expr in
+        match expr.data with
+        | Ast.Pair {right;_} -> self#visit_raw_expr ctx right.data
+        | _ -> Ast.Snd expr
 
       (* method! visit_Let_pair ctx _  _ binding body =
         let binding = self#visit_expr ctx binding in
@@ -133,40 +171,3 @@ let normalize ctx =
         |> self#visit_raw_expr ctx  *)
 
   end in v#visit_expr @@ Location.locate ctx
-
-(* let rec normalize ctx (expr : Ast.expr) =
-  match expr.data with
-  | Ast.Type | Ast.Kind -> expr
-  | Ast.Var index -> 
-    index
-    |> Context.get_binding ctx
-    |> CCOpt.get_or ~default:expr
-  
-  | Ast.Ascription {expr; _} -> normalize ctx expr
-
-  | Ast.App {fn; arg} ->
-    begin
-      match (normalize ctx fn).data with
-      | Ast.Fun {body; _} ->
-        let arg = normalize ctx arg in
-        let body = beta_reduce body arg in
-        normalize ctx body
-      | Var _ -> expr
-      | _ -> assert false
-    end
-
-  | Ast.Fun {input_var; body; _} ->
-    let ctx = Context.add_binding input_var ctx in
-    let body = normalize ctx body in
-    Loc.set_data expr @@ Ast.Fun {input_type=None; input_var; body}
-
-  | Ast.Pi {input_var; input_type; output_type} ->
-    let input_type = normalize ctx input_type in
-    let ctx = Context.add_binding input_var ctx in 
-    let output_type = normalize ctx output_type in
-    Loc.set_data expr @@ Ast.Pi {input_var; input_type; output_type}
-
-  | Ast.Let {binding; body; _} ->
-    let binding = normalize ctx binding in
-    let body = beta_reduce body binding in
-    normalize ctx body *)
