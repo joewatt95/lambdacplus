@@ -1,0 +1,420 @@
+\documentclass{beamer}
+\usepackage[utf8]{inputenc}
+\usetheme{Madrid}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+
+\usepackage{bbm}
+
+\usepackage{thmtools}
+\usepackage{thm-restate}
+
+\usepackage[titlenumbered, ruled]{algorithm2e}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{positioning}
+\usepackage{graphicx}
+
+% \usepackage{hyperref}
+% \usepackage{cleveref}
+
+\usepackage{comment}
+
+\usepackage{bussproofs}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+\usepackage{stmaryrd}
+
+\title[Types and Curry Howard]{Types and Curry Howard}
+\author{Watt Seng Joe}
+% \institute{Overleaf}
+% \date{2020}
+
+\begin{document}
+\frame{\titlepage}
+
+\begin{frame}
+  \begin{block} {What more can we do with types?}
+    Formalize mathematics, ie encode theorems and proofs in the computer.
+  \end{block}
+  \begin{block} {Why?}
+    So that we can use computers to help us prove theorems and verify the
+    correctness of our programs. \\
+    This actually forms the foundation for interactive and automated theorem proving.
+  \end{block}
+  \begin{block} {How?}
+    We want to find a suitable programming language for encoding mathematics. \\
+    We'll see that the typed lambda calculus as found in Haskell forms a
+    suitable foundation.
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Putting the ``formal'' in formal proof}
+  % Formal proof in the sense of symbolic logic.
+  % Can be represented as ND trees.
+  % Proof theoretic BHK semantics, with emphasis on proof of propositions
+  % instead of the usual model-theoretic one that emphasizes true/false.
+  \begin{block} {Proofs ala structural proof theory}
+    \begin{itemize}[label=$\ast$]
+    \item
+      Proofs as objects with formally defined structure.
+    \item
+      These are built up using inference rules that tell us what we're allowed
+      to conclude given some assumptions.
+    \end{itemize}
+  \end{block}
+
+  \begin{block} {Inference rules in Natural Deduction}
+    \begin{prooftree}
+      \hypo{$\Gamma_1 \vdash$ Hypo$1$}
+      \hypo{$\Gamma_2 \vdash$ Hypo$2$}
+      \hypo{$\dots$}
+      \TrinaryInfC{$\Gamma_1 \cup \Gamma_2 \cup \dots \vdash$ Conclusion}
+    \end{prooftree}
+    $\Gamma_i = $ context, ie a finite set of assumptions that we have available
+    to us.
+  \end{block}
+
+  \begin{block} {Simplified notation}
+    Often we simplify the notation to drop the $\Gamma_i$. 
+    \begin{prooftree}
+      \hypo{Hypo$1$}
+      \hypo{Hypo$2$}
+      \hypo{$\dots$}
+      \TrinaryInfC{Conclusion}
+    \end{prooftree}
+
+  \end{block}
+
+  % \begin{block} {BHK semantics}
+  % \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Natural Deduction for propositional logic}
+
+  \begin{columns}
+    
+    \begin{column}{.3\textwidth}
+      \textbf{\quad Conjunction}
+      \minipage[c][0.6\textheight][s]{\columnwidth}
+      \vspace{0.05\textheight}
+      \begin{itemize}
+      \item
+        \begin{prooftree}
+          \hypo{$A$}
+          \hypo{$B$}
+          \RightLabel{\scriptsize $\wedge$-intro}
+          \infer2{$A \wedge B$}
+        \end{prooftree}
+      \item
+        \begin{prooftree}
+          \hypo{$A \wedge B$}
+          \RightLabel{\scriptsize $\wedge$-elim left}
+          \infer1{$A$}
+        \end{prooftree}
+      \item
+        \begin{prooftree}
+          \hypo{$A \wedge B$}
+          \RightLabel{\scriptsize $\wedge$-elim right}
+          \infer1{$B$}
+        \end{prooftree}
+      \end{itemize}
+      \endminipage
+    \end{column}
+
+    \begin{column}{.6\textwidth}
+      \textbf{\qquad Disjunction}
+      \minipage[c][0.6\textheight][s]{\columnwidth}
+      \vspace{0.05\textheight}
+      \begin{itemize}
+      \item
+        \begin{prooftree}
+          \hypo{$A$}
+          \RightLabel{\scriptsize $\vee$-intro left}
+          \infer1{$A \vee B$}
+        \end{prooftree}
+
+      \item
+        \begin{prooftree}
+          \hypo{$B$}
+          \RightLabel{\scriptsize $\vee$-intro right}
+          \infer1{$A \vee B$}
+        \end{prooftree}
+
+      \item
+        \begin{prooftree}
+          \hypo{$A \vee B$}
+          \hypo{$A \rightarrow C$}
+          \hypo{$B \rightarrow C$}
+          \RightLabel{\scriptsize $\vee$-elim}
+          \TrinaryInfC{$C$}
+        \end{prooftree}
+      \end{itemize}
+      \endminipage
+    \end{column}
+
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Natural Deduction for propositional logic}
+  \begin{columns}
+
+    \begin{column}{.45\textwidth}
+      \textbf{\qquad Implication}
+      \minipage[c][0.5\textheight][s]{\columnwidth}
+      \vspace{0.05\textheight}
+      \begin{itemize}
+      \item
+        \begin{prooftree}
+          \hypo{[$A$]}
+          \noLine
+          \infer1{$B$}
+          \RightLabel{\scriptsize $\rightarrow$-intro}
+          \infer1{$A \rightarrow B$}
+        \end{prooftree}
+      \item
+        \begin{prooftree}
+          \hypo{$A \rightarrow B$}
+          \hypo{$A$}
+          \RightLabel{\scriptsize $\rightarrow$-elim}
+          \infer2{$B$}
+        \end{prooftree}
+      \end{itemize}
+      \endminipage
+    \end{column}
+
+    \begin{column}{.45\textwidth}
+      \textbf{\qquad Bi-implication}
+      \minipage[c][0.5\textheight][s]{\columnwidth}
+      \vspace{0.05\textheight}
+      \begin{itemize}
+      \item
+        \begin{prooftree}
+          \hypo{$A \rightarrow B$}
+          \hypo{$B \rightarrow A$}
+          \RightLabel{\scriptsize $\leftrightarrow$-intro}
+          \infer2{$A \leftrightarrow B$}
+        \end{prooftree}
+      \item
+        \begin{prooftree}
+          \hypo{$A \leftrightarrow B$}
+          \RightLabel{\scriptsize $\leftrightarrow$-elim left}
+          \infer1{$A \rightarrow B$}
+        \end{prooftree}
+      \item
+        \begin{prooftree}
+          \hypo{$A \leftrightarrow B$}
+          \RightLabel{\scriptsize $\leftrightarrow$-elim right}
+          \infer1{$B \rightarrow A$}
+        \end{prooftree}
+      \end{itemize}
+      \endminipage
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Curry Howard, aka Propositions as Types}
+
+  \begin{block} {The big idea}
+    \begin{align*}
+      \overbrace{1 + 2}^{Term} \quad &: \quad \overbrace{\text{Int}}^{Type} \\
+      \underbrace{\text{hP}}_{Proof} \quad &: \quad \underbrace{P}_{Proposition}
+    \end{align*}
+    \begin{itemize}[label=$\ast$]
+      \item
+        Proving a proposition $\Leftrightarrow$ constructing a term of the
+        corresponding type
+      \item
+        Checking a proof for correctness $\Leftrightarrow$ type checking
+    \end{itemize}
+  \end{block}
+
+  % \begin{block}{Proof verification $\Leftrightarrow$ type checking}
+  %   test
+  % \end{block}
+
+  % \begin{block}{In Haskell}
+  % \begin{verbatim}
+  % -- Conjunction modeled by product type.
+  % type And A B = (A, B)
+
+  % -- Disjunction modeled by sum type.
+  % data Or A B = Left A | Right B
+  % \end{verbatim}
+  
+  % \end{block}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Some typing rules}
+
+  \begin{columns}
+    \begin{column}{.5\textwidth}
+      \textbf{\quad Function type} \\ \quad ($\cong$ Implication)
+      \minipage[c][0.6\textheight][s]{\columnwidth}
+      \vspace{0.05\textheight}
+      \begin{itemize}[label=$\ast$]
+      \item
+        Intro
+        \begin{prooftree}
+          \hypo{$\Gamma, {\color{blue} x} : \sigma \vdash {\color{blue} e} : \tau$}
+          \infer1{$\Gamma \vdash {\color{blue} (\lambda \, x, \, e)} : \sigma \rightarrow \tau$}
+        \end{prooftree}
+
+      \item
+        Elim
+        \begin{prooftree}
+          \hypo{$\Gamma \vdash {\color{blue} e_1} : \sigma \rightarrow \tau$}
+          \hypo{$\Gamma \vdash {\color{blue} e_2} : \sigma$}
+          \infer2{$\Gamma \vdash {\color{blue} e_1 \, e_2} : \tau$}
+        \end{prooftree}
+      \end{itemize}
+      \endminipage
+    \end{column}
+
+    \begin{column}{.5\textwidth}
+      \textbf{\quad Product/Pair type} \\ \quad ($\cong$ conjunction)
+      \minipage[c][0.6\textheight][s]{\columnwidth}
+      \vspace{0.05\textheight}
+      \begin{itemize}[label=$\ast$]
+      \item
+        Intro
+        \begin{prooftree}
+          \hypo{$\Gamma \vdash {\color{blue} a} : \sigma$}
+          \hypo{$\Gamma \vdash {\color{blue} b} : \tau$}
+          \infer2{$\Gamma \vdash {\color{blue} (a, \, b)} : \sigma \wedge
+            \tau $}
+        \end{prooftree}
+      \item
+        Elim left
+        \begin{prooftree}
+          \hypo{$\Gamma \vdash {\color{blue} (a, \, b)} : \sigma \wedge
+            \tau $}
+          \infer1{$\Gamma \vdash {\color{blue} a} : \sigma$}
+        \end{prooftree}
+      \item
+        Elim right
+        \begin{prooftree}
+          \hypo{$\Gamma \vdash {\color{blue} (a, \, b)} : \sigma \wedge
+            \tau $}
+          \infer1{$\Gamma \vdash {\color{blue} b} : \tau$}
+        \end{prooftree}
+      \end{itemize}
+      \endminipage
+    \end{column}
+
+  \end{columns}
+  
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Some typing rules}
+  
+  \qquad \qquad \quad \textbf{Sum/tagged union type} \, ($\cong$ disjunction)
+  \begin{columns}
+    \begin{column}{.7\textwidth}
+      % \minipage[c][0.6\textheight][s]{\columnwidth}
+      \vspace{0.05\textheight}
+      \begin{itemize}[label=$\ast$]
+      \item
+        Intro left
+        \begin{prooftree}
+          \hypo{$\Gamma \vdash {\color{blue} a} : \sigma$}
+          \infer1{$\Gamma \vdash {\color{blue} \text{inl } a} : \sigma \vee \tau$}
+        \end{prooftree}
+
+      \item
+        Intro right
+        \begin{prooftree}
+          \hypo{$\Gamma \vdash {\color{blue} b} : \tau$}
+          \infer1{$\Gamma \vdash {\color{blue} \text{inr } b} : \sigma \vee \tau$}
+        \end{prooftree}
+
+      \item
+        Elim \\
+        % https://ncatlab.org/nlab/show/sum+type
+        % https://leanprover.github.io/logic_and_proof/propositional_logic_in_lean.html
+        % http://www.cse.chalmers.se/~abela/esslli2016/talkESSLLI1.pdf
+        \begin{prooftree}
+          \hypo{$\Gamma \vdash {\color{blue} s} : \sigma \vee \tau $}
+          \hypo{$\Gamma, {\color{blue} a} : \sigma \vdash {\color{blue} c} :
+            \eta$}
+          \hypo{$\Gamma, {\color{blue} b} : \tau \vdash {\color{blue} d} : \eta $}
+          \TrinaryInfC{$\Gamma \vdash {\color{blue} (\text{case $s$ of (inl $a$) $\Rightarrow$ c $\vert$
+                (inr $b$) $\Rightarrow$ d)}} : \eta$}
+        \end{prooftree}
+        \begin{block} {Key point}
+          The pattern for elim must be \alert{complete}, ie you must consider
+          both possible cases.
+        \end{block}
+      \end{itemize}
+      % \endminipage
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Example proofs using Curry Howard}
+  \begin{block} {$P \rightarrow P$}
+    $\lambda \, (hP : P), \, hP$ \qquad (ie identity function)
+  \end{block}
+  
+  \begin{block} {$P \wedge Q \rightarrow Q \wedge P$}
+    $\lambda \, (h : P \wedge Q), \, \text{let } (hP, \, hQ) = h \text{ in }
+    (hQ, \, hP)$
+  \end{block}
+  
+  \begin{block} {$(P \vee Q) \rightarrow (Q \vee P)$}
+    \begin{align*}
+      \lambda \, & (h : P \vee Q), \text{case } h \text{ of} \\
+              & \quad (\text{inl } hP) \Rightarrow \text{inr } hP \\
+              & \quad (\text{inr } hQ) \Rightarrow \text{inl } hQ
+    \end{align*}
+  \end{block}
+  
+  \begin{block} {Interpreting Curry \& Uncurry}
+    Curry $: (P \wedge Q \rightarrow R) \rightarrow (P \rightarrow Q
+    \rightarrow R)$ \\
+    Uncurry : $(P \rightarrow Q \rightarrow R) \rightarrow (P \wedge Q \rightarrow R)$
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Propositional logic $\rightarrow$ First order logic}
+  \begin{block} {Summary}
+    \begin{itemize}[label=$\ast$]
+    \item
+      We can essentially write proofs of theorems as typed functional programs!!!
+    \item
+      Our proofs are functions such that:
+      \begin{itemize}[label=$-$]
+        \item Input: Proofs of whatever hypotheses that we have.
+        \item Output: A proof of the desired conclusion.
+        \end{itemize}
+    \end{itemize}
+  \end{block}
+  \begin{block} {How to model $\exists$ and $\forall$ ?}
+    \begin{itemize}[label=$\ast$]
+    \item
+      Actually, can also encode negation and other rules from propositional logic in
+      the simply typed lambda calculus.
+    \item
+      But we need $\exists$ and $\forall$ to encode real mathematical theorems!
+    \item
+      Dependent types offer an elegant solution to this.
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\end{document}
