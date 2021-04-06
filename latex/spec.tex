@@ -148,15 +148,17 @@ need a weaker elimination rule.
 Recall that when we eliminate an existentially quantified formula, say
 $\exists x, \, \varphi(x)$, the witness we obtain is completely arbitrary save
 for the fact that it satisfies $\varphi$.
+Further, the witness cannot ``leak'' out into the conclusion. We must discharge
+it before we can conclude the proof.
 
 To model this faithfully, we want a way for users to ``unpack'' pairs
 representing proofs of existentials in an opaque manner.
 This cannot be achieved via the elimination rule from the
-strong  Sigma type which we saw above, because that would give users the explicit witness
-stored in the pair!
+strong  Sigma type which we saw above, because the \verb|snd| projection
+exposes the witness in the output type!
 
 Thus we need dependent pairs, like Sigma types, but with a new elimination rule
-to enforce this layer of abstraction that prevents users from obtaining the
+to enforce this layer of abstraction that prevents users from projecting out the
 original witness. What new kind of programming language construct can we use to
 model such pairs?
 
@@ -263,6 +265,7 @@ following introduction and elimination rules:
     \end{prooftree}
   \]
   \end{enumerate}
+  provided $x$ does not occur free in $T$.
 
 Thus we see that the Curry-Howard interpretation of the usual existential
 quantifier is a dependent variation of the existential type. 
