@@ -35,7 +35,8 @@ def surjective :=
 theorem cantor :
 (exists g : X -> X -> Y, surjective X (X -> Y) g) -> forall f : Y -> Y, has_fixed_point Y f := 
   assume h (f : Y -> Y),
-    -- Existential elimination to pull apart h.
+    -- Existential elimination with the witness g and `this`, a proof that `g`
+    -- is surjective.
     let {g, this} := h in
 
     -- Define the diagonal function. This picks out the elements along the diagonal
@@ -43,7 +44,7 @@ theorem cantor :
     let diag : X -> Y := fun x => f (g x x) in
 
     -- Since g : X -> X -> Y, there must be some x : X with g x = diag
-    -- Grab the witness, x, and the proof that g x = diag.
+    -- Eliminate with the witness x and the proof that g x = diag.
     have exists x : X, eq (X -> Y) (g x) diag, from this diag,
     let {x, this} := this in
 
@@ -64,6 +65,8 @@ theorem cantor :
  
     -- Use (g x x) and h to witness the existentially quantified statement that f
     -- has a fixed point.
+    -- This discharges the witnesses g and x which we obtained via existential
+    -- elimination, so we can now conclude the proof safely.
     show has_fixed_point Y f, from {g x x, this}
 
 axiom g : X -> X -> Y

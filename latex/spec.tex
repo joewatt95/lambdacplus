@@ -2248,7 +2248,89 @@ this.
 
 \section{Technical implementation}
 \todo[inline] {Work in progress}
-Mention the pains of de bruijn indices.
+Our interpreter is written in Ocaml and the structure is as follows.
 
+\begin{itemize}
+\tightlist
+\item
+  \texttt{bin} currently contains only \texttt{main.ml} which contains
+  the main entry point to interact with our language.
+\item
+  \texttt{lib} is our library which contains all the code making our
+  language work.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \texttt{parsing} contains all the functions we use for parsing.
+
+    \begin{itemize}
+    \tightlist
+    \item
+      \texttt{lexer.ml} contains our lexer.
+    \item
+      \texttt{grammar.mly} contains our grammar, written using Menhir.
+    \item
+      \texttt{parser.ml} contains some functions and boilerplate code
+      tying the lexer and grammar together. This provides an interface
+      which we use to parse our language.
+    \end{itemize}
+  \item
+    \texttt{kernel} contains all the important stuff for evaluating
+    expressions and statements. These include normalization, type
+    checking and context management using de bruijn indices.
+
+    \begin{itemize}
+    \tightlist
+    \item
+      \texttt{context.ml} is the module implementing the
+      context/environment.
+    \item
+      \texttt{normalization.ml} currently contains the
+      \texttt{normalize}, \texttt{subst} and \texttt{beta\_reduce}
+      functions. The latter 2 implement the substitution operation for
+      de bruijn ASTs.
+    \item
+      \texttt{typing.ml} implements our bidirectional typechecking
+      algorithm. This indluces the 2 key functions \texttt{check} and
+      \texttt{infer}, where \texttt{infer} involves synthesizing the
+      type, while \texttt{check} involves verifying if an expression has
+      a given type.
+    \item
+      \texttt{eval\_statements.ml} contains functions for evaluating
+      statements.
+    \end{itemize}
+  \item
+    \texttt{common} contains code that is shared between both
+    \texttt{kernel} and \texttt{parsing}.
+
+    \begin{itemize}
+    \tightlist
+    \item
+      \texttt{location.ml} contains a \texttt{located} datatype and
+      other stuff which we use to decorate our AST in \texttt{ast.ml}
+      with source locations. This info will be used for error reporting.
+    \item
+      \texttt{ast.ml} contains our AST. It is parameterized over a type
+      variable, \texttt{\textquotesingle{}a}, where
+      \texttt{\textquotesingle{}a} can either be \texttt{string} or
+      \texttt{int}. This type variable denotes the type of variable
+      identifiers. The AST which our parser parses the concrete syntax
+      into uses \texttt{string} to identify variables, while our
+      internal one, used for typechecking and normalization, uses
+      \texttt{int} denoting de bruijn indices to identify variables.
+    \end{itemize}
+  \item
+    \texttt{ast\_conv.ml} contains facilities for converting the
+    parser's AST to the internal AST and vice versa.
+  \item
+    \texttt{error\_reporting.ml} contains functions for handling errors
+    that occur while running programs in our language. These include
+    pretty printing of errors.
+  \item
+    \texttt{pretty\_printing.ml} contains utilities for unparsing
+    expressions and pretty printing them.
+  \end{itemize}
+\end{itemize}
 \section{More sample proofs}
 \end{document}
