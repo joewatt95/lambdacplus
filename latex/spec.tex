@@ -476,6 +476,17 @@ like Coq and Lean. These offer a way for users to interact with our system.
 Through statements, users can introduce global assumptions and definitions.
 
 \subsection{Syntax for expressions}
+% https://tex.stackexchange.com/questions/24886/which-package-can-be-used-to-write-bnf-grammars
+\begin{grammar}
+
+<statement> ::= <ident> `=' <expr> 
+\alt `for' <ident> `=' <expr> `to' <expr> `do' <statement> 
+\alt `{' <stat-list> `}' 
+\alt <empty> 
+
+<stat-list> ::= <statement> `;' <stat-list> | <statement> 
+
+\end{grammar}
 % We first define the set of valid expressions of our language as the initial algebra, 
 % ie least prefixed point, of the endofunctor
 % \begin{align*}
@@ -858,8 +869,6 @@ is the process of fully evaluating it until no more simplifications can be
 performed.
 
 \end{enumerate}
-
-
 
 \subsection{Lean-esque syntactic sugar}
 Following \href{https://leanprover.github.io/reference/expressions.html#structured-proofs}
