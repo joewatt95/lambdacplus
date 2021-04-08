@@ -1,6 +1,9 @@
+\usepackage[dvipsnames]{xcolor}
 \usepackage{amsmath, amssymb, amsthm, thmtools, thm-restate, tikz, graphicx,
-  hyperref, cleveref, comment, expl3, xparse, ebproof, enumitem, xcolor,
-  stmaryrd, verbatim, todonotes, syntax}
+  hyperref, cleveref, comment, expl3, xparse, ebproof, enumitem,
+  stmaryrd, verbatim, todonotes, xargs}
+
+\usepackage[altpo]{backnaur}
 
 \usepackage[titlenumbered, ruled]{algorithm2e}
 \usetikzlibrary{shapes.geometric}
@@ -84,24 +87,45 @@
 % https://math.stackexchange.com/questions/742614/notation-for-partial-function-set
 \newcommand{\pto}{\multimap\mspace{-2mu} \to}
 
-\DeclareMathOperator{\Type}{Type}
 \DeclareMathOperator{\FV}{FV}
 \DeclareMathOperator{\Pii}{Pi}
 \DeclareMathOperator{\Sigmaa}{Sigma}
 \DeclareMathOperator{\foralll}{forall}
-\DeclareMathOperator{\fun}{fun}
-\DeclareMathOperator{\deff}{def}
-\DeclareMathOperator{\axiom}{axiom}
-\DeclareMathOperator{\checkk}{check}
-\DeclareMathOperator{\evall}{eval}
+
+% \DeclareMathOperator{\fun}{fun}
+% \DeclareMathOperator{\deff}{def}
+% \DeclareMathOperator{\axiom}{axiom}
+% \DeclareMathOperator{\checkk}{check}
+% \DeclareMathOperator{\evall}{eval}
+
 \DeclareMathOperator{\wf}{\mathcal{WF}}
-\DeclareMathOperator{\fst}{fst}
-\DeclareMathOperator{\snd}{snd}
-\DeclareMathOperator{\Kind}{Kind}
-\DeclareMathOperator{\inl}{inl}
-\DeclareMathOperator{\inr}{inr}
-\DeclareMathOperator{\match}{match}
-\DeclareMathOperator{\existselim}{exists\_elim}
+
+% \DeclareMathOperator{\Type}{Type}
+% \DeclareMathOperator{\fst}{fst}
+% \DeclareMathOperator{\snd}{snd}
+% \DeclareMathOperator{\Kind}{Kind}
+% \DeclareMathOperator{\inl}{inl}
+% \DeclareMathOperator{\inr}{inr}
+
+\newcommand{\fst}{\texttt{fst}}
+\newcommand{\snd}{\texttt{snd}}
+\newcommand{\Type}{\texttt{Type}}
+\newcommand{\Kind}{\texttt{Kind}}
+\newcommand{\inl}{\texttt{inl}}
+\newcommand{\inr}{\texttt{inr}}
+
+\newcommand{\fun}{\texttt{fun}}
+\newcommand{\deff}{\texttt{def }}
+\newcommand{\axiom}{\texttt{axiom }}
+\newcommand{\checkk}{\texttt{check}}
+\newcommand{\evall}{\texttt{eval}}
+
+\newcommand{\und}{\texttt{und}}
+\newcommand{\infer}{\texttt{infer}}
+
+% \DeclareMathOperator{\match}{match}
+
+\newcommand{\match}{\texttt{match}}
 
 \DeclareMathOperator{\hnf}{hnf}
 \DeclareMathOperator{\neutral}{neutral}
@@ -116,3 +140,10 @@
 % https://pandoc.org/try/?text=-+%60bin%60+currently+contains+only+%60main.ml%60+which+contains+the+main+entry+point+to%0A++interact+with+our+language.%0A-+%60lib%60+is+our+library+which+contains+all+the+code+making+our+language+work.%0A++++-+%60parsing%60+contains+all+the+functions+we+use+for+parsing.%0A++++++++-+%60lexer.ml%60+contains+our+lexer.%0A++++++++-+%60grammar.mly%60+contains+our+grammar%2C+written+using+Menhir.%0A++++++++-+%60parser.ml%60+contains+some+functions+and+boilerplate+code+tying+the%0A++++++++lexer+and+grammar+together.+This+provides+an+interface+which+we+use+to%0A++++++++parse+our+language.%0A++++-+%60kernel%60+contains+all+the+important+stuff+for+evaluating+expressions+and%0A++++statements.+These+include+normalization%2C+type+checking+and+context+management%0A++++using+de+bruijn+indices.%0A++++++++-+%60context.ml%60+is+the+module+implementing+the+context%2Fenvironment.%0A++++++++-+%60normalization.ml%60+currently+contains+the+%60normalize%60%2C+%60subst%60+and%0A++++++++%60beta_reduce%60+functions.+The+latter+2+implement+the+substitution+operation%0A++++++++for+de+bruijn+ASTs.%0A++++++++-+%60typing.ml%60+implements+our+bidirectional+typechecking+algorithm.%0A++++++++This+indluces+the+2+key+functions+%60check%60+and+%60infer%60%2C+where+%60infer%60%0A++++++++involves+synthesizing+the+type%2C+while+%60check%60+involves+verifying+if+an%0A++++++++expression+has+a+given+type.%0A++++++++-+%60eval_statements.ml%60+contains+functions+for+evaluating+statements.%0A++++-+%60common%60+contains+code+that+is+shared+between+both+%60kernel%60+and+%60parsing%60.%0A+++++++-+%60location.ml%60+contains+a+%60located%60+datatype+and+other+stuff+which+we+use+to+decorate+our+AST+in+%60ast.ml%60%0A+++++++with+source+locations.+This+info+will+be+used+for+error+reporting.%0A+++++++-+%60ast.ml%60+contains+our+AST.+It+is+parameterized+over+a+type+variable%2C+%60%27a%60%2C+where+%60%27a%60+can+either+be+%60string%60+or+%60int%60.+This+type+variable+denotes+the+type+of+variable+identifiers.+The+AST+which+our+parser+parses+the+concrete+syntax+into+uses+%60string%60+to+identify+variables%2C+while+our+internal+one%2C+used+for+typechecking+and+normalization%2C+uses+%60int%60+denoting+de+bruijn+indices+to+identify+variables.%0A+++-+%60ast_conv.ml%60+contains+facilities+for+converting+the+parser%27s+AST+to+%0A+++the+internal+AST+and+vice+versa.%0A+++-+%60error_reporting.ml%60+contains+functions+for+handling+errors+that+occur+while%0A+++running+programs+in+our+language.+These+include+pretty+printing+of+errors.%0A+++-+%60pretty_printing.ml%60+contains+utilities+for+unparsing+expressions+and+pretty%0A+++printing+them.&from=markdown&to=latex&standalone=0
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+  % https://tex.stackexchange.com/questions/9796/how-to-add-todo-notes
+\newcommandx{\info}[2][1=] {
+  \vspace{5mm}
+  \todo[inline, linecolor=OliveGreen,backgroundcolor=OliveGreen!25,bordercolor=OliveGreen,#1]{#2}
+  \vspace{5mm}
+  }
