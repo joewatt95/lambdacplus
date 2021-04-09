@@ -187,7 +187,7 @@ input, we recover the simple function type, which we write as $A \rightarrow B$
 or $\Pi_{x : A} B$. So we see that the Pi type allows us to model both
 logical implication as well as universal quantification. 
 
-\subsection{Sigma and existential types}
+\subsubsection{Sigma and existential types}
 
 As for the existential quantifier, the BHK interpretation says that a 
 proof of $\exists x \in A, \, P(x)$ corresponds to a pair, 
@@ -393,12 +393,12 @@ Curry-Howard also tells us that we can model the introduction and elimination
 rules for each logical connective and quantifier by the introduction and elimination
 rules of the corresponding type. This means that proving, say a universally
 quantified statement, corresponds to defining a function of the appropriate
-\verb|Pi| type. Universal instantiation and modus ponens then correspond to
-function application.
+\texttt{Pi} type. Universal instantiation and modus ponens then correspond to
+the eliminator for \texttt{Pi}, which is function application.
 
-These are the types which we implement in our language.
-In the next section, we discuss how our language resembles and differs from
-CoC.
+% These are the types which we implement in our language.
+% In the next section, we discuss how our language resembles and differs from
+% CoC.
 
 \section{A birds eye view of our language}
 \subsection{Our language in comparison to CoC (WIP)}
@@ -777,7 +777,7 @@ Lean theorem prover.
     \hypo{x}
     \hypo{E}
     \hypo{E'}
-    \infer3{\text{let } x := E \text{ in } E'}
+    \infer3{\texttt{let } x \texttt{ := } E \texttt{ in } E'}
   \end{prooftree}
 \]
 Local let bindings behave the same way as in ML-like languages.
@@ -2233,17 +2233,17 @@ With this view, given a program, $\langle S_0; \, \dots; \, S_n
   $ (\emptyset, \, \langle S_0; \, \dots; \, S_n \rangle, \, \Type)$
 
   This is the state in which we begin executing our programs.
-  Initially, our global context is empty. Also, \verb|Type| is merely a dummy
-  value and could have very well be replaced by \verb|Kind|.
+  Initially, our global context is empty.
+  \Type is used as a dummy initial output value here.
 
 \item \textbf{Final configurations:} $(\Gamma, \, \langle \rangle, \, E)$ \\
 After executing programs in our language, if all goes well, we'll end up in
 one of these states.
 \end{enumerate}
 
-In the next section, we define the big-step transition relation for programs $\cdot
-\Downarrow \cdot$ using
-this notion of a configuration.
+% In the next section, we define the big-step transition relation for programs $\cdot
+% \Downarrow \cdot$ using
+% this notion of a configuration.
 
 \subsubsection{Big step semantics for programs}
 We define the big step transition relation, $\cdot \Downarrow \cdot$, via a
