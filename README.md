@@ -1,12 +1,10 @@
-# CS4215 dependent types
-## Overview
-This is a dependently typed lambda calculus based on the pure type system (PTS)
-that is the Calculus of Constructions (CC).
-Like all the other PTSes in Barendregt's lambda cube, CC is strongly normalizing
-and serves as a consistent foundation for theorem proving in higher order
-intuitionistic logic.
+# λC+
+## Description
+λC+ is a dependently typed lambda calculus based on the Calculus of Constructions (CoC).
+It leverages the Curry-Howard correspondence to allow users to formalize logic
+and prove theorems.
 
-### Specs
+## Specs
 Refer to the `latex` directory.
 
 ## Web interface
