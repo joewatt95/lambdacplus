@@ -2,7 +2,7 @@
  (name main)
  (libraries containers
             js_of_ocaml
-            cs4215_dependent_types)
+            lambdacplus)
  (modes js)
  (preprocess (pps js_of_ocaml-ppx))
  )

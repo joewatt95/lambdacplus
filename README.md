@@ -1,8 +1,13 @@
 # λC+
-## Description
-λC+ is a dependently typed lambda calculus based on the Calculus of Constructions (CoC).
-It leverages the Curry-Howard correspondence to allow users to formalize logic
-and prove theorems.
+## Short one line description
+λC+ is a proof assistant based on the Calculus of Constructions (CoC).
+
+## What is it really?
+At its core, λC+ is an implementation of a dependently typed lambda calculus
+based on CoC.
+The Curry-Howard correspondence allows us to encode logical connectives and
+quantifiers as types in λC+.
+This allows us to treat it as a proof assistant.
 
 ## Specs
 Refer to the `latex` directory.

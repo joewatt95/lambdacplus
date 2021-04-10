@@ -1,7 +1,7 @@
 {
-  "name": "cs4215_dependent_types",
+  "name": "lambdacplus",
   "version": "0.1.0",
-  "description": "CS4215 project on dependent types",
+  "description": "A dependently typed language based on the Calculus of Constructions.",
   "esy": {
     "build": [ "dune build ./bin/main.bc", "dune build ./bin/main.bc.js" ]
   },
