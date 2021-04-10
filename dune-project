@@ -1,3 +1,3 @@
 (lang dune 2.8)
-(name cs4215_dependent_types)
+(name lambdacplus)
 (using menhir 2.1)
