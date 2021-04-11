@@ -1,3 +1,0 @@
-axiom T : Type 
-axiom x : T 
-check x

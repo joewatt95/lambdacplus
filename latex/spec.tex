@@ -2259,7 +2259,7 @@ afterwards.
 \item \textbf{Check} \\
   \[
     \begin{prooftree}
-      \hypo{\Gamma \vdash E \Rightarrow s}
+      \hypo{\Gamma \vdash E \Rightarrow \tau}
       \infer1{(\Gamma, \, \langle \checkk \, E \rangle, \, E') \Downarrow
         (\Gamma, \, \langle \rangle, \, \tau)}
     \end{prooftree}
@@ -2270,7 +2270,7 @@ afterwards.
 \item \textbf{Eval} \\
   \[
     \begin{prooftree}
-      \hypo{\Gamma \vdash E \Rightarrow s}
+      \hypo{\Gamma \vdash E \Rightarrow \tau}
       \hypo{\Gamma \vdash E \Downarrow \nu}
       \infer2{(\Gamma, \, \langle \evall \, E \rangle, \, E') \Downarrow
         (\Gamma, \, \langle \rangle, \, \nu)}
@@ -2303,7 +2303,7 @@ afterwards.
 \item \textbf{Def} \\
   \[
     \begin{prooftree}
-      \hypo{\Gamma \vdash E \Rightarrow s}
+      \hypo{\Gamma \vdash E \Rightarrow \tau}
       \hypo{\Gamma \vdash E \Downarrow \nu}
       \infer2{(\Gamma, \, \langle \deff x := E \rangle, \, E') \Downarrow
         ((x, \, \tau, \, \nu) :: \Gamma, \, \langle \rangle, \, (\nu : \tau))}
