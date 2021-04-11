@@ -1,101 +1,54 @@
 # λC+
-## Short one line description
-λC+ is a proof assistant based on the Calculus of Constructions (CoC).
+A small proof assistant based on the Calculus of Constructions (CoC).
 
-## What is it really?
+## Description
 At its core, λC+ is an implementation of a dependently typed lambda calculus
 based on CoC.
-The Curry-Howard correspondence allows us to encode logical connectives and
-quantifiers as types in λC+.
-This allows us to treat it as a proof assistant.
+Through the Curry-Howard correspondence, logical connectives and quantifiers are
+represented by types in λC+.
+We can then express theorems using these types and provide proofs.
 
-## Specs
-Refer to the `latex` directory.
-
-## Web interface
-For an easy to use this language, download the `index.html` and `main.bc.js`
-files found in the main project directory. Then open the html file in your
-preferred browser. A friendly web-based IDE powered by the ACE editor will be
-there to greet you.
-
-## Sample proof
+For instance, here's an example formalizing the reflexivity of implication
 ```lean
--- Formalization of Lawvere's fixed point theorem, which captures the essence of
--- the diagonal argument as found in Cantor's famous theorem on cardinality.
+theorem A_implies_A :
+-- This says that for any proposition A, A implies A itself.
+forall (A : Type), A -> A :=
+-- A proof of this proposition is a function which takes a proposition A and
+-- a proof of `A` and then returns a proof of `A`.
+  fun (A : Type) (a : A) => a
+```
+Notice that the proof of this theorem is the polymorphic identity function.
 
-constant X : Type
-constant Y : Type
+Syntactically, λC+ looks and feels a lot like the 
+[Lean theorem prover](https://leanprover.github.io/), which in turn resembles
+Coq and Ocaml.
 
--- Definition of equality.
--- Technically it's a type constructor parameterized by X : Type.
-constant eq : forall (X : Type) (x : X) (y : X), Prop
+In fact, we also support a subset of Lean's syntactic sugar for writing
+[structured proof terms](https://leanprover.github.io/reference/expressions.html#structured-proofs).
 
--- Reflexivity of =
-axiom eq_refl : forall (X : Type) (x : X), eq X x x
-
--- Symmetry of =
-axiom eq_symm : forall (X : Type) (x : X) (y : X), (eq X x y) -> (eq X y x)
-
--- Transitivity of =
-axiom eq_trans : 
-    forall (X : Type) (x : X) (y : X) (z : X),
-        (eq X x y) -> (eq X y z) -> (eq X x z)
-
--- If 2 functions are equal f = g, then f x = g x for every x : X.
-axiom congr_fun :
-  forall (f : X -> Y) (g : X -> Y),
-    (eq (X -> Y) f g) -> (forall x : X, eq Y (f x) (g x))
-
--- f has a fixed point if f x = x for some x : X.
-def has_fixed_point :=
-  fun (X : Type) (f : X -> X) => exists x : X, eq X (f x) x
-
--- f is surjective
-def surjective :=
-  fun (X : Type) (Y : Type) (f : X -> Y) => forall y : Y, exists x : X, eq Y (f x) y
-
-theorem cantor :
-(exists g : X -> X -> Y, surjective X (X -> Y) g) -> forall f : Y -> Y, has_fixed_point Y f := 
-  assume h (f : Y -> Y),
-    -- Existential elimination to pull apart h.
-    let {g, this} := h in
-
-    -- Define the diagonal function. This picks out the elements along the diagonal
-    -- and flips them around using f.
-    let diag : X -> Y := fun x => f (g x x) in
-
-    -- Since g : X -> X -> Y, there must be some x : X with g x = diag
-    -- Grab the witness, x, and the proof that g x = diag.
-    have exists x : X, eq (X -> Y) (g x) diag, from this diag,
-    let {x, this} := this in
-
-    -- Next we have some boring manipulations using the axioms of equality to
-    -- establish that (g x x) = f (g x x) and then flip the equality around.
-
-    -- Since (g x) and diag are equal as functions, g x x = diag x
-    have h1 : eq Y (g x x) (diag x), from congr_fun (g x) diag this x,
-
-    -- diag x = f (g x x) must hold for this specific x we're working with because
-    -- that's the definition of the diagonal function, diag
-    have h2 : eq Y (diag x) (f (g x x)), from eq_refl Y (diag x),
-    -- By transitivity, g x x = f (g x x)
-    have eq Y (g x x) (f (g x x)), from 
-      eq_trans Y (g x x) (diag x) (f (g x x)) h1 h2,
-    -- By symmetry, f (g x x) = g x x
-    have eq Y (f (g x x)) (g x x), from eq_symm Y (g x x) (f (g x x)) this,
- 
-    -- Use (g x x) and h to witness the existentially quantified statement that f
-    -- has a fixed point.
-    show has_fixed_point Y f, from {g x x, this}
+Using this, the above proof may be rewritten as
+```lean
+theorem A_implies_A :
+-- This says that for any proposition A, A implies A itself.
+forall (A : Type), A -> A :=
+-- Assume that `A` is a type (which we can think of as a proposition), and that
+-- `a` is a proof of `A`.
+  assume (A : Type) (a : A),
+    -- We may conclude `A` because `a` is a proof of it.
+    show A, from a
 ```
 
-More sample programs can be found in the `sample_programs` directory.
+Also, one may even write `Prop` instead of `Type` to make it more explicit that
+we are to think of `A` as a proposition rather than a data type.
 
-## Usage
+We hope that this helps improve the readability of proofs for those who are more
+used to traditional pen and paper proofs as opposed to Curry-Howard style proofs.
+
+## For developers
 This section is heavily based on [this example](https://github.com/esy-ocaml/hello-ocaml).
 
 First you need to install [Esy](https://esy.sh/en/) using your distro's native
-package manager or via:
+package manager or via
 ```console
 % npm install -g esy
 ```

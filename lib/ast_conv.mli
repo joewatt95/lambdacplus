@@ -1,3 +1,8 @@
+(**  This module is responsible for converting between
+- [int Common.Ast.expr]
+- [string Common.Ast.expr]
+*)
+
 exception Unknown_var_name of string Common.Ast.expr
 exception Underscore_var_name of Common.Location.source_loc
 
