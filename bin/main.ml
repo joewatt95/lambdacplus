@@ -1,5 +1,5 @@
 open Containers
-open Cs4215_dependent_types
+open Lambdacplus
 open Js_of_ocaml
 
 let run_in_context str (nctx, ectx) =

@@ -1,5 +1,5 @@
 (library
- (name cs4215_dependent_types)
+ (name lambdacplus)
  (libraries containers
   (re_export parsing)
   (re_export kernel)

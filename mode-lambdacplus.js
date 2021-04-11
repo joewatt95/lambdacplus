@@ -1,10 +1,9 @@
-ace.define("ace/mode/dtt_highlighting_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (require, exports, module) {
+ace.define("ace/mode/lambdacplus_highlighting_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (require, exports, module) {
   "use strict";
   var oop = require("../lib/oop");
   var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 
-  var DttHighlightRules = function () {
-      
+  var LambdacplusHighlightRules = function () {
       this.$rules = {
           "start": [
               {
@@ -39,19 +38,19 @@ ace.define("ace/mode/dtt_highlighting_rules", ["require", "exports", "module", "
       this.normalizeRules();
   };
 
-  oop.inherits(DttHighlightRules, TextHighlightRules);
-  exports.DttHighlightRules = DttHighlightRules;
+  oop.inherits(LambdacplusHighlightRules, TextHighlightRules);
+  exports.LambdacplusHighlightRules = LambdacplusHighlightRules;
 });
 
-ace.define("ace/mode/dtt", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/dtt_highlighting_rules"], function (require, exports, module) {
+ace.define("ace/mode/lambdacplus", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/lambdacplus_highlighting_rules"], function (require, exports, module) {
   "use strict";
 
   var oop = require("../lib/oop");
   var TextMode = require("./text").Mode;
-  var DttHighlightRules = require("./dtt_highlighting_rules").DttHighlightRules;
+  var LambdacplusHighlightRules = require("./lambdacplus_highlighting_rules").LambdacplusHighlightRules;
 
   var Mode = function () {
-      this.HighlightRules = DttHighlightRules;
+      this.HighlightRules = LambdacplusHighlightRules;
       this.$behaviour = this.$defaultBehaviour;
   };
   oop.inherits(Mode, TextMode);
@@ -61,13 +60,13 @@ ace.define("ace/mode/dtt", ["require", "exports", "module", "ace/lib/oop", "ace/
       this.lineCommentStart = "#";
 
       this.$id = "ace/mode/";
-      this.snippetFileId = "ace/snippets/dtt";
+      this.snippetFileId = "ace/snippets/lambdacplus";
   }).call(Mode.prototype);
 
   exports.Mode = Mode;
 
 }); (function () {
-  ace.require(["ace/mode/dtt"], function (m) {
+  ace.require(["ace/mode/lambdacplus"], function (m) {
       if (typeof module == "object" && typeof exports == "object" && module) {
           module.exports = m;
       }
