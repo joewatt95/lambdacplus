@@ -6,7 +6,7 @@
     "build": [ 
       "dune build ./bin/main.bc", 
       "dune build ./bin/main.bc.js",
-      "dune build @doc-private" 
+      "dune build @doc"
   ] },
   "dependencies": {
     "@opam/containers": ">= 3.3 < 4.0",

@@ -111,18 +111,18 @@ Its typing rules are as follows
   type, ie \verb|(. , .)|. 
 
   \item Elimination \\
-  The typing rules for the eliminatros \verb|fst| and \verb|snd| are
+  The typing rules for the eliminatros \texttt{fst} and \texttt{snd} are
   \[
   \begin{prooftree}
     \hypo{p : A \times B}
-    \infer1{\fst p : A}
+    \infer1{\fst \, p : A}
   \end{prooftree}
   \]
 
   \[
   \begin{prooftree}
     \hypo{p : A \times B}
-    \infer1{\snd p : B}
+    \infer1{\snd \, p : B}
   \end{prooftree}
   \]
   Informally, projecting out the first component of a pair $p$ of type 
@@ -130,10 +130,10 @@ Its typing rules are as follows
   second element yields a $B$.
 \end{enumerate}
 
-When we come to dependent types later, we will see that these rules will become
-significantly more complex.
-
-The Curry-Howard correspondence can be summarized by the following table.
+The Curry-Howard correspondence then relates the introduction and elimination rules 
+of each type to that of a natural deduction rule.
+For instance, the introduction and elimination rules for the simple pair type
+correspond to conjunction introduction and elimination respectively.
 
 \subsection{Dependent types and Curry Howard}
 \subsubsection{Pi type and universal quantification}
@@ -382,19 +382,15 @@ interpretation.
  \hline
  Sum & $A + B$ & & $A \vee B$ \\
  \hline
- Unit & $\top$ & & $\top$ (ie logical truth) \\
- \hline
- Void & $\bot$ & & $\bot$ (ie logical falsity) \\
- \hline
 \end{tabular}
 \end{center}
 
-Curry-Howard also tells us that we can model the introduction and elimination
-rules for each logical connective and quantifier by the introduction and elimination
-rules of the corresponding type. This means that proving, say a universally
-quantified statement, corresponds to defining a function of the appropriate
-\texttt{Pi} type. Universal instantiation and modus ponens then correspond to
-the eliminator for \texttt{Pi}, which is function application.
+% Curry-Howard also tells us that we can model the introduction and elimination
+% rules for each logical connective and quantifier by the introduction and elimination
+% rules of the corresponding type. This means that proving, say a universally
+% quantified statement, corresponds to defining a function of the appropriate
+% \texttt{Pi} type. Universal instantiation and modus ponens then correspond to
+% the eliminator for \texttt{Pi}, which is function application.
 
 % These are the types which we implement in our language.
 % In the next section, we discuss how our language resembles and differs from

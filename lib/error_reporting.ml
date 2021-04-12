@@ -21,7 +21,7 @@ let fmt_err_encountered_str (start_pos, end_pos) err_str =
     { start_row = start_line - 1; end_row = end_line - 1; 
       start_col = start_char; end_col = end_char }
 
-let fmt_parse_err_str = function
+let format_parse_error = function
   | Parsing.Lexer.Syntax_error {lexeme; source_loc} ->
     lexeme
     |> Printf.sprintf "Syntax error: '%s'"
@@ -60,7 +60,7 @@ let get_from_source_str source_str
    (* Convert the string back to a normal Ocaml string *)
    |> to_string
 
-let fmt_eval_err_str source_str =
+let format_typing_error source_str =
   let get_from_source_str = get_from_source_str source_str in
   function
   | Kernel.Typing.Cannot_infer_type {data; source_loc} ->

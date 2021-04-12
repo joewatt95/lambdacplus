@@ -6,12 +6,13 @@ At its core, λC+ is an implementation of a dependently typed lambda calculus
 based on CoC.
 Through the Curry-Howard correspondence, logical connectives and quantifiers are
 represented by types in λC+.
-We can then express theorems using these types and provide proofs.
+We can then express theorems using these types and writes proofs in the form
+of programs.
 
 For instance, here's an example formalizing the reflexivity of implication
 ```lean
 theorem A_implies_A :
--- This says that for any proposition A, A implies A itself.
+-- For any proposition A, A implies A itself.
 forall (A : Type), A -> A :=
 -- A proof of this proposition is a function which takes a proposition A and
 -- a proof of `A` and then returns a proof of `A`.
@@ -23,20 +24,26 @@ Syntactically, λC+ looks and feels a lot like the
 [Lean theorem prover](https://leanprover.github.io/), which in turn resembles
 Coq and Ocaml.
 
-In fact, we also support a subset of Lean's syntactic sugar for writing
-[structured proof terms](https://leanprover.github.io/reference/expressions.html#structured-proofs).
+For those who are more comfortable with traditional pen and paper proofs,
+rather than proofs written as programs, the above theorem can be rewritten using
+some lightweight syntactic sugar:
 
-Using this, the above proof may be rewritten as
 ```lean
 theorem A_implies_A :
--- This says that for any proposition A, A implies A itself.
-forall (A : Type), A -> A :=
+forall (A : Prop), A -> A :=
 -- Assume that `A` is a type (which we can think of as a proposition), and that
 -- `a` is a proof of `A`.
-  assume (A : Type) (a : A),
+  assume (A : Prop) (a : A),
     -- We may conclude `A` because `a` is a proof of it.
     show A, from a
 ```
+
+where
+* `Prop` is a synonym for `Type`. Writing `Prop` helps to make it
+explicit that we are to think of `A` as a proposition rather than a data type.
+
+* `assume ...` and `show ..., from ...` are syntactic sugar inspired by Lean's
+[structured proofs terms](https://leanprover.github.io/reference/expressions.html#structured-proofs).
 
 Also, one may even write `Prop` instead of `Type` to make it more explicit that
 we are to think of `A` as a proposition rather than a data type.
@@ -44,7 +51,7 @@ we are to think of `A` as a proposition rather than a data type.
 We hope that this helps improve the readability of proofs for those who are more
 used to traditional pen and paper proofs as opposed to Curry-Howard style proofs.
 
-## For developers
+## Documentation
 This section is heavily based on [this example](https://github.com/esy-ocaml/hello-ocaml).
 
 First you need to install [Esy](https://esy.sh/en/) using your distro's native

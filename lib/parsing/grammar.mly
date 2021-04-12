@@ -1,4 +1,6 @@
 (*
+This module contains our grammar, written using Menhir.
+
 References on Menhir's new syntax and carrying around source locations
 http://gallium.inria.fr/blog/parser-construction-menhir-appetizers/
 https://gitlab.inria.fr/fpottier/menhir/blob/master/doc/new-rule-syntax-summary.md
@@ -7,9 +9,10 @@ Dummy token and some precedence rules to make function application left
 associative. See:
 https://ptival.github.io/2017/05/16/parser-generators-and-function-application/
 
-TODO: Implement error reporting
+Error reporting:
 https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
  *)
+
 %{
   open Containers
   open Common
@@ -62,14 +65,16 @@ let stmt == located(
   | AXIOM; ~ = var_name; COLON; var_type = expr;  { Ast.Axiom {var_name; var_type} }
   | CHECK; ~ = expr;                              { Ast.Check expr }
   | EVAL; ~ = expr;                               { Ast.Eval expr }
+  (* theorem var_name : claim := proof
+  Unlike def statements, the type annotation here is not optional.
+  *)
   | THEOREM; ~=var_name; COLON; claim=expr; COLON_EQ; proof=expr;
-  {
-    (* let binding = 
-      Location.locate @@ Ast.Ascription {expr=proof; ascribed_type=claim} in *)
-    Ast.Def {var_name; binding=proof; ascribed_type=Some claim}
-  } 
+  { Ast.Def {var_name; binding=proof; ascribed_type=Some claim} } 
 )
 
+(* - def var_name := binding
+   - def var_name : ascribed_type := binding
+*)
 let def_stmt ==
   | DEF; ~ = var_name; COLON_EQ; binding = expr;
     { Ast.Def {var_name; binding; ascribed_type=None}}
@@ -82,6 +87,8 @@ let expr :=
   | delimited(LPAREN, expr, RPAREN)
   | fun_expr
   | pi_expr
+  | sigma_expr
+  | exists_expr
   | proof_term
 
 let raw_expr :=
@@ -89,8 +96,6 @@ let raw_expr :=
   | fn=expr; arg=expr;                           { Ast.App {left=fn; right=arg} } %prec APP
   (* This let rule is also causing shift/reduce conflicts. *)
   | let_expr
-  | sigma_expr
-  | exists_expr
   | pair_expr
   | TYPE;                                        { Ast.Type }
   | KIND;                                        { Ast.Kind }
@@ -98,22 +103,29 @@ let raw_expr :=
   | SND; ~ = expr;                               <Ast.Snd>
   | ~ = var_name;                                <Ast.Var>
   | ascription
+
+  (* A -> B is abbreviated by `Pi (_ : A), B` *)
   | ~ = expr; ARROW; body = expr;                { Ast.Pi{var_name="_"; expr; body}} %prec ARROW
+
+  (* A * B and A /\ B are abbreviated by `Sigma (_ : A), B` *)
   | ~ = expr; PROD; body = expr;                { Ast.Sigma{var_name="_"; expr; body}} %prec PROD
   | INL; ~ = expr;                                  <Ast.Inl>
   | INR; ~ = expr ;                                 <Ast.Inr>
   | match_expr
   | sum_expr 
   | exists_pair_expr
-  (* | EXISTS_ELIM; left=expr; right=expr;   { Ast.Exists_elim {left; right} } *)
- 
- (* | let_pair *)
 
-(* From Lean reference manual:
-assume h : p, t is sugar for λ h : p, t
-have h : p, from s, t is sugar for (λ h : p, t) s
-suffices h : p, from s, t is sugar for (λ h : p, s) t
-show p, t is sugar for (t : p) *)
+(* Syntactic sugar inspired by Lean's structured proof terms.
+`assume h : p, ...` abbreviates `fun (h : p) => ...`
+
+`have h : p, from s, ...` abbreviates `let h : p := s in ...`
+
+`have p, from s, ...` abbreviates `let this : p := s in ...`
+When no name is provided, we implicitly name it with "this".
+
+`show p, from expr` abbreviates `(expr : p)`
+This is used to end a proof.
+*)
  let proof_term ==
   | ASSUME; ~=fun_arg_list; COMMA; body=expr;
     { let (_, end_pos) = body.source_loc in
@@ -126,19 +138,9 @@ show p, t is sugar for (t : p) *)
      }
   | located(
     | HAVE; ~=var_name; COLON; claim=expr; COMMA; FROM; proof=expr; COMMA; body=expr;
-      {
-        (* let fn = Location.locate @@ Ast.Fun {input_var=var_name; input_type=Some claim; body} in
-        Ast.App {left=fn; right=proof} *)
-        (* let binding = Location.locate @@ Ast.Ascription {expr=proof; ascribed_type=claim} in *)
-        Ast.Let {abstraction={var_name; expr=proof; body}; ascribed_type=Some claim} 
-      }
+    { Ast.Let {abstraction={var_name; expr=proof; body}; ascribed_type=Some claim} }
     | HAVE; claim=expr; COMMA; FROM; proof=expr; COMMA; body=expr;
-      {
-        (* let fn = Location.locate @@ Ast.Fun {input_var="this"; input_type=Some claim; body} in
-        Ast.App {left=fn; right=proof} *)
-        (* let binding = Location.locate @@ Ast.Ascription {expr=proof; ascribed_type=claim} in *)
-        Ast.Let {abstraction={var_name="this"; expr=proof; body}; ascribed_type=Some claim} 
-      }
+    { Ast.Let {abstraction={var_name="this"; expr=proof; body}; ascribed_type=Some claim} }
     | SHOW; claim=expr; COMMA; FROM; proof=expr;
     { Ast.Ascription {expr=proof; ascribed_type=claim} }
   )
@@ -152,6 +154,7 @@ let ascription ==
       (expr, ascribed_type) = annotated_expr;
     { Ast.Ascription {expr; ascribed_type} }
 
+(* Function expressons *)
 let fun_expr == FUN; ~=fun_arg_list; DOUBLE_ARROW; body=expr;
  { let (_, end_pos) = body.source_loc in
    let ((input_var, input_type, _), tail) = List.hd_tl fun_arg_list in
@@ -177,6 +180,7 @@ let fun_arg ==
   | (var_name, expr_type) = bracketed_annotated_name;
     { (var_name, Some expr_type, $loc) }
 
+(* Pi expressions *)
 let pi_expr == 
   | PI; pi_arg_list = nonempty_list(pi_arg); COMMA; output_type=expr;
    { let (_, end_pos) = output_type.source_loc in
@@ -189,14 +193,6 @@ let pi_expr ==
     in Location.locate ~source_loc:($startpos, end_pos) @@ 
          Ast.Pi {var_name=input_var; expr=input_type; body=tail} 
    }
-
-    (*
-    { List.fold_right
-      (fun (input_var, input_type) output_type ->
-         Location.locate ~source_loc:$loc
-           (Ast.Pi {var_name=input_var; expr=input_type; body=output_type}))
-      pi_arg_list output_type}
-    *)
 
   (* Parens are optional in the event there's only one input variable. *)
   | PI; (input_var, input_type) = annotated_name; COMMA; output_type=expr;
@@ -218,18 +214,46 @@ let let_expr ==
     COLON_EQ; ~=expr; IN; body=expr;
     { Ast.Exists_elim {expr; witness_var; witness_cert; body} }
 
-let sigma_expr == SIGMA; 
+let sigma_expr ==
+ | SIGMA; pi_arg_list = nonempty_list(pi_arg); COMMA; output_type=expr;
+   { let (_, end_pos) = output_type.source_loc in
+   let ((input_var, input_type, _), tail) = List.hd_tl pi_arg_list in
+   let tail = List.fold_right
+    (fun (input_var, input_type, (start_pos, _)) body ->
+      Location.locate ~source_loc:(start_pos, end_pos) @@
+        Ast.Sigma {var_name=input_var; expr=input_type; body})
+    tail output_type
+    in Location.locate ~source_loc:($startpos, end_pos) @@ 
+         Ast.Sigma {var_name=input_var; expr=input_type; body=tail} 
+   }
+   (*
   (input_var, input_type) = sigma_arg;
   COMMA; output_type=expr;
   { Ast.Sigma {var_name=input_var; expr=input_type; body=output_type} }
+  *)
 
-let exists_expr == EXISTS; 
+let exists_expr ==
+| EXISTS; pi_arg_list = nonempty_list(pi_arg); COMMA; output_type=expr;
+   { let (_, end_pos) = output_type.source_loc in
+   let ((input_var, input_type, _), tail) = List.hd_tl pi_arg_list in
+   let tail = List.fold_right
+    (fun (input_var, input_type, (start_pos, _)) body ->
+      Location.locate ~source_loc:(start_pos, end_pos) @@
+        Ast.Exists {var_name=input_var; expr=input_type; body})
+    tail output_type
+    in Location.locate ~source_loc:($startpos, end_pos) @@ 
+         Ast.Exists {var_name=input_var; expr=input_type; body=tail} 
+   }
+   (*
   (input_var, input_type) = sigma_arg;
   COMMA; output_type=expr;
   { Ast.Exists {var_name=input_var; expr=input_type; body=output_type} }
+  *)
 
+(*
 let sigma_arg == 
   | delimited(option(LPAREN), separated_pair(var_name, COLON, expr), option(RPAREN))
+*)
 
 let pair_expr == 
   (left, right) = delimited(LPAREN, separated_pair(expr, COMMA, expr), RPAREN);

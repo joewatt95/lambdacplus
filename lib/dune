@@ -1,7 +1,8 @@
 (library
  (name lambdacplus)
+ (public_name lambdacplus)
  (libraries containers
-  (re_export parsing)
-  (re_export kernel)
-  (re_export common)
+  (re_export lambdacplus.parsing)
+  (re_export lambdacplus.kernel)
+  (re_export lambdacplus.common)
 ))
