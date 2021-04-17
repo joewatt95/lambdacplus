@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020/Arch Linux) (preloaded format=pdflatex 2021.4.5)  17 APR 2021 13:31
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020/Arch Linux) (preloaded format=pdflatex 2021.4.5)  17 APR 2021 13:39
 entering extended mode
  \write18 enabled.
  %&-line parsing enabled.
@@ -67,7 +67,7 @@ runsystem(pdflatex  -shell-escape  -jobname 'connectives_syntax' '\expandafter\
 def\csname sa@internal@run\endcsname{1}\input{connectives_syntax}')...executed.
 
 \sa@read=\read2
-runsystem(convert -density 300 -units PixelsPerInch connectives_syntax.pdf  -qu
+runsystem(convert -density 500 -units PixelsPerInch connectives_syntax.pdf  -qu
 ality 90 connectives_syntax.png)...executed.
 
 
@@ -78,7 +78,7 @@ Output written on connectives_syntax.png.
 Here is how much of TeX's memory you used:
  818 strings out of 479383
  12515 string characters out of 5875831
- 281844 words of memory out of 5000000
+ 282040 words of memory out of 5000000
  17988 multiletter control sequences out of 15000+600000
  403430 words of font info for 27 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
@@ -716,22 +716,22 @@ Package: array 2020/10/01 v2.5c Tabular extension package (FMi)
 \TX@cols=\count309
 \TX@ftn=\toks52
 ) (./connectives_syntax.aux)
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 9.
-LaTeX Font Info:    ... okay on input line 9.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 9.
-LaTeX Font Info:    ... okay on input line 9.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 9.
-LaTeX Font Info:    ... okay on input line 9.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 9.
-LaTeX Font Info:    ... okay on input line 9.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 9.
-LaTeX Font Info:    ... okay on input line 9.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 9.
-LaTeX Font Info:    ... okay on input line 9.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 9.
-LaTeX Font Info:    ... okay on input line 9.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 9.
-LaTeX Font Info:    ... okay on input line 9.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
 
 (/usr/share/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
@@ -755,7 +755,7 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
 e
 ))
-Package hyperref Info: Link coloring OFF on input line 9.
+Package hyperref Info: Link coloring OFF on input line 13.
 
 (/usr/share/texmf-dist/tex/latex/hyperref/nameref.sty
 Package: nameref 2019/09/16 v2.46 Cross-referencing by name of section
@@ -768,9 +768,9 @@ Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
 )
 \c@section@level=\count316
 )
-LaTeX Info: Redefining \ref on input line 9.
-LaTeX Info: Redefining \pageref on input line 9.
-LaTeX Info: Redefining \nameref on input line 9.
+LaTeX Info: Redefining \ref on input line 13.
+LaTeX Info: Redefining \pageref on input line 13.
+LaTeX Info: Redefining \nameref on input line 13.
 
 (./connectives_syntax.out) (./connectives_syntax.out)
 \@outlinefile=\write5
@@ -779,13 +779,13 @@ LaTeX Info: Redefining \nameref on input line 9.
 Package todonotes Warning: The length marginparwidth is less than 2cm and will 
 most likely cause issues with the appearance of inserted todonotes. The issue c
 an be solved by adding a line like \setlength {\marginparwidth }{2cm} prior to 
-loading the todonotes package. on input line 9.
+loading the todonotes package. on input line 13.
 
 (/usr/share/texmf-dist/tex/latex/amsfonts/umsa.fd)
 (/usr/share/texmf-dist/tex/latex/amsfonts/umsb.fd)
 (/usr/share/texmf-dist/tex/latex/stmaryrd/Ustmry.fd)
 
-LaTeX Warning: \verb may be unreliable inside tabularx on input line 35.
+LaTeX Warning: \verb may be unreliable inside tabularx on input line 39.
 
 [1
 
@@ -797,7 +797,7 @@ Package rerunfilecheck Info: File `connectives_syntax.out' has not changed.
 Here is how much of TeX's memory you used:
  20599 strings out of 479383
  393660 string characters out of 5875831
- 680744 words of memory out of 5000000
+ 680782 words of memory out of 5000000
  37276 multiletter control sequences out of 15000+600000
  406245 words of font info for 41 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191

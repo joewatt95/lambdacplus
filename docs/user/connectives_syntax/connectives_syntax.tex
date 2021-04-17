@@ -1,10 +1,14 @@
-\documentclass[convert, border=2pt, varwidth=8in]{standalone}
+\documentclass[convert={density=500}, border=2pt, varwidth=8in]{standalone}
 
 \usepackage[utf8]{inputenc}
 % \usepackage[htt]{hyphenat}
 \usepackage{amsmath, amssymb, amsthm, thmtools, thm-restate, tikz, graphicx,
   hyperref, cleveref, comment, expl3, xparse, ebproof, enumitem,
   stmaryrd, verbatim, todonotes, xargs, tabularx}
+
+% https://tex.stackexchange.com/questions/188148/how-to-center-gathered-aligned-equations-in-enumerate-environment
+\displaywidth=\textwidth
+\displayindent=-\leftskip
 
 \begin{document}
 
