@@ -116,7 +116,7 @@ check p_or_q
       errLoc: undefined,
       cmd: "",
       result: "",
-      ctx: ctx0,
+      ctxs: initialCtxs,
       node: createDivNode(true, 0)
     }
     document.getElementById("history").appendChild(initialObj.node);
@@ -128,9 +128,9 @@ check p_or_q
      this.editor.getSession().removeMarker(errMarker);
      editor.getSession().clearAnnotations();
 
-      var ctx = results[head].ctx;
+      var ctxs = results[head].ctxs;
       var str = editor.getValue();
-      var newObj = run_in(str, ctx);
+      var newObj = parseAndEval(str, ctxs);
       while(results.length > head + 1)
         document.getElementById("history").removeChild(results.pop().node);
       for(var i = 0; i < results.length; i++)
