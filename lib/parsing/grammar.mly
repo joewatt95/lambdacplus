@@ -215,17 +215,20 @@ let let_expr ==
     { Ast.Exists_elim {expr; witness_var; witness_cert; body} }
 
 let sigma_expr ==
- | SIGMA; pi_arg_list = nonempty_list(pi_arg); COMMA; output_type=expr;
-   { let (_, end_pos) = output_type.source_loc in
-   let ((input_var, input_type, _), tail) = List.hd_tl pi_arg_list in
-   let tail = List.fold_right
-    (fun (input_var, input_type, (start_pos, _)) body ->
-      Location.locate ~source_loc:(start_pos, end_pos) @@
-        Ast.Sigma {var_name=input_var; expr=input_type; body})
-    tail output_type
-    in Location.locate ~source_loc:($startpos, end_pos) @@ 
-         Ast.Sigma {var_name=input_var; expr=input_type; body=tail} 
-   }
+  | SIGMA; pi_arg_list = nonempty_list(pi_arg); COMMA; output_type=expr;
+    { let (_, end_pos) = output_type.source_loc in
+    let ((input_var, input_type, _), tail) = List.hd_tl pi_arg_list in
+    let tail = List.fold_right
+      (fun (input_var, input_type, (start_pos, _)) body ->
+        Location.locate ~source_loc:(start_pos, end_pos) @@
+          Ast.Sigma {var_name=input_var; expr=input_type; body})
+      tail output_type
+      in Location.locate ~source_loc:($startpos, end_pos) @@ 
+          Ast.Sigma {var_name=input_var; expr=input_type; body=tail} 
+    }
+  | SIGMA; (input_var, input_type) = annotated_name; COMMA; output_type=expr;
+    { Location.locate ~source_loc:$loc
+        (Ast.Sigma {var_name=input_var; expr=input_type; body=output_type}) }
    (*
   (input_var, input_type) = sigma_arg;
   COMMA; output_type=expr;
@@ -233,17 +236,20 @@ let sigma_expr ==
   *)
 
 let exists_expr ==
-| EXISTS; pi_arg_list = nonempty_list(pi_arg); COMMA; output_type=expr;
-   { let (_, end_pos) = output_type.source_loc in
-   let ((input_var, input_type, _), tail) = List.hd_tl pi_arg_list in
-   let tail = List.fold_right
-    (fun (input_var, input_type, (start_pos, _)) body ->
-      Location.locate ~source_loc:(start_pos, end_pos) @@
-        Ast.Exists {var_name=input_var; expr=input_type; body})
-    tail output_type
-    in Location.locate ~source_loc:($startpos, end_pos) @@ 
-         Ast.Exists {var_name=input_var; expr=input_type; body=tail} 
-   }
+  | EXISTS; pi_arg_list = nonempty_list(pi_arg); COMMA; output_type=expr;
+    { let (_, end_pos) = output_type.source_loc in
+    let ((input_var, input_type, _), tail) = List.hd_tl pi_arg_list in
+    let tail = List.fold_right
+      (fun (input_var, input_type, (start_pos, _)) body ->
+        Location.locate ~source_loc:(start_pos, end_pos) @@
+          Ast.Exists {var_name=input_var; expr=input_type; body})
+      tail output_type
+      in Location.locate ~source_loc:($startpos, end_pos) @@ 
+          Ast.Exists {var_name=input_var; expr=input_type; body=tail} 
+    }
+  | EXISTS; (input_var, input_type) = annotated_name; COMMA; output_type=expr;
+    { Location.locate ~source_loc:$loc
+        (Ast.Exists {var_name=input_var; expr=input_type; body=output_type}) }
    (*
   (input_var, input_type) = sigma_arg;
   COMMA; output_type=expr;
