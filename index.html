@@ -2,56 +2,67 @@
 <head>
 <title>λC+ proof assistant</title>
 <style type="text/css" media="screen">
-    #all { 
-        display: grid;
-        grid-template-columns: auto;
-        grid-template-rows : 4% 80% auto;
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-    }
-    #toolbar {
-      display: grid;
-      grid-template-columns: 5% auto;
-      grid-template-rows: auto;
-    }
-    #history {
-      display: flex;
-      justify-content: flex-start;
-      align-items: center;
-      align-content: center;
-    }
-    #run {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      background-color:whitesmoke;
-      opacity: 0.2;
-      transition: 0.3s;
-    }
-    #run:hover {
-      opacity: 1;
-    }
-    .node {
-      margin-left: 0.5em;
-    }
-    .node.valid:hover {
-      color: green;
-    }
-    .node.current {
-      border-style: solid;
-      border-width: thin;
-    }
-    .node.invalid {
-      color: red;
-    }
-    .node {
-      opacity: 0.5;
-      transition: 0.3s;
-    }
+#all { 
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows : 4% 80% auto 1.5em;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+#toolbar {
+  display: grid;
+  grid-template-columns: 5% auto;
+  grid-template-rows: auto;
+}
+#history {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  align-content: center;
+}
+#run {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color:whitesmoke;
+  opacity: 0.2;
+  transition: 0.3s;
+}
+#links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  background-color: rgba(0,0,0,0.2);
+}
+.link-btn {
+  color: black;
+  padding: 0.1em;
+}
+#run:hover {
+  opacity: 1;
+}
+.node {
+  margin-left: 0.5em;
+}
+.node.valid:hover {
+  color: green;
+}
+.node.current {
+  border-style: solid;
+  border-width: thin;
+}
+.node.invalid {
+  color: red;
+}
+.node {
+  opacity: 0.5;
+  transition: 0.3s;
+}
 .node:hover {
       opacity: 1;
     }
@@ -77,6 +88,10 @@ axiom p_or_q : P + Q
 check p_or_q
 </div>
 <div id="output"></div>
+<div id="links">
+  <a href="https://github.com/aellym0/lambdacplus/wiki" target="_blank" class="link-btn"><i class="fab fa-github-square"></i></a>
+  <a href="https://aellym0.github.io/lambdacplus/docs/dev/odoc" target="_blank" class="link-btn"><i class="fas fa-book"></i></a>
+</div>
 </div>
 <script src="https://pagecdn.io/lib/ace/1.4.12/ace.min.js" type="text/javascript" charset="utf-8"></script>
 <script>
@@ -101,7 +116,7 @@ check p_or_q
       errLoc: undefined,
       cmd: "",
       result: "",
-      ctxs: initialCtxs,
+      ctx: ctx0,
       node: createDivNode(true, 0)
     }
     document.getElementById("history").appendChild(initialObj.node);
@@ -113,9 +128,9 @@ check p_or_q
      this.editor.getSession().removeMarker(errMarker);
      editor.getSession().clearAnnotations();
 
-      var ctxs = results[head].ctxs;
+      var ctx = results[head].ctx;
       var str = editor.getValue();
-      var newObj = parseAndEval(str, ctxs);
+      var newObj = run_in(str, ctx);
       while(results.length > head + 1)
         document.getElementById("history").removeChild(results.pop().node);
       for(var i = 0; i < results.length; i++)

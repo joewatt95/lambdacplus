@@ -1,0 +1,26 @@
+\documentclass[convert={density=500}, border=2pt, varwidth=8in]{standalone}
+
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath, amssymb, amsthm, thmtools, thm-restate, tikz, graphicx,
+  hyperref, cleveref, comment, expl3, xparse, ebproof, enumitem, xcolor,
+  stmaryrd, backnaur, verbatim, listings, tabularx}
+
+\begin{document}
+
+\begin{center}
+\begin{align*}
+      \overbrace{1 + 2}^{\text{Term}} \quad : \quad \overbrace{\text{Int}}^{\text{Type}} \\
+      \underbrace{\text{p}}_{\text{Proof}} \quad : \quad \underbrace{\text{P}}_{\text{Prop}}
+\end{align*}
+\end{center}
+
+\begin{itemize}[label=$\ast$]
+  \item Proving a proposition $\Longleftrightarrow$ constructing a term of the
+    corresponding type
+  \item Checking a proof for correctness $\Longleftrightarrow$ type checking
+  \item Simply types $\Longleftrightarrow$ Intuitionistic propositional logic
+  \item Dependent types $\Longleftrightarrow$ Intuitionistic predicate logic
+\end{itemize}
+
+\end{document}

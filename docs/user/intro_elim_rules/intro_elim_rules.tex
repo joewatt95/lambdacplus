@@ -1,0 +1,94 @@
+\documentclass[convert, border=2pt, varwidth=8in]{standalone}
+
+\usepackage[utf8]{inputenc}
+% \usepackage[htt]{hyphenat}
+\usepackage{amsmath, amssymb, amsthm, thmtools, thm-restate, tikz, graphicx,
+  hyperref, cleveref, comment, expl3, xparse, ebproof, enumitem,
+  stmaryrd, verbatim, todonotes, xargs, tabularx, mathtools}
+
+\begin{document}
+\begin{spreadlines}{2em}
+\begin{gather*}
+\textbf{Universal quantifier} \\
+\begin{prooftree}
+    \infer0{\mathtt{x} : A}
+    \ellipsis{}{\mathtt{E} : B(x)}
+    \infer1[$\forall I$]{\texttt{fun x => E} : \forall x : A, B(x)}
+\end{prooftree}
+~ \qquad
+\begin{prooftree}
+   \hypo{\mathtt{E_1} : \forall a : A, B(x)}
+   \hypo{\mathtt{E_2} : A}
+   \infer2[$\forall E$]{\mathtt{E_1 \,\, E_2} : B[x \mapsto E_2]} 
+\end{prooftree}
+\\ \textbf{Implication} \\
+\begin{prooftree}
+    \infer0{\mathtt{x} : A}
+    \ellipsis{}{\mathtt{E} : B}
+    \infer1[$\rightarrow I$]{\texttt{fun x => E} : A \rightarrow B}
+\end{prooftree}
+~ \qquad
+\begin{prooftree}
+   \hypo{\mathtt{E_1} : A \rightarrow B}
+   \hypo{\mathtt{E_2} : A}
+   \infer2[$\rightarrow E$]{\mathtt{E_1 \,\, E_2} : B} 
+\end{prooftree}
+\\ \textbf{Conjunction} \\
+\begin{prooftree}
+    \hypo{\mathtt{E_1} : A}
+    \hypo{\mathtt{E_2} : B}
+    \infer2[$\wedge I$]{\mathtt{(E_1, \, E_2)} : A \wedge B}
+\end{prooftree}
+~ \qquad
+\begin{prooftree}
+    \hypo{\mathtt{E} : A \wedge B}
+    \infer1[$\wedge E_1$]{\mathtt{fst \,\, E} : A}
+\end{prooftree}
+~ \qquad
+\begin{prooftree}
+    \hypo{\mathtt{E} : A \wedge B}
+    \infer1[$\wedge E_2$]{\mathtt{snd \,\, E} : B}
+\end{prooftree}
+\\ \textbf{Disjunction} \\
+\begin{prooftree}
+    \hypo{\mathtt{E} : A}
+    \infer1[$\vee I_1$]{\mathtt{inl \,\, E} : A \vee B}
+\end{prooftree}
+~ \qquad
+\begin{prooftree}
+    \hypo{\mathtt{E} : B}
+    \infer1[$\vee I_2$]{\mathtt{inr \,\, E} : A \vee B}
+\end{prooftree}
+\\
+\begin{prooftree}
+    \hypo{\mathtt{E} : A \vee B}
+    \infer0{\mathtt{x} : A} \ellipsis{}{\mathtt{E_1} : C}
+    \infer0{\mathtt{y} : B} \ellipsis{}{\mathtt{E_2} : C}
+    \infer3[$\vee$ E]{
+        \texttt{
+            match E with
+            | inl x => $\mathtt{E_1}$
+            | inr y => $\mathtt{E_2}$
+            end
+        } : C
+    }
+\end{prooftree}
+\\ \textbf{Existential quantifier} \\
+\begin{prooftree}
+    \hypo{\mathtt{E_1} : A}
+    \hypo{\mathtt{E_2} : B[x \mapsto E_1]}
+    \infer2[$\exists I$]{\mathtt{\{E_1, \, E_2\}} : \exists x : A, \, B(x)}
+\end{prooftree}
+~ \qquad
+% https://tex.stackexchange.com/a/278156
+\begin{prooftree}
+    \hypo{\mathtt{E} : \exists x : A, \, B(x)}
+    \infer0{\mathtt{x} : A}
+    \infer0{\mathtt{y} : B(x)}
+    \infer[no rule]2{}
+    \ellipsis{}{\mathtt{E'} : C}
+    \infer2[$\exists E$]{\texttt{let \{x, y\} := E in $\mathtt{E'}$} : C}
+\end{prooftree}
+\end{gather*}
+\end{spreadlines}
+\end{document}
