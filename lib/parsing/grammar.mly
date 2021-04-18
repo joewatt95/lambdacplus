@@ -49,7 +49,6 @@ https://baturin.org/blog/declarative-parse-error-reporting-with-menhir/
 P /\ (Q -> P) *)
 %right ARROW
 %right PROD SUM
-
 (* Highest precedence *)
 
 %start <string Ast.list_of_stmts> main
