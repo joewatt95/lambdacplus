@@ -3,21 +3,190 @@
 
 \input{preamble}
 
+\title{$\lambda C+$ specification}
+\author{Watt Seng Joe \and Abdul Haliq S/O Abdul Latiff}
+
 \begin{document}
+\maketitle
 \tableofcontents
+\newpage
 
 \section{Introduction}
-Our language is a playground for the Curry-Howard correspondence.
-At its core is the Calculus of Constructions (CoC).
-Syntactically, it feels much like the Lean theorem prover,
-which like Coq, is based on a variant of CoC with inductive types.
+$\lambda C+$ is a proof assistant grounded in the Curry-Howard correspondence.
+The main aim of $\lambda C+$ is to provide builtin types to encode the following
+logical connectives of intuitionistic logic as per this correspondence
+\footnote{
+  Note that negation ($\neg$) and falsity ($\bot$) are not implemented in the
+  language though $\bot$ could easily be encoded as the empty type and $\neg A$
+  as $A \rightarrow \bot$.
+}
 
-Following CoC, we stay true to the spirit of Curry-Howard and identify
-propositions as data types.
-Through this, all the logical connectives and quantifiers of intuitionistic
-logic are given a computational interpretation.
-The end result is a programming language which can be viewed as a theorem prover
-of sorts.
+\begin{enumerate}
+  \item Universal quantifier $\forall$
+  \item Implication $\rightarrow$
+  \item Conjunction $\wedge$
+  \item Disjunction $\vee$ 
+  \item Existential quantifier $\exists$
+\end{enumerate}
+
+Another important goal of $\lambda C+$ is to provide some constructs
+including syntactic sugar that lets us write longer proofs more conveniently.
+
+At the core of our language is the Calculus of Constructions (CoC) as 
+originally formulated by Coquand and Huet in \cite{coc_coquand_huet}.
+A good introduction to typed lambda calculi and CoC is the book in 
+\cite{type_theory_and_formal_proof}. 
+
+Syntactically, $\lambda C+$ was heavily inspired by Standard ML and the
+\href{https://leanprover.github.io/}{Lean theorem prover}.
+Semantically, we define both a dynamic and static semantics.
+For this, we use a big-step operational semantics inspired by
+Plotkin's seminal work \cite{plotkin_sos}, as well as a bidirectional typechecking
+algorithm as found in \cite{lambdapi}. 
+
+In the next section, we discuss how our language extends CoC. Thereafter, we
+will formally define the syntax and semantics of $\lambda C+$.
+
+\subsection{
+  \texorpdfstring{$\lambda C+$}{Lambdacplus} and CoC
+}
+
+\subsubsection{Similarities}
+Following CoC, $\lambda C+$ does not have separate syntactic categories for types
+and expressions. Thus, everything, including types themselves, are expressions.
+However, not all expressions are types.
+Those expressions which we call types are expressions, say $T$, that satisfy
+a very specific typing judgment, namely $\Gamma \vdash T \Leftarrow s$,
+where $s \in \{ \Type, \, \Kind \}$. We'll revisit this again later.
+
+\texttt{Type} and \texttt{Kind} are the 2 sorts of $\lambda C+$, inherited from
+CoC. These are often called $*$ and $\Box$ in the literature.
+\texttt{Type} can be thought of as the ``type of all types'' and so expressions
+with a type of \texttt{Type} are types.
+\texttt{Kind} is then the type of the expression \texttt{Type} and
+\texttt{Kind} itself doesn't have a type.
+CoC includes it primarily to prevent Girard's paradox
+(see \cite{analysis_of_girard}).
+
+As with CoC, $\lambda C+$ doesn't have a separate sort for propositions, so 
+\texttt{Prop} is identified with \texttt{Type}.
+Though this stays true to the Curry-Howard correspondence, this has the
+unfortunate consequence of conflating the syntactic roles of propositions and
+data types.
+  
+This may be counter-intuitive for users because in first (or higher) order
+logic, there is a clear distinction between terms and well-formed formulae,
+which belong to different syntactic categories. 
+
+\subsubsection{Extensions to CoC}
+$\lambda C+$ extends CoC in 2 distinct ways. The first is that we provide more
+types to model the various connectives more naturally.
+CoC in its original formulation does not contain inductive types and only has
+the Pi type (aka the dependent function type).
+
+While this can encode $\forall$ and $\rightarrow$ naturally, $\wedge$, $\vee$ and
+$\exists$ have to be encoded in terms of the Pi.
+Chapter 7 of the book \cite{type_theory_and_formal_proof} explains how this can
+be done.
+However, we wanted to implement these directly via their Curry-Howard
+interpretation.
+
+Thus $\lambda C+$ extends CoC by providing 3 additional types on top of the
+dependent \texttt{Pi} type. These are
+\begin{enumerate}
+  \item the (dependent) Sigma type $\Sigma_{x : A} B(x)$ 
+  \footnote{
+    We write $B(x)$ to indicate that the variable $x$ may appear free in $B$.
+    If we write $B$ alone, as in $\Sigma_{x : A}, B$, then we mean that $x$
+    cannot appear free in $B$.
+  }
+    \\
+    This is a dependent variation of the product type that allows the type 
+    of the 2nd component to depend on the value of the first. \\
+    The simple pair type which models conjunction is then taken as an
+    abbreviation for $\Sigma_{x : A}, B$ where $x$ does not appear free in $B$.
+
+  \item the (non-dependent) sum type $A + B$ \\
+    Semantically these behave the same as the non-dependent version as found in
+    extensions of the simply typed lambda calculus.
+  \item the (dependent) existential type $\exists x : A, \, B(x)$ \\
+    This is a variation of the Sigma type with a ``weaker'' elimination rule to
+    model the existential quantifier faithfully.
+\end{enumerate}
+
+The second way in which $\lambda C+$ extends upon CoC is that we allow users to
+introduce global definitions via the \verb|def x := E| construct.
+CoC lacks such facilities as it is a lambda calculus designed for theoretical
+study.
+However, writing programs without any means to \textit{name} expressions, be it
+locally or globally is highly inconvenient.
+
+Similarly, when we write mathematical proofs, it is common to introduce
+auxiliary definitions, lemmas and axioms.
+For instance, we define a surjective function to be an $f : X \to Y$ such that
+$\forall y \in Y, \, \exists x \in X, \, f(x) = y$. We then prefer writing that
+$f$ is surjective rather than repeatedly writing the long formula.
+Readers who are interested in reading more about the importance of
+definitions in practical implementations of proof assistants can refer to
+\cite{type_theory_and_formal_proof}.
+
+Thus we believe that it is necessary for any practical programming language and
+proof assistant to allow users to name things.
+For this, we introduce the notion of a statement and the context, which is our take
+on the environment in denotational semantics.
+Our semantics then defines constructs like \verb|def x := E| as statements that
+add bindings to the context.
+
+% \subsection{Background}
+% According to the Curry-Howard correspondence, the simply typed lambda calculus
+% can encode $\rightarrow$, $\wedge$ and $\vee$ naturally via the simple function
+% type, pair type and sum type.
+% For the 2 quantifiers, dependent types offer an elegant solution.
+
+% To see this, consider how we normally prove the universally quantified statement, 
+% $\forall x \in A, \, P(x)$.
+% We would assume that $x$ is an arbitrary element of $A$ and then proceed to prove
+% that $P(x)$ holds.
+% We can model this introduction rule as a \textit{function abstraction} that takes 
+% as input an variable $x$ of type $A$ and returns a proof of $P(x)$.
+% Note that the type of the output, ie $P(x)$, contains the variable $x$ free and
+% so varies with the value of $x$.
+% Then the elimination rule corresponds to function application.
+% The type of such a function is precisely the Pi type, $\Pi_{x : A} P(x)$!
+% Since the Pi type generalizes and subsumes the simple function type, it can
+% model the universal quantifier and implication naturally.
+
+% The Calculus of Constructions (CoC) as originally formulated by
+% Coquand and Huet in \cite{coc_coquand_huet}, is a typed lambda calculus containing
+% this Pi type.
+% Many proof assistants like Coq and Lean implement a variation of CoC, though
+% they
+
+% In its original form, it does not contain inductive types, recursion
+% or a countable hierarchy of type universes. Many theorem provers like Coq and
+% Lean are based on variations of CoC with these advanced features. However, we
+% chose to forgo them due to the complexity involved with implementing them.
+
+% We chose this as the foundation for $\lambda C+$ since it is 
+
+% To implement types that correspond to the aforementioned connectives,
+% $\lambda C+$ is a typed lambda calculus based on the dependent type theory known
+% as the Calculus of Constructions (CoC) which was originally formulated by
+% Coquand and Huet in \cite{coc_coquand_huet}.
+% A good introduction to typed lambda calculi and CoC is the book 
+% \cite{type_theory_and_formal_proof}.
+
+% Our language is a playground for the Curry-Howard correspondence.
+% At its core is the Calculus of Constructions (CoC).
+% Syntactically, it feels much like the Lean theorem prover,
+% which like Coq, is based on a variant of CoC with inductive types.
+
+% Following CoC, we stay true to the spirit of Curry-Howard and identify
+% propositions as data types.
+% Through this, all the logical connectives and quantifiers of intuitionistic
+% logic are given a computational interpretation.
+% The end result is a programming language which can be viewed as a theorem prover
+% of sorts.
 
 % Unfortunately, we are unsure if our language is logically consistent like the
 % original CoC since we do implement many more types to model the various logical
@@ -31,8 +200,8 @@ of sorts.
 % though they also include many other features like inductive types and a 
 % cumulative hierarchy of type universes.
 
-In this document, we provide a big-step semantics for our language, upon which
-our interpreter was based.
+% In this document, we provide a big-step semantics for our language, upon which
+% our interpreter was based.
 % Our approach to semantics is heavily inspired by 
 % \href{https://homepages.inf.ed.ac.uk/gdp/publications/sos_jlap.pdf}
 % {Plotkin's seminal work} on structural operational semantics.
@@ -51,12 +220,13 @@ our interpreter was based.
 % We hope that the reader will come to see that the ideas underlying our formalization
 % are intuitive.
 
-In the next section, we offer some background on type theory in 
-relation to the Curry-Howard correspondence. We do not aim to be comprehensive
-here, though we hope to offer some perspective that may help readers.
-This section is optional and may be skipped if the reader is already familiar
-with the subject matter.
+% In the next section, we offer some background on type theory in 
+% relation to the Curry-Howard correspondence. We do not aim to be comprehensive
+% here, though we hope to offer some perspective that may help readers.
+% This section is optional and may be skipped if the reader is already familiar
+% with the subject matter.
 
+\begin{comment}
 \section{Background information}
 \subsection{Simple type theory and Curry Howard}
 In typed lambda calculi, all types come with data constructors and eliminators.
@@ -507,6 +677,7 @@ forall (P : Prop) (Q : Prop), (P \/ Q) -> Q \/ P :=
     end
 \end{verbatim}
 which may read more naturally to those who are more mathematically inclined.
+\end{comment}
 
 % Unfortunately, it should be noted that our formalization of the typing
 % judgments for the Sigma type does allow for Girard's paradox to creep back to our
@@ -534,28 +705,30 @@ We list all the metavariables that we will use here.
   \item $x$, $y$, $z$ range over variables.
   \item $\nu, \, \tau$ range over expressions in head normal form.
   \item $n$ ranges over neutral expressions.
+  \item $\Gamma$ ranges over contexts.
 \end{enumerate}
+
+Note that we often add subscripts and ' to them, like for instance
+$E_1$, $\nu'$ and $\Gamma'$.
 
 \section{Syntax}
 
-In order to implement our type system, we promote types to the level of
-expressions in our language, so we no longer have separate syntactic categories 
-for them.
+$\lambda C+$ has 2 syntactic categories, namely expressions and statements.
+Note that as with CoC, there are no separate syntactic categories for types and
+expressions.
+% A type is then an expression, say $T$, which satisfies a very
+% specific typing judgment, namely $\Gamma \vdash T \Leftarrow s$,
+% where $s \in \{ \Type, \, \Kind \}$. We'll revisit this again later.
 
-This means that \textit{everything} in our language is an expression, even
-those things which we call types.
-With this in mind, a type is then an expression, say $T$, which satisfies a very
-specific typing judgment, namely $\Gamma \vdash T \Leftarrow s$,
-where $s \in \{ \Type, \, \Kind \}$. We'll revisit this again later.
+Here we describe the concrete ascii syntax for our language, alongside
+the syntactic sugar we provide.
 
-For now, we describe the concrete ascii syntax for our language, alongside
-the syntactic sugar we provide. This includes unicode versions of logical symbols
-that we write on paper.
+At the top level, programs are nonempty sequences of statements,
+like \texttt{def}, \texttt{axiom}, \texttt{check} and \texttt{eval}.
 
-At the top level, programs will be nonempty sequences of statements.
-Statements function like top-level commands, as found in other theorem provers
-like Coq and Lean. These offer a way for users to interact with our system.
-Through statements, users can introduce global assumptions and definitions.
+% Statements function like top-level commands, as found in other theorem provers
+% like Coq and Lean. These offer a way for users to interact with our system.
+% Through statements, users can introduce global assumptions and definitions.
 
 \subsection{Syntax for expressions}
 
@@ -583,8 +756,8 @@ Through statements, users can introduce global assumptions and definitions.
 % Such a construction can be justified by the famous fixed point theorems of Tarski
 % and Kleene.
 
-The syntax for our language and syntactic sugar are heavily inspried by the
-Lean theorem prover.
+% The syntax for our language and syntactic sugar are heavily inspried by the
+% Lean theorem prover.
 
 \subsubsection{Syntax rules}
 \begin{enumerate}
@@ -653,7 +826,7 @@ Lean theorem prover.
     fun x => (fun y => (fun (h : T) => E))
   \end{verbatim}
 
-\item \textbf{Pi and Sigma type} \\
+\item \textbf{Pi, Sigma and Existential type constructor} \\
   \[
     \begin{prooftree}
       \hypo{x}
@@ -678,7 +851,8 @@ Lean theorem prover.
   the brackets may be ommitted so users can enter \verb|Pi x : A, B| instead of
   \verb|Pi (x : A), B|.
 
-  The syntax rules for Sigma, ie \verb|Sigma (x : A), B| and the above syntactic
+  The syntax rules for Sigmas and existentials, ie 
+  \verb|Sigma (x : A), B| and \verb|exists (x : A), B| and the above syntactic
   sugar work the same as with Pi above. 
 
   We also allow users to enter, in place of \verb|Pi|, \verb|forall| or using
@@ -690,70 +864,51 @@ Lean theorem prover.
   For the case of \verb|Sigma|, \verb|A * B| and \verb|A /\ B| can be written
   in place of \verb|Sigma (x : A), B|.
 
-  \item \textbf{Sigma constructor} \\
-  \[
+  \item \textbf{Sigma data constructor and eliminator} \\
+  \begin{gather*}
     \begin{prooftree}
       \hypo{E_1}
       \hypo{E_2}
       \infer2{(E_1, \, E_2)}
     \end{prooftree}  
-  \]
-  This constructs a pair of some Sigma type.
-
-  \item \textbf{Sigma eliminators} \\
-  \[
+    ~ \quad
     \begin{prooftree}
       \hypo{E}
-      \infer1{\fst \, E}
+      \infer1{\fst \,\, E}
     \end{prooftree}
-  \]
-
-  \[
+    ~ \quad
    \begin{prooftree}
     \hypo{E}
-    \infer1{\snd \, E}
+    \infer1{\snd \,\, E}
    \end{prooftree}
- \]
+  \end{gather*}
  
  \verb|fst| is used to obtain the first component of a pair and \verb|snd| is used
  to obtain the second component.
 
- \item \textbf{Existential} \\
-  \[
-  \begin{prooftree}
-    \hypo{x}
-    \hypo{A}
-    \hypo{B}
-    \infer3{\text{exists } x : A, \, B}
-  \end{prooftree}   
-  \]
-  We allow users to enter $\exists$ in unicode instead of \verb|exists|.
-
- \item \textbf{Existential constructor} \\
- \[
+ \item \textbf{Existential data constructor and eliminator} \\
+ \begin{gather*}
   \begin{prooftree}
    \hypo{E_1}
    \hypo{E_2}
    \infer2{\{ E_1, \, E_2 \}} 
   \end{prooftree}  
- \]
- This constructs an existential, ie the weaker cousin of the Sigma.
-
- \item \textbf{Existential eliminator} \\
- \[
+  ~ \quad
  \begin{prooftree}
   \hypo{x}
   \hypo{y}
   \hypo{E}
   \hypo{E'}
   \infer4{\text{let } \{x, \, y\} := E \text{ in } E'}
- \end{prooftree}  
- \]
+ \end{prooftree}
+ \\ 
+\end{gather*}
+Note that for the eliminator, ie the rule on the right,
+$x$ and $y$ are bound in $E'$ but not $E$.
 
- As discussed in the intro, this models the rule of existential elimination.
- $x$ and $y$ are binders for $E'$ but not $E$.
- Note that this is not the same as pair destructuring since this is used for
- unpacking the existential rather than the Sigma.
+%  As discussed in the intro, this models the rule of existential elimination.
+%  Note that this is not the same as pair destructuring since this is used for
+%  unpacking the existential rather than the Sigma.
 
 \item \textbf{Type ascriptions} \\
   \[
@@ -764,8 +919,7 @@ Lean theorem prover.
     \end{prooftree}
   \]
   This functions similarly to other functional languages in that it's used
-  mainly to provide type annotations. For instance, it can be used to help the
-  type checker if it's unable to infer the type of an expression.
+  mainly to provide type annotations.
 
 \item \textbf{Local let bindings} \\
 \[
@@ -788,7 +942,7 @@ annotation via
 
 which is desugared into \verb|let x := (E : T) in E'|
 
-\item \textbf{Sum type} \\
+\item \textbf{Sum type constructor} \\
 \[
   \begin{prooftree}
     \hypo{A}
@@ -800,26 +954,24 @@ which is desugared into \verb|let x := (E : T) in E'|
 As syntactic sugar, users can write \verb|A \/ B| instead since sum types
 model disjunction.
 
-\item \textbf{Sum type constructor} \\
-\[
+\item \textbf{Sum data constructor} \\
+\begin{gather*}
   \begin{prooftree}
     \hypo{E}
-    \infer1{\inl E}
+    \infer1{\inl \,\, E}
   \end{prooftree}
-\]
-
-\[
+~ \quad
   \begin{prooftree}
     \hypo{E}
-    \infer1{\inr E}
+    \infer1{\inr \,\, E}
   \end{prooftree}
-\]
+\end{gather*}
 
 These are meant for introducing the left and right components of a disjoint sum,
-ie $\inl E$ constructs an expression of type $A + B$ given an expression $E$ of
-type $A$. Similarly, $\inr E$ constructs an $A + B$ given $E$ of type $B$.
+ie $\inl \,\, E$ constructs an expression of type $A + B$ given an expression $E$ of
+type $A$. Similarly, $\inr \,\, E$ constructs an $A + B$ given $E$ of type $B$.
 
-\item \textbf{Sum type eliminator} \\
+\item \textbf{Sum eliminator} \\
 Given expressions $E$, and variables $x$ and $y$, users can perform case analysis
 on a sum type via the \verb|match| construct below.
 Note that this corresponds to the rule of disjunction elimination.
@@ -914,9 +1066,9 @@ This defines the variable $x$ to have a type of $T$ with an unknown binding.
 The interpreter will treat $x$ like an unknown, indeterminate constant.
 
 We also allow users to enter \verb|constant x : T| instead of \verb|axiom x : T|,
-as syntactic sugar. Note that since our system conflates the notion of types and
-propositions, introducing a constant \verb|x| of type \verb|T| is akin to
-introducing an assumption (ie axiom).
+as syntactic sugar. Note that $\lambda C+$ conflates the notion of types and
+propositions, as introducing an arbitrary variable \verb|x| of type \verb|T| is 
+akin to introducing an assumption (ie axiom).
 
 \item \textbf{Check} \\
 \[
@@ -935,12 +1087,12 @@ output it.
     \infer1{\evall \,\, E}
   \end{prooftree}
 \]
-This instructs the interpreter to fully normalize the expression $E$.
+This instructs the interpreter to normalize (ie fully reduce) the expression $E$.
 
-Later, we will properly define the notion of normalization using a
-big-step semantics. For now it suffices to say that normalizing an expression
-is the process of fully evaluating it until no more simplifications can be
-performed.
+% Later, we will properly define the notion of normalization using a
+% big-step semantics. For now it suffices to say that normalizing an expression
+% is the process of fully evaluating it until no more simplifications can be
+% performed.
 
 \end{enumerate}
 
@@ -980,10 +1132,17 @@ structured proofs in a manner more akin to how one would do so on paper.
 \end{enumerate}
 
 
-\section{Capture avoiding substitutions}
+\section{Binders and capture avoiding substitutions}
 In this section, we define the concept of free variables and capture avoiding
-substitutions. This will be important when we later define normalization and
+substitutions. 
+This will be important when we later define normalization and
 reduction in our big-step semantics.
+
+Though it is common for authors (like \cite{lambdapi}) to omit this in their
+semantics, we prefer to be explicit about this since great care must be taken
+when implementing these.
+Readers who are more interested in the semantics and not so much in the actual
+implementation should feel free to skip most of this section.
 
 \subsection{Free variables}
 We define the set of free variables of an expression $E$, ie $\FV(E)$ recursively.
@@ -1076,6 +1235,7 @@ note that $x$ and $y$ are bound in $E'$ but not $E$.
 We define the semantics for expressions first and statements later.
 For expressions, we formulate a static type system along with a big-step
 operational semantics which is used for evaluation.
+
 For statements, we define evaluation in terms of a transition system, ie a
 generalized automaton.
 % To evaluate programs, ie sequences of statements, we do not have a separate
@@ -1111,6 +1271,8 @@ than just function types in our language. In particular, we have 4 main types,
 namely \texttt{Pi}, \texttt{Sigma}, \texttt{Sum} and \texttt{Exists}.
 Thus we need to generalize the notion of normalization to account for these new
 types and their elimination rules.
+We do so by way of a concept known as the \textit{neutral expression}.
+
 % Intuitively, we want to repeatedly reduce
 % an expression using all of these rules until we can reduce no further.
 
@@ -1123,7 +1285,6 @@ types and their elimination rules.
 % Hence we also need a definition of head normal form and reduction
 % that takes care of expressions with free variables.
 
-We do so by way of a concept known as the \textit{neutral expression}.
 % After that, we introduce the \textit{context}, which is like a typing
 % environment, but we also store bindings in it.
 % We will then be in a position to discuss normalization.
@@ -1163,8 +1324,8 @@ The best we can do is normalize, ie fully reduce, each of the $E_i$ to say $E_i'
 and then leave $(f \,\, E_1 \, \dots \, E_n)$ as $(f \,\, E_1' \, \dots \, E_n')$.
 
 Similar scenarios occur with expressions of the other types in our language.
-If $p$ is a variable of the pair type, $\fst p$ cannot project out the first
-component of $p$, so we normalize $p$ to $p'$ and then leave it as $\fst p'$.
+If $p$ is a variable of the pair type, $\fst \,\, p$ cannot project out the first
+component of $p$, so we normalize $p$ to $p'$ and then leave it as $\fst \,\, p'$.
 
 % With this, we generalize the notion of head normal form to be one in which
 % the expression cannot be further simplified by applying any of the 3
@@ -1182,101 +1343,79 @@ normalized expressions via the following judgments
 \end{enumerate}
 
 The rules are as follows:
-\begin{enumerate}
-  \item \[
+\begin{spreadlines}{2em}
+  \begin{gather*}
     \begin{prooftree}
       \hypo{\neutral(E)}
       \infer1{\hnf(E)}
     \end{prooftree}
-  \]
-
-  \item \[
+  ~ \quad
     \begin{prooftree}
       \hypo{\hnf(E)}
       \infer1{\hnf(\lambda x, \, E)}
     \end{prooftree}
-  \]
-
-  \item \[
+  ~ \quad
     \begin{prooftree}
       \hypo{\hnf(E_1)}
       \hypo{\hnf(E_2)}
       \infer2{\hnf(\Pi_{x : E_1} E_2)}
     \end{prooftree}
-  \]
-
- \item \[
+  \\
     \begin{prooftree}
       \hypo{\hnf(E_1)}
       \hypo{\hnf(E_2)}
       \infer2{\hnf(\Sigma_{x : E_1} E_2)}
     \end{prooftree}
-  \]
-
-  \item \[
+  ~ \quad
     \begin{prooftree}
       \hypo{\hnf(E_1)}
       \hypo{\hnf(E_2)}
       \infer2{\hnf(\exists x : E_1, \, E_2)}
     \end{prooftree}
-  \]
-
- \item \[
+  ~ \quad
     \begin{prooftree}
       \hypo{\hnf(E_1)}
       \hypo{\hnf(E_2)}
       \infer2{\hnf(E_1 + E_2)}
     \end{prooftree}
-  \]
-
-  \item \[
+  \\
     \begin{prooftree}
       \infer0{\neutral(x)}
     \end{prooftree}
-  \]
-
-  \item \[
+  ~ \quad
     \begin{prooftree}
       \hypo{\neutral(E_1)} 
       \hypo{\hnf(E_1)} 
       \infer2{\neutral(E_1 \,\, E_2)}
     \end{prooftree}
-  \]
-
-  \item \[
+  \\
     \begin{prooftree}
       \hypo{\neutral(E)} 
       \hypo{\hnf(E_1)} 
       \hypo{\hnf(E_2)} 
       \infer3{\neutral(\match(E, \, x \rightarrow E_1, \, y \rightarrow E_2))}
     \end{prooftree}
-  \]
-
-  \item \[
+  ~ \quad
     \begin{prooftree}
       \hypo{\neutral(E)} 
       \infer1{\neutral(\fst \, E)}
     \end{prooftree}
-  \]
-
-  \item \[
+  ~ \quad
     \begin{prooftree}
       \hypo{\neutral(E)} 
       \infer1{\neutral(\snd \, E)}
     \end{prooftree}
-  \]
-
-  \item \[
+  \\
     \begin{prooftree}
       \hypo{\neutral(E)} 
-      \hypo{\neutral(E')} 
+      \hypo{\hnf(E')} 
       \infer2{\neutral(\text{let } \{x, \, y\} := E \text{ in } E')}
     \end{prooftree}
-  \]
-\end{enumerate}
+  \end{gather*}
+\end{spreadlines}
 
 \info{
-Note that \tt{(let x := E in E')} expressions are not considered to be in head 
+Note that \texttt{(let x := E in E')} expressions are not considered to be in head 
 normal form because we treat them as syntactic sugar for the application 
 $(\lambda x, \, E') \, E$ during the process of normalization.
 }
@@ -1293,6 +1432,11 @@ $E_1 \equiv_{\alpha \beta} E_2$.
 \end{definition}
 
 \subsubsection{Contexts}
+This is a variation of the environments as seen in a big-step denotational
+semantics.
+These will be used to store variables along with their typing and binding information
+when they are defined via the \texttt{def x := E} and \verb|axiom x : T| statements.
+
 We define contexts, denoted by the metavariable, $\Gamma$, to be lists of
 triples of the form
 \begin{align*}
@@ -1319,9 +1463,9 @@ Most of the time, when we work with contexts, we want them to be \textit{well
 formed} in the sense that we want the contexts that we deal with in our typing
 and normalization judgments to satisfy some additional invariants.
 
-Primarily, we want the ``types'' that we store in the context to be ``valid types"
+Primarily, we want everything we store in it to be in head normal form and
+we also want``types'' that we store in the context to be ``valid types"
 rather than just being expressions in our language.
-We will discuss this in more detail later, alongside the static semantics.
 }
 
 \subsubsection{Overview of judgement forms}
@@ -1331,28 +1475,31 @@ overview of them.
 
 \begin{enumerate}
 \item $\wf(\Gamma)$ \\
-  This asserts that a context $\Gamma$ is well formed.
+  This asserts that a context $\Gamma$ is well formed, ie that everything we
+  store in it is in head normal form and the types are well formed.
 
-\item $\Gamma \vdash E \Leftarrow T$ and $\Gamma \vdash E \Rightarrow T$ \\
+\item $\Gamma \vdash E \Leftarrow T$ \qquad $\Gamma \vdash E \Rightarrow T$ \\
   These judgments will be used to formalize our bidirectional typechecking
   algorithm. They form the typing rules for our language.
-  For now, it suffices to say that $\Gamma \vdash E \Leftarrow T$ formalizes the
-  meaning that given an expression $E$ and some type $T$, we may verify that
-  $E$ has type $T$ under the context $\Gamma$.
+  % For now, it suffices to say that $\Gamma \vdash E \Leftarrow T$ formalizes the
+  % meaning that given an expression $E$ and some type $T$, we may verify that
+  % $E$ has type $T$ under the context $\Gamma$.
 
-  On the other hand, $\Gamma \vdash E \Rightarrow T$ formalizes the notion of
-  \textit{type inference}. It says that from a context $\Gamma$, we may infer
-  the type of $E$ to be $T$. 
+  % On the other hand, $\Gamma \vdash E \Rightarrow T$ formalizes the notion of
+  % \textit{type inference}. It says that from a context $\Gamma$, we may infer
+  % the type of $E$ to be $T$. 
   
-  \info{
-  It should be noted here that this isn't real type
-  inference using constraint solving and unification. It's a form of lightweight
-  type inference that can infer simple stuff like the return type of a function
-  application but not the type parameter in the polymorphic identity function
-  $\lambda \, (T : \Type) (x : T), \, x$. Unfortunately, this means that our
-  language can be rather verbose as a lot of explicit type parameters must be
-  provided.
-  }
+  % \info{
+  % It should be noted here that this isn't real unification based type inference.
+  % It's a form of lightweight type inference that can infer simple stuff like 
+  % the return type of a function application but not the type parameter in the
+  % polymorphic identity function $\lambda \, (T : \Type) (x : T), \, x$.
+  % Unfortunately, this means that our language can be rather verbose as a lot of 
+  % explicit type parameters must be provided.
+
+  % Type inference for dependently typed languages is unfortunately undecidable
+  % (see \cite{undecidable_type_infer})
+  % }
 
 \item $\Gamma \vdash E \Downarrow \nu$ \\
   The $\cdot \vdash \cdot \Downarrow \cdot$ relation is our big-step normalization
@@ -1375,17 +1522,17 @@ expression, through repeated applications of the eliminators for the 4 types,
 (ie \verb|Pi|, \verb|Sigma|, \verb|Sum| and \verb|Exists|) to head normal 
 form.
 
-\info{
-One may notice that this intuitive formulation resembles a small-step semantics.
-Indeed, we may obtain a contraction rule from each elimination rule and then
-formalize a one-step transition relation, say $\Gamma \vdash E \longmapsto E'$.
-From that, we can then derive its reflexive, transitive closure,
-$\Gamma \vdash E \longmapsto^* E'$.
+% \info{
+% One may notice that this intuitive formulation resembles a small-step semantics.
+% Indeed, we may obtain a contraction rule from each elimination rule and then
+% formalize a one-step transition relation, say $\Gamma \vdash E \longmapsto E'$.
+% From that, we can then derive its reflexive, transitive closure,
+% $\Gamma \vdash E \longmapsto^* E'$.
 
-However we take a different approach. We define a big-step semantics
-directly because this translates nicer into a recursive interpreter written in a
-functional style.
-}
+% However we take a different approach. We define a big-step semantics
+% directly because this translates nicer into a recursive interpreter written in a
+% functional style.
+% }
 
 In the rules below, note how our elimination rules account for expressions
 in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
@@ -1403,29 +1550,25 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
 % normalize it. 
 
 \begin{enumerate}
-\item \textbf{Type}
-  \[
+\item \textbf{Type and variables}
+  \begin{gather*}
     \begin{prooftree}
       \hypo{\wf(\Gamma)}
       \infer1{\Gamma \vdash \Type \Downarrow \Type} 
     \end{prooftree}
-  \]
-\item \textbf{Variables} \\
-  \[
+   ~ \quad
     \begin{prooftree}
       \hypo{\wf(\Gamma)}
       \hypo{(x, \, \tau, \, \nu) \in \Gamma}
       \infer2{\Gamma \vdash x \Downarrow \nu}
     \end{prooftree} 
-  \]
-
-  \[
+    ~ \quad
     \begin{prooftree}
       \hypo{\wf(\Gamma)}
       \hypo{(x, \, \tau, \, \text{und}) \in \Gamma}
       \infer2{\Gamma \vdash x \Downarrow x}
-    \end{prooftree} 
-  \]
+    \end{prooftree}
+  \end{gather*}
 
 \item \textbf{Type ascriptions} \\
   \[
@@ -1435,10 +1578,31 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
     \end{prooftree}
   \]
   This says type ascriptions do not play a role in computation. They're just
-  there to help the type checker figure things out. Users can also use these as
-  a way to document their intentions.
+  there to tell the typechecker to ensure that $E$ really has the prescribed type
+  $T$.
+
+ \item \textbf{Pi type constructor and data constructor} \\
+  \begin{gather*}
+    \begin{prooftree}
+      \hypo{\Gamma \vdash A \Downarrow \tau}
+      \hypo{\Gamma \vdash B(x) \Downarrow \tau'(x)}
+      \infer2{\Gamma \vdash \Pi_{x : A} B(x) \Downarrow \Pi_{x : \tau} \tau'(x)}
+    \end{prooftree}
+    ~ \quad
+    \begin{prooftree}
+      \hypo{(x, \, \text{und}, \, \text{und}) :: \Gamma \vdash E \Downarrow \nu}
+      \infer1{\Gamma \vdash \lambda x, \, E, \, \Downarrow \lambda x, \, \nu}
+    \end{prooftree}
+    ~ \quad
+    \begin{prooftree}
+      \hypo{\Gamma \vdash \lambda x, \, E \Downarrow \nu}
+      \infer1{\Gamma \vdash \lambda \, (x : T), \, E, \, \Downarrow \nu}
+    \end{prooftree}
+  \end{gather*}
+  % This second rule says that optional type ascriptions do not play a role in
+  % normalization, ie we just ignore them.
  
-\item \textbf{Pi elimination, ie function application} \\
+\item \textbf{Pi eliminator} \\
   \[
     \begin{prooftree}
       \hypo{\Gamma \vdash E_1 \Downarrow \lambda x, \, \nu_1}
@@ -1456,41 +1620,14 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
     \end{prooftree}
   \]
 
-  The first rule says that we normalize function applications via syntactic
-  substitution, with respect to an environment. Notice how this is a hybrid
-  between the styles of dynamic semantics and denotational semantics. 
+  The first rule says that we normalize function applications via
+  substitution with respect to the context $\Gamma$.
 
   The second rule utilizes the previously introduced concept of a neutral
   expression to handle the case when the elimination rule cannot be used because
   the expression at the head of a function application is a free variable.
   Remember that such variables can exist because users are allowed to introduce
-  indeterminate constants as the top level via \verb|axiom| statements.
-
-  \item \textbf{Normalizing under lambdas} \\
-  \[
-    \begin{prooftree}
-      \hypo{(x, \, \text{und}, \, \text{und}) :: \Gamma \vdash E \Downarrow \nu}
-      \infer1{\Gamma \vdash \lambda x, \, E, \, \Downarrow \lambda x, \, \nu}
-    \end{prooftree}
-  \]
-
-  \[
-    \begin{prooftree}
-      \hypo{\Gamma \vdash \lambda x, \, E \Downarrow \nu}
-      \infer1{\Gamma \vdash \lambda \, (x : T), \, E, \, \Downarrow \nu}
-    \end{prooftree}
-  \]
-  This second rule says that optional type ascriptions do not play a role in
-  normalization, ie we just ignore them.
-
-\item \textbf{Pi type constructor} \\
-  \[
-    \begin{prooftree}
-      \hypo{\Gamma \vdash A \Downarrow \tau}
-      \hypo{\Gamma \vdash B(x) \Downarrow \tau'(x)}
-      \infer2{\Gamma \vdash \Pi_{x : A} B(x) \Downarrow \Pi_{x : \tau} \tau'(x)}
-    \end{prooftree}
-  \]
+  indeterminate constants as the top level via \texttt{axiom} statements.
 
 \item \textbf{Local let binding} \\
     \[
@@ -1500,94 +1637,88 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
         \infer2{\Gamma \vdash \text{let } x := E \text{ in } E' \Downarrow \nu'}
       \end{prooftree}
     \]
-    This rule was derived by desugaring $\text{let } x := E \text{ in } E'$ into
+    This rule was derived by treating $\text{let } x := E \text{ in } E'$ as
     the function application $(\lambda x, \, E') \,\, E$.
 
-\item \textbf{Normalizing under pair constructor} \\
-    \[
-      \begin{prooftree}
-        \hypo{\Gamma \vdash E_1 \Downarrow \nu_1}
-        \hypo{\Gamma \vdash E_2 \Downarrow \nu_2}
-        \infer2{\Gamma \vdash (E_1, \, E_2) \Downarrow (\nu_1, \, \nu_2)}
-      \end{prooftree}
-    \]
-
-  \item \textbf{Sigma type constructor} \\
-    \[
+\item \textbf{Sigma type and data constructor} \\
+    \begin{gather*}
       \begin{prooftree}
         \hypo{\Gamma \vdash A \Downarrow \tau}
         \hypo{\Gamma \vdash B \Downarrow \tau'(x)}
         \infer2{\Gamma \vdash \Sigma_{x : A}B(x) \Downarrow \Sigma_{x : \tau}\tau'(x)}
       \end{prooftree}
-    \]
+      ~ \quad
+      \begin{prooftree}
+        \hypo{\Gamma \vdash E_1 \Downarrow \nu_1}
+        \hypo{\Gamma \vdash E_2 \Downarrow \nu_2}
+        \infer2{\Gamma \vdash (E_1, \, E_2) \Downarrow (\nu_1, \, \nu_2)}
+      \end{prooftree}
+    \end{gather*}
 
-  \item \textbf{Sigma elimination} \\
-   \[
+  \item \textbf{Sigma eliminator} \\
+  \begin{spreadlines}{2em}
+  \begin{gather*}
     \begin{prooftree}
       \hypo{\Gamma \vdash E \Downarrow (\nu_1, \, \nu_2)}
-      \infer1{\Gamma \vdash \fst E \Downarrow \nu_1}
+      \infer1{\Gamma \vdash \fst \,\, E \Downarrow \nu_1}
     \end{prooftree}
-  \]
-
-  \[
+   ~ \quad
    \begin{prooftree}
     \hypo{\Gamma \vdash E \Downarrow n}
-     \infer1{\Gamma \vdash \fst E \Downarrow \fst n}
+     \infer1{\Gamma \vdash \fst \,\, E \Downarrow \fst \,\, n}
    \end{prooftree}
-  \]
-
-  \[
+  \\
     \begin{prooftree}
       \hypo{\Gamma \vdash E \Downarrow (\nu_1, \, \nu_2)}
-      \infer1{\Gamma \vdash \snd E \Downarrow \nu_2}
+      \infer1{\Gamma \vdash \snd \,\, E \Downarrow \nu_2}
     \end{prooftree}
-  \]
-
-  \[
+  ~ \quad
    \begin{prooftree}
      \hypo{\Gamma \vdash E \Downarrow n}
-     \infer1{\Gamma \vdash \snd E \Downarrow \snd n}
+     \infer1{\Gamma \vdash \snd \,\, E \Downarrow \snd \,\, n}
    \end{prooftree}
-  \]
+  \end{gather*}
+ \end{spreadlines}
 
-  \item \textbf{Existential type constructor} \\
-    \[
+  \item \textbf{Existential type and data constructor} \\
+    \begin{gather*}
       \begin{prooftree}
         \hypo{\Gamma \vdash A \Downarrow \tau}
         \hypo{\Gamma \vdash B \Downarrow \tau'(x)}
         \infer2{\Gamma \vdash \exists x : A, \, B(x) \Downarrow \exists x : \tau, \, \tau'(x)}
       \end{prooftree}
-    \]
-
-  \item \textbf{Normalizing under existential constructor} \\
-   \[
+      ~ \quad
       \begin{prooftree}
         \hypo{\Gamma \vdash E_1 \Downarrow \nu_1}
         \hypo{\Gamma \vdash E_2 \Downarrow \nu_2}
         \infer2{\Gamma \vdash \{E_1, \, E_2\} \Downarrow \{\nu_1, \, \nu_2\}}
       \end{prooftree}
-    \]
+    \end{gather*}
   
-  \item \textbf{Existential elimination} \\
-    \[
+  \item \textbf{Existential eliminator} \\
+  \begin{spreadlines}{2em}
+  \begin{gather*}
       \begin{prooftree}
         \hypo{\Gamma \vdash E \Downarrow \{\nu_1, \, \nu_2\}}
         \hypo{\Gamma \vdash E'[x \mapsto \nu_1][y \mapsto \nu_2] \Downarrow \nu}
         \infer2{\Gamma \vdash \text{let } \{x, \, y\} := E \text{ in } E' \Downarrow \nu}
       \end{prooftree}
-    \]
-
-   \[
+      \\
       \begin{prooftree}
         \hypo{\Gamma \vdash E \Downarrow n}
         \hypo{\Gamma \vdash \lambda x, \, \lambda y, \, E' \Downarrow \lambda x, \, \lambda y, \nu'}
         \infer2{\Gamma \vdash \text{let } \{x, \, y\} := E \text{ in } E' \Downarrow
                 \text{let } \{x, \, y\} := n \text{ in } \nu'}
       \end{prooftree}
-    \]
-    Notice how although the value of the witness is abstracted away during the
-    typechecking phase, the interpreter has full access to it while it's
-    performing computations with it.
+    \end{gather*}
+  \end{spreadlines}
+    These rules are adapted from the elimination rules found
+    in Chapter 24 of \cite{tapl}.
+    Note that the book defines a small-step semantics for evaluating
+    expressions of the non-dependent variation.
+    % Notice how although the value of the witness is abstracted away during the
+    % typechecking phase, the interpreter has full access to it while it's
+    % performing computations with it.
 
   % \[
   %   \begin{prooftree}
@@ -1597,52 +1728,44 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
   %   \end{prooftree}
   % \]
 
-  \item \textbf{Sum type constructor}
-  \[
-    \begin{prooftree}
+  \item \textbf{Sum type and data constructor}
+  \begin{gather*}
+     \begin{prooftree}
       \hypo{E_1 \Downarrow \nu_1}
       \hypo{E_2 \Downarrow \nu_2}
       \infer2{E_1 + E_2 \Downarrow \nu_1 + \nu_2}
     \end{prooftree}
-  \]
-
-  \item \textbf{Normalizing under sum data constructors}
-  \[
+    ~ \quad
     \begin{prooftree}
       \hypo{\Gamma \vdash E \Downarrow \nu}
-      \infer1{\Gamma \vdash \inl \, E \Downarrow \inl \, \nu}
+      \infer1{\Gamma \vdash \inl \,\, E \Downarrow \inl \,\, \nu}
     \end{prooftree}  
-  \]
-
-  \[
+    ~ \quad
     \begin{prooftree}
      \hypo{\Gamma \vdash E \Downarrow \nu}
-     \infer1{\Gamma \vdash \inr \, E \Downarrow \nu}
-    \end{prooftree}  
-  \]
+     \infer1{\Gamma \vdash \inr \,\,E \Downarrow \inr \, \, \nu}
+    \end{prooftree}
+  \end{gather*}
 
-  \item \textbf{Normalizing sum eliminator}
-  \[
+  \item \textbf{Sum eliminator}
+  \begin{spreadlines}{2em}
+  \begin{gather*}
     \begin{prooftree}
-      \hypo{\Gamma \vdash E \Downarrow \inl \nu}
+      \hypo{\Gamma \vdash E \Downarrow \inl \,\, \nu}
       \hypo{\Gamma \vdash E_1[x \mapsto \nu] \Downarrow \nu_1}
       \infer2{\Gamma \vdash 
         \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)
         \Downarrow \nu_1}
     \end{prooftree}  
-  \]
-
-  \[
+    ~ \quad
    \begin{prooftree}
-     \hypo{\Gamma \vdash E \Downarrow \inr \nu}
+     \hypo{\Gamma \vdash E \Downarrow \inr \,\, \nu}
      \hypo{\Gamma \vdash E_2[y \mapsto \nu] \Downarrow \nu_2}
      \infer2{\Gamma \vdash 
        \match(E, \, x \rightarrow E_1, \, y \rightarrow E_2)
        \Downarrow \nu_2}
    \end{prooftree}  
-  \]
-
-  \[
+   \\
    \begin{prooftree}
     \hypo{\Gamma \vdash E \Downarrow n}
       \hypo{\Gamma \vdash E_1 \Downarrow \nu_1}
@@ -1652,7 +1775,8 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
                \match(n, \, x \rightarrow \nu_1, \, y \rightarrow \nu_2) 
                }
    \end{prooftree}  
-  \]
+  \end{gather*}
+\end{spreadlines}
 
 \end{enumerate}
 
@@ -1673,9 +1797,12 @@ type. Thus we will never need to normalize it.
 % \verb|Type| and \verb|Kind|. 
 
 \begin{definition} [Well formed type and type constructor]
-  An expression $T$ is said to be a well-formed type with respect to the context
+  An expression $T$ is said to be a well formed type with respect to the context
   $\Gamma$ if it satisfies
   \[ \Gamma \vdash T \Leftarrow s \]
+  This will be defined formally later via \textit{type formation rules} in our
+  static semantics.
+  These rules tell us when an expression is a well formed type.
 
   \info{
   Informally, we can think of $\Type$ as the ``type of all types'' and so
@@ -1683,6 +1810,7 @@ type. Thus we will never need to normalize it.
   $\Gamma \vdash T \Leftarrow \Type$, ie they can be checked to have type $\Type$.
 
   $\Kind$ is just here mainly to be the type of $\Type$.
+  This was inherited from CoC.
   }
 
   % Those $T$ satisfying $\Gamma \vdash T \Leftarrow \Kind$ instead represent the
@@ -1714,43 +1842,45 @@ type. Thus we will never need to normalize it.
 \begin{definition} [Well formed context]
   Recalling that $\emptyset$ denotes the empty list and that $::$ denotes the list
   cons operation, we define precisely the judgment $\wf(\Gamma)$.
+  We define this inductively via
 
-  \begin{enumerate}
-  \item \textbf{Base case} \\
-    \[
-      \begin{prooftree}
-        \hypo{\wf(\emptyset)}
-      \end{prooftree}
-    \]
+  \begin{gather*}
+    \begin{prooftree}
+      \infer0{\wf(\emptyset)}
+    \end{prooftree}
+    ~ \quad
+    \begin{prooftree}
+      \hypo{\wf(\Gamma)}
+      \hypo{\Gamma \vdash \tau \Leftarrow s}
+      \infer2{\wf ((x, \, \tau, \, \nu) :: \Gamma)}
+    \end{prooftree}
+  \end{gather*}
 
-  \item \textbf{Inductive cases} \\
-    \[
-      \begin{prooftree}
-        \hypo{\wf(\Gamma)}
-        \hypo{\Gamma \vdash \tau \Leftarrow s}
-        \infer2{\wf ((x, \, \tau, \, \nu) :: \Gamma)}
-      \end{prooftree}
-    \]
-
-    Here we allow both $\tau$ and $\nu$ to be undefined.
-
-  \end{enumerate}
+  Here we allow both $\tau$ and $\nu$ to be undefined.
 \end{definition}
 
 \info{
   Note that this means that all types and bindings that we store in our context
   are either undefined or in head normal form.
-  This means that we will be normalizing expressions before storing them in the
+  Thus we will make sure to normalize expressions before storing them in the
   context.
+  This is an invariant we would like to have for reasons that will be seen
+  later.
 }
 
-\subsubsection{Static semantics, ie typing rules}
+\subsubsection{Static semantics and bidirectional typechecking}
 Here we define the 2 \textit{mutually recursive} relations in our bidirectional
 typechecking algorithm.
 \begin{enumerate}
-\item$\cdot \vdash \cdot \Rightarrow \cdot $ which corresponds to \textit{inference}
-\item$\cdot \vdash \cdot \Leftarrow \cdot$ which corresponds to \textit{checking}
+\item $\cdot \vdash \cdot \Rightarrow \cdot$ which corresponds to \textit{inference}
+\item $\cdot \vdash \cdot \Leftarrow \cdot$ which corresponds to \textit{checking}
 \end{enumerate}
+
+The semantics we present here follow \cite{lambdapi}, though we prefer using
+the notation $\cdot \vdash \cdot \Rightarrow \cdot$ and 
+$\cdot \vdash \cdot \Leftarrow \cdot$ as opposed to
+$\cdot \vdash \cdot ::_{\uparrow} \cdot$ and
+$\cdot \vdash \cdot ::_{\downarrow} \cdot$.
 
 \info{
 The idea is that there are some expressions for which it is easier to
@@ -1761,7 +1891,29 @@ supply a type annotation and then \textit{check} that it is correct.
 As a rule of thumb, it is often easier to check the type for
 introduction rules while for elimination rules, it is usually easier to infer
 the type.
+
+This is why the $\lambda C+$ interpreter is able to infer the type for eliminators
+but struggles with data constructors.
+To help the interpreter infer the type of a data constructor, type annotations must
+be provided via ascriptions, eg we must write 
+\texttt{((a, b) : A \char`\\  / B)} instead of
+just \texttt{(a, b)} alone.
 }
+
+It should be noted here that this isn't real unification based type inference.
+In fact, type inference for dependently typed languages is unfortunately 
+undecidable in general (see \cite{undecidable_type_infer}).
+Proof assistants such as Lean often use complex heuristics (see \cite{elab_in_dtt})
+to handle this.
+
+In order to keep our semantics and implementation simple, we chose to use
+bidirectional typechecking, which allows for a limited form of inference instead. 
+Unfortunately, this means that our language can be rather verbose as a lot of 
+explicit type parameters must be provided.
+
+% It's a form of lightweight type inference that can infer simple stuff like 
+% the return type of a function application but not the type parameter in the
+% polymorphic identity function $\lambda \, (T : \Type) (x : T), \, x$.
 
 \begin{enumerate}
 \item \textbf{Var} \\
@@ -1783,6 +1935,7 @@ the type.
       \infer1{\Gamma \vdash \Type \Rightarrow \Kind}
     \end{prooftree}
   \]
+  This follows CoC.
 
   % \[
   %   \begin{prooftree}
@@ -1816,8 +1969,6 @@ the type.
   This second rule allows users to assert that \verb|Type| and type constructors
   have type \verb|Kind|.
 
-\newpage
-  
 \item \textbf{Check} \\
   \[
     \begin{prooftree}
@@ -1833,7 +1984,7 @@ the type.
   to each other, we may conclude that $E$ indeed has type $\tau$.
 
   \info{
-    Note that to compare 2 expressions that are in head normal form for equality,
+    To compare 2 expressions that are in head normal form for equality,
     we only need to compare them structurally, modulo alpha equivalence.
     This is the reason why we prefer to eagerly normalize all types as soon
     as we verify that they are well formed. It makes the check for equality
@@ -1861,7 +2012,7 @@ the type.
   % modulo alpha equivalence.
   % }
 
-\item \textbf{Pi formation} \\
+\item \textbf{Pi type formation} \\
   \[
     \begin{prooftree}
       \hypo{\Gamma \vdash A \Rightarrow s_1}
@@ -1870,10 +2021,9 @@ the type.
       \infer3{\Gamma \vdash \Pi_{x : A}B(x) \Rightarrow s_2}
     \end{prooftree}
   \]
-  \info{
   Note that this is a rule schema with the metavariables 
   $s_1, \, s_2 \in \{\Type, \, \Kind\}$.
-  }
+  This was adapted from CoC.
 
   % \[
   %   \begin{prooftree}
@@ -1891,10 +2041,10 @@ the type.
       \infer1{\Gamma \vdash \lambda x, \, E \Leftarrow \Pi_{x : \tau}\tau'(x)}
     \end{prooftree}
   \]
-  Note that in the event that the input variable of the lambda abstraction and
-  Pi are different, then we must perform an $\alpha$ renaming so that the
-  variable being bound in $(\lambda x, \, E)$ and $\Pi_{y : \tau} \tau'(y)$
-  are the same.
+  % Note that in the event that the input variable of the lambda abstraction and
+  % Pi are different, then we must perform an $\alpha$ renaming so that the
+  % variable being bound in $(\lambda x, \, E)$ and $\Pi_{y : \tau} \tau'(y)$
+  % are the same.
 
   \[
     \begin{prooftree}
@@ -1908,7 +2058,7 @@ the type.
   the function, then we can try to infer the type of the output and
   consequently, the type of the function as a whole.
 
-\item \textbf{Function application, ie Pi elimination} \\
+\item \textbf{Pi elimination} \\
   \[
     \begin{prooftree}
       \hypo{\Gamma \vdash E_1 \Rightarrow \Pi_{x : \tau}\tau'(x)}
@@ -1928,6 +2078,10 @@ the type.
       \infer3{\Gamma \vdash \text{let } x := E \text{ in } E' \Rightarrow \tau'}
     \end{prooftree}
   \]
+  Note that we only treat local let bindings as function application, ie
+  $((\lambda x, \, E') \,\, E)$ for the purposes of normalization, not for 
+  typechecking.
+  For typechecking, we extend the context and typecheck the body $E'$. 
 
 \item \textbf{Sigma formation} \\
   \[
@@ -1958,20 +2112,21 @@ the type.
   % the interpreter infer the type of the pair.
   
 \item \textbf{Sigma elimination} \\
-  \[
+  \begin{gather*}
     \begin{prooftree}
       \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
       \infer1{\Gamma \vdash \fst E \Rightarrow \tau_1}
     \end{prooftree}
-  \]
-
-  \[
+  ~ \quad
     \begin{prooftree}
       \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
-      \hypo{\Gamma \vdash \tau_2[x \mapsto \fst E] \Downarrow \tau_2'}
-      \infer2{\Gamma \vdash \snd E \Rightarrow \tau_2'}
+      \hypo{\Gamma \vdash \tau_2[x \mapsto \fst \,\, E] \Downarrow \tau_2'}
+      \infer2{\Gamma \vdash \snd \,\, E \Rightarrow \tau_2'}
     \end{prooftree}
-  \]
+  \end{gather*}
+
+  Notice how the type of the $\snd \,\, E$ depends on the \textit{value} of
+  $\fst \,\, E$.
 
 \item \textbf{Existential formation} \\
 \[
@@ -2059,14 +2214,13 @@ should not occur free in the output type that is $\tau''$.
     \end{prooftree}
   \]
   Note that this rule says that users can only construct a sum, aka 
-  coproduct, out of types that live in the universe \texttt{verb}, not 
+  coproduct, out of types that live in the universe \texttt{Type}, not 
   \verb|Kind|.
 
   \info{
-  Recalling the Curry-Howard correspondence which identifies types and
-  propositions, we see sum types as a way to model disjunction. Hence we do
-  not see a need to allow users to construct sums out of large types like
-  type constructors found in \texttt{verb}.
+  Recalling the Curry-Howard correspondence, we see sum types as a way to model
+  disjunction. Hence we do not see a need to allow users to construct sums out 
+  of large types like type constructors found in \texttt{Kind}.
   }
 
   % Also we are unsure if the logical consistency of the system can be preserved
@@ -2074,19 +2228,17 @@ should not occur free in the output type that is $\tau''$.
   % the other has type \verb|Kind|. 
 
   \item \textbf{Sum introduction} \\
-  \[
+  \begin{gather*}
     \begin{prooftree}
       \hypo{\Gamma \vdash E \Leftarrow \tau_1} 
-      \infer1{\Gamma \vdash \inl E \Leftarrow \tau_1 + \tau_2} 
+      \infer1{\Gamma \vdash \inl \,\, E \Leftarrow \tau_1 + \tau_2} 
     \end{prooftree}
-  \]
-
-  \[
+    ~ \quad
     \begin{prooftree}
     \hypo{\Gamma \vdash E \Leftarrow \tau_2} 
-    \infer1{\Gamma \vdash \inr E \Leftarrow \tau_1 + \tau_2} 
+    \infer1{\Gamma \vdash \inr \,\, E \Leftarrow \tau_1 + \tau_2} 
     \end{prooftree}
-  \]
+  \end{gather*}
 
   % Without the appropriate type ascription, we can't infer the type of \verb|inl E|
   % and \verb|inr E|. These are meant to be used in conjunction with a type
@@ -2104,18 +2256,18 @@ should not occur free in the output type that is $\tau''$.
   \end{prooftree}  
 \]
 
-Note that the data constructors \verb|(. , .)|, \verb|{. , .}|, \verb|inl| and 
-\verb|inr| do not come with type annotations and thus we are unable to infer the
-type of the constructed expression.
-Hence they will need to be paired with type ascriptions to
-help the interpreter figure out what type the expression has.
+% Note that the data constructors \verb|(. , .)|, \verb|{. , .}|, \verb|inl| and 
+% \verb|inr| do not come with type annotations and thus we are unable to infer the
+% type of the constructed expression.
+% Hence they will need to be paired with type ascriptions to
+% help the interpreter figure out what type the expression has.
 
-For instance, to help the interpreter figure out what type \verb|inl E| should be,
-we can ascribe \verb|(inl E : A + B)| and the interpreter will then check if
-\verb|E| has type \verb|A|.
+% For instance, to help the interpreter figure out what type \verb|inl E| should be,
+% we can ascribe \verb|(inl E : A + B)| and the interpreter will then check if
+% \verb|E| has type \verb|A|.
 
-Similarly, we can't infer the type of an unannotated lambda like $\lambda x, \, x$.
-Users must either annotate the input type or ascribe a type to the whole function.
+% Similarly, we can't infer the type of an unannotated lambda like $\lambda x, \, x$.
+% Users must either annotate the input type or ascribe a type to the whole function.
 
 \info{
 Fortunately, the nice thing about these rules is that we may translate them almost
@@ -2202,15 +2354,15 @@ the context $\Gamma$.
   https://www.cs.cornell.edu/courses/cs6110/2013sp/lectures/lec05-sp13.pdf
 \end{comment}
 
-Programs in our language are nonempty sequences of statements, with each
-statement being built from some expression.
+Recall that programs in our language are nonempty sequences of statements,
+with each statement being built out of expressions.
 We formalize the execution of programs by defining a
-\textit{transition system}.
+\textit{transition system}, ala \cite{plotkin_sos}.
 
 Before that, we first define the notion of a configuration, which plays the
 same role as states in automata. 
 
-\subsubsection{Configuration/state of program}
+\subsubsection{Configuration, ie state of program}
 A configuration has the form
 \begin{align*}
   (\Gamma, \, \langle S_0; \, \dots; \, S_n \rangle, \, E)
@@ -2230,7 +2382,7 @@ With this view, given a program, $\langle S_0; \, \dots; \, S_n
 
   This is the state in which we begin executing our programs.
   Initially, our global context is empty.
-  \Type is used as a dummy initial output value here.
+  \texttt{Type} is used as a dummy initial output value here.
 
 \item \textbf{Final configurations:} $(\Gamma, \, \langle \rangle, \, E)$ \\
 After executing programs in our language, if all goes well, we'll end up in
@@ -2290,11 +2442,14 @@ afterwards.
   binding.
   First the type $T$ is checked to be well formed. Then it is normalized to $\tau$.
   Afterwards, the context $\Gamma$ is extended with a new binding.
-  Note that \texttt{und} here indicates that $x$ has no binding, like an unknown
-  constant.
+  Note that \texttt{und} here indicates that $x$ has no binding, like an indeterminate
+  variable.
 
-  The output of an $\axiom$ expression is the normalized form of the type of 
-  the newly introduced variable. 
+  \info{
+    This means that when we enter \texttt{axiom x : T} into the interpreter, the
+    output is the head normal form of $T$. 
+  }
+ 
 
 \item \textbf{Def} \\
   \[
@@ -2306,12 +2461,17 @@ afterwards.
     \end{prooftree}
   \]
 
-  $\deff$ statements are used to introduce global bindings.
+  \texttt{def} statements are used to introduce global bindings.
   The expression $E$ is first typechecked, and then normalized to $\nu$.
   Thereafter, the context $\Gamma$ is extended with a new binding.
 
-  The output of a $\deff$ statement is the normalized expression $\nu$, and the
+  The output of a \texttt{def} statement is the normalized expression $\nu$, and the
   its type, $\tau$.
+  
+  \info{
+    This is why the interpreter outputs cryptic expressions of the form
+    \texttt{(E : T)} after evaluating \texttt{def} statements.
+  }
 
 \item \textbf{Sequences of statements} \\
   \[
@@ -2346,7 +2506,7 @@ With these rules, given a user-entered program, say $\langle S_0;
 \dots; S_n \rangle$, we define the
 output expression of a program to be the $E$ such that
 \begin{align*}
-  (\emptyset, \, \langle S_0; \, \dots \; S_n \rangle, \, \Type) \Downarrow
+  (\emptyset, \, \langle S_0; \, \dots; \, S_n \rangle, \, \Type) \Downarrow
   (\Gamma, \, \langle \rangle, \, E)
 \end{align*}
 
@@ -2414,91 +2574,8 @@ until we reach a final configuration.
 % http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.39.9149&rep=rep1&type=pdf
 % http://www2.tcs.ifi.lmu.de/~abel/lfsigma.pdf
 
-\section{Technical implementation}
-\todo[inline] {Work in progress}
-Our interpreter is written in Ocaml and the structure is as follows.
-
-\begin{itemize}
-\tightlist
-\item
-  \texttt{bin} currently contains only \texttt{main.ml} which contains
-  the main entry point to interact with our language.
-\item
-  \texttt{lib} is our library which contains all the code making our
-  language work.
-
-  \begin{itemize}
-  \tightlist
-  \item
-    \texttt{parsing} contains all the functions we use for parsing.
-
-    \begin{itemize}
-    \tightlist
-    \item
-      \texttt{lexer.ml} contains our lexer.
-    \item
-      \texttt{grammar.mly} contains our grammar, written using Menhir.
-    \item
-      \texttt{parser.ml} contains some functions and boilerplate code
-      tying the lexer and grammar together. This provides an interface
-      which we use to parse our language.
-    \end{itemize}
-  \item
-    \texttt{kernel} contains all the important stuff for evaluating
-    expressions and statements. These include normalization, type
-    checking and context management using de bruijn indices.
-
-    \begin{itemize}
-    \tightlist
-    \item
-      \texttt{context.ml} is the module implementing the
-      context/environment.
-    \item
-      \texttt{normalization.ml} currently contains the
-      \texttt{normalize}, \texttt{subst} and \texttt{beta\_reduce}
-      functions. The latter 2 implement the substitution operation for
-      de bruijn ASTs.
-    \item
-      \texttt{typing.ml} implements our bidirectional typechecking
-      algorithm. This indluces the 2 key functions \texttt{check} and
-      \texttt{infer}, where \texttt{infer} involves synthesizing the
-      type, while \texttt{check} involves verifying if an expression has
-      a given type.
-    \item
-      \texttt{eval\_statements.ml} contains functions for evaluating
-      statements.
-    \end{itemize}
-  \item
-    \texttt{common} contains code that is shared between both
-    \texttt{kernel} and \texttt{parsing}.
-
-    \begin{itemize}
-    \tightlist
-    \item
-      \texttt{location.ml} contains a \texttt{located} datatype and
-      other stuff which we use to decorate our AST in \texttt{ast.ml}
-      with source locations. This info will be used for error reporting.
-    \item
-      \texttt{ast.ml} contains our AST. It is parameterized over a type
-      variable, \texttt{\textquotesingle{}a}, where
-      \texttt{\textquotesingle{}a} can either be \texttt{string} or
-      \texttt{int}. This type variable denotes the type of variable
-      identifiers. The AST which our parser parses the concrete syntax
-      into uses \texttt{string} to identify variables, while our
-      internal one, used for typechecking and normalization, uses
-      \texttt{int} denoting de bruijn indices to identify variables.
-    \end{itemize}
-  \item
-    \texttt{ast\_conv.ml} contains facilities for converting the
-    parser's AST to the internal AST and vice versa.
-  \item
-    \texttt{error\_reporting.ml} contains functions for handling errors
-    that occur while running programs in our language. These include
-    pretty printing of errors.
-  \item
-    \texttt{pretty\_printing.ml} contains utilities for unparsing
-    expressions and pretty printing them.
-  \end{itemize}
-\end{itemize}
+\newpage
+\bibliographystyle{acm}
+\bibliography{./refs}
 
 \end{document}

@@ -1,9 +1,9 @@
 # λC+
-A small proof assistant based on the Calculus of Constructions (CoC).
-In this language, one expresses theorems and proofs by way of the Curry-Howard
-correspondence.
+## Introduction
+λC+ is a proof assistant implementing a typed lambda calculus that brings the Curry-Howard correspondence to life. For those who are more theoretically inclined, it is a
+typed lambda calculus at the core, based on the Calculus of Constructions.
 
-For instance, here's an example formalizing the reflexivity of implication
+Here's an example formalizing the reflexivity of implication in λC+. 
 ```lean
 theorem A_implies_A :
 -- For any proposition A, A implies A itself.
@@ -12,7 +12,8 @@ forall (A : Type), A -> A :=
 -- a proof of `A` and then returns a proof of `A`.
   fun (A : Type) (a : A) => a
 ```
-Notice that the proof of this theorem is the polymorphic identity function.
+Notice that the proof of this theorem looks a lot like the polymorphic identity
+function.
 
 Syntactically, λC+ looks and feels a lot like the 
 [Lean theorem prover](https://leanprover.github.io/), which in turn resembles
@@ -33,100 +34,15 @@ forall (A : Prop), A -> A :=
 ```
 
 where
-* `Prop` is a synonym for `Type`. Writing `Prop` helps to make it
-explicit that we are to think of `A` as a proposition rather than a data type.
+* `Prop` is a synonym for `Type`. Writing `Prop` emphasizes the role of `A` as
+a _proposition_.
 
 * `assume ...` and `show ..., from ...` are syntactic sugar inspired by Lean's
 [structured proofs terms](https://leanprover.github.io/reference/expressions.html#structured-proofs).
 
-Also, one may even write `Prop` instead of `Type` to make it more explicit that
-we are to think of `A` as a proposition rather than a data type.
-
 We hope that this helps improve the readability of proofs for those who are more
-used to traditional pen and paper proofs as opposed to Curry-Howard style proofs.
+used to traditional natural deduction proofs.
 
 ## Documentation
-This section is heavily based on [this example](https://github.com/esy-ocaml/hello-ocaml).
-
-First you need to install [Esy](https://esy.sh/en/) using your distro's native
-package manager or via
-```console
-% npm install -g esy
-```
-
-Esy is a package manager for Ocaml and Reason. It helps manage project
-dependencies via `package.json`.
-
-To install all the required dependencies and build the project with a single
-command, you may run
-```shell
-$ esy
-```
-
-If you just want to install the dependencies without building, use
-```shell
-$ esy install
-```
-
-To build the package, use
-```shell
-$ esy build
-```
-
-To run the compiled executable:
-```shell
-$ esy ./_esy/default/build/default/bin/main.bc
-```
-
-To run the compiled js:
-```shell
-$ node ./_esy/default/build/default/bin/main.bc.js
-```
-
-To ease testing, the `run_main.sh` script has been provided with the command
-`esy ./_esy/default/build/default/bin/main.bc`.
-
-## Implemented types
-- Pi types for universal quantification
-- Sigma types for
-  - subtype
-  - conjunction
-- Existential type for existential quantifier
-- Sum types (aka coproduct or tagged union) for disjunction
-
-## Project structure (Work in progress)
-### Overview of what happens when you enter a program
-Programs entered by the user are first parsed by the parser (found in `lib/parsing`).
-
-### Detailed breakdown of directory structure
-- `bin` currently contains only `main.ml` which contains the main entry point to
-  interact with our language.
-- `lib` is our library which contains all the code making our language work.
-    - `parsing` contains all the functions we use for parsing.
-        - `lexer.ml` contains our lexer.
-        - `grammar.mly` contains our grammar, written using Menhir.
-        - `parser.ml` contains some functions and boilerplate code tying the
-        lexer and grammar together. This provides an interface which we use to
-        parse our language.
-    - `kernel` contains all the important stuff for evaluating expressions and
-    statements. These include normalization, type checking and context management
-    using de bruijn indices.
-        - `context.ml` is the module implementing the context/environment.
-        - `normalization.ml` currently contains the `normalize`, `subst` and
-        `beta_reduce` functions. The latter 2 implement the substitution operation
-        for de bruijn ASTs.
-        - `typing.ml` implements our bidirectional typechecking algorithm.
-        This indluces the 2 key functions `check` and `infer`, where `infer`
-        involves synthesizing the type, while `check` involves verifying if an
-        expression has a given type.
-        - `eval_statements.ml` contains functions for evaluating statements.
-    - `common` contains code that is shared between both `kernel` and `parsing`.
-       - `location.ml` contains a `located` datatype and other stuff which we use to decorate our AST in `ast.ml`
-       with source locations. This info will be used for error reporting.
-       - `ast.ml` contains our AST. It is parameterized over a type variable, `'a`, where `'a` can either be `string` or `int`. This type variable denotes the type of variable identifiers. The AST which our parser parses the concrete syntax into uses `string` to identify variables, while our internal one, used for typechecking and normalization, uses `int` denoting de bruijn indices to identify variables.
-   - `ast_conv.ml` contains facilities for converting the parser's AST to 
-   the internal AST and vice versa.
-   - `error_reporting.ml` contains functions for handling errors that occur while
-   running programs in our language. These include pretty printing of errors.
-   - `pretty_printing.ml` contains utilities for unparsing expressions and pretty
-   printing them.
+To learn more about the project, please see
+[our wiki](https://github.com/aellym0/lambdacplus/wiki/1.-Home).
