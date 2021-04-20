@@ -13,8 +13,9 @@
 
 \section{Introduction}
 $\lambda C+$ is a proof assistant grounded in the Curry-Howard correspondence.
-The main aim of $\lambda C+$ is to provide builtin types to encode the following
-logical connectives of intuitionistic logic as per this correspondence
+The main aim of $\lambda C+$ is to implement a typed lambda calculus containing
+builtin types to encode the following logical connectives as per this
+correspondence
 \footnote{
   Note that negation ($\neg$) and falsity ($\bot$) are not implemented in the
   language though $\bot$ could easily be encoded as the empty type and $\neg A$
@@ -30,12 +31,12 @@ logical connectives of intuitionistic logic as per this correspondence
 \end{enumerate}
 
 Another important goal of $\lambda C+$ is to provide some constructs
-including syntactic sugar that lets us write longer proofs more conveniently.
+like syntactic sugar that let us write longer proofs more conveniently.
 
 At the core of our language is the Calculus of Constructions (CoC) as 
 originally formulated by Coquand and Huet in \cite{coc_coquand_huet}.
 A good introduction to typed lambda calculi and CoC is the book in 
-\cite{type_theory_and_formal_proof}. 
+\cite{type_theory_and_formal_proof}.
 
 Syntactically, $\lambda C+$ was heavily inspired by Standard ML and the
 \href{https://leanprover.github.io/}{Lean theorem prover}.
@@ -58,6 +59,9 @@ However, not all expressions are types.
 Those expressions which we call types are expressions, say $T$, that satisfy
 a very specific typing judgment, namely $\Gamma \vdash T \Leftarrow s$,
 where $s \in \{ \Type, \, \Kind \}$. We'll revisit this again later.
+
+Note that this means that unlike the polymorphic lambda calculus, we do not have
+separate constructs for declaring types and binding them.
 
 \texttt{Type} and \texttt{Kind} are the 2 sorts of $\lambda C+$, inherited from
 CoC. These are often called $*$ and $\Box$ in the literature.
@@ -92,7 +96,7 @@ However, we wanted to implement these directly via their Curry-Howard
 interpretation.
 
 Thus $\lambda C+$ extends CoC by providing 3 additional types on top of the
-dependent \texttt{Pi} type. These are
+Pi type. These are
 \begin{enumerate}
   \item the (dependent) Sigma type $\Sigma_{x : A} B(x)$ 
   \footnote{
@@ -107,17 +111,19 @@ dependent \texttt{Pi} type. These are
     abbreviation for $\Sigma_{x : A}, B$ where $x$ does not appear free in $B$.
 
   \item the (non-dependent) sum type $A + B$ \\
-    Semantically these behave the same as the non-dependent version as found in
-    extensions of the simply typed lambda calculus.
+    These exist only at the type level, ie we can only form $A + B : \mathtt{Type}$ 
+    out of $A : \mathtt{Type}$ and $B : \mathtt{Type}$.
+    We do not allow either $A : \mathtt{Kind}$ or $B : \mathtt{Kind}$.
+
   \item the (dependent) existential type $\exists x : A, \, B(x)$ \\
     This is a variation of the Sigma type with a ``weaker'' elimination rule to
     model the existential quantifier faithfully.
 \end{enumerate}
 
 The second way in which $\lambda C+$ extends upon CoC is that we allow users to
-introduce global definitions via the \verb|def x := E| construct.
-CoC lacks such facilities as it is a lambda calculus designed for theoretical
-study.
+introduce global definitions via the \verb|def x := E| \textit{statement}.
+As a lambda calculus designed for theoretical study, CoC doesn't have statements,
+only expressions.
 However, writing programs without any means to \textit{name} expressions, be it
 locally or globally is highly inconvenient.
 
@@ -132,10 +138,9 @@ definitions in practical implementations of proof assistants can refer to
 
 Thus we believe that it is necessary for any practical programming language and
 proof assistant to allow users to name things.
-For this, we introduce the notion of a statement and the context, which is our take
-on the environment in denotational semantics.
-Our semantics then defines constructs like \verb|def x := E| as statements that
-add bindings to the context.
+For this, we augment CoC with the concept of a context, aka an environment,
+which will be used to store typing and binding information.
+New bindings can then be added to these contexts via the \texttt{def} statement.
 
 % \subsection{Background}
 % According to the Curry-Howard correspondence, the simply typed lambda calculus
@@ -700,7 +705,7 @@ which may read more naturally to those who are more mathematically inclined.
 We list all the metavariables that we will use here.
 
 \begin{enumerate}
-  \item $s$ ranges over sorts, ie \verb|Type| and \verb|Kind|. 
+  \item $s$ ranges over sorts, ie \texttt{Type} and \texttt{Kind}. 
   \item $A$, $B$, $T$, $E$ range over expressions. 
   \item $x$, $y$, $z$ range over variables.
   \item $\nu, \, \tau$ range over expressions in head normal form.
@@ -719,7 +724,6 @@ expressions.
 % A type is then an expression, say $T$, which satisfies a very
 % specific typing judgment, namely $\Gamma \vdash T \Leftarrow s$,
 % where $s \in \{ \Type, \, \Kind \}$. We'll revisit this again later.
-
 Here we describe the concrete ascii syntax for our language, alongside
 the syntactic sugar we provide.
 
@@ -761,38 +765,33 @@ like \texttt{def}, \texttt{axiom}, \texttt{check} and \texttt{eval}.
 
 \subsubsection{Syntax rules}
 \begin{enumerate}
-\item \textbf{Sorts} \\
-  \[
+\item \textbf{Sorts, variables and parentheses} \\
+  \begin{gather*}
     \begin{prooftree}
       \infer0{\Type}
     \end{prooftree}
-  \]
-
-  \[
+    ~ \quad
     \begin{prooftree}
       \infer0{\Kind}
     \end{prooftree}
-  \]
+    ~ \quad
+    \begin{prooftree}
+      \infer0{x}
+    \end{prooftree}
+    ~ \quad
+    \begin{prooftree}
+      \hypo{E}
+      \infer1{( \, E \, )}
+    \end{prooftree}
+  \end{gather*}
 
   Since our language makes no distinction between types and propositions,
   we allow users to enter \verb|Prop| (short for ``proposition") in place of 
   \verb|Type|.
 
-\item \textbf{Variables} \\
-  \[
-    \begin{prooftree}
-      \infer0{x}
-    \end{prooftree}
-  \]
+  Also, following other languages in the ML family, parentheses are only used
+  for grouping.
 
-\item \textbf{Optional parentheses} \\
-  \[
-    \begin{prooftree}
-      \hypo{E}
-      \infer1{( \, E \, )}
-    \end{prooftree}
-  \]
-  
 \item \textbf{Function abstraction} \\
   \[
     \begin{prooftree}
@@ -1262,16 +1261,16 @@ In the theory of lambda calculi, the notion of computation is captured by the
 process of beta reduction. Normalization is then the process in which
 expressions are reduced through repeated applications of the beta reduction
 rule into a form in which no further beta reductions can occur anywhere in the
-expression, even underneath the outermost lambda.
+expression, even underneath binders.
 The resulting expression is said to be in \textit{head normal form}. 
 In this section, we want to define similar notions for our richer language.
 
 Note that unlike the simply typed lambda calculus and even CoC, we have more
 than just function types in our language. In particular, we have 4 main types,
-namely \texttt{Pi}, \texttt{Sigma}, \texttt{Sum} and \texttt{Exists}.
+namely Pi, Sigma, sum and existentials.
 Thus we need to generalize the notion of normalization to account for these new
 types and their elimination rules.
-We do so by way of a concept known as the \textit{neutral expression}.
+% We do so by way of a concept known as the \textit{neutral expression}.
 
 % Intuitively, we want to repeatedly reduce
 % an expression using all of these rules until we can reduce no further.
@@ -1307,12 +1306,17 @@ We do so by way of a concept known as the \textit{neutral expression}.
 % should it exist, is unique, just as in the simply typed lambda calculus.
 
 Informally, an expression is in head normal form if no elimination rule can be
-applied anywhere within the expression.
+applied anywhere within the expression, even underneath binders.
 For instance, the identity function $\lambda x, \, x$ is in head normal form
 but $(\lambda x, \, (\lambda x, \, x) \,\, x)$ is not since it can be reduced to
 $\lambda x, \, x$.
+Note that when we go underneath the outermost lambda to reduce the body, ie
+$(\lambda x, \, x) \,\, x$, the argument ie $x$ in that function application is
+actually free.
+Thus our notion of normalization must now also account for free variables.
 
-Neutral expressions are those which cannot be reduced by an eliminator
+For this, we need to introduce the concept of the \textit{neutral expression}.
+These are expressions which cannot be reduced by an eliminator
 because the expression to be eliminated is a free variable.
 As an example, suppose that $f$ is a free variable of some function type and
 we have the expression
@@ -1321,11 +1325,12 @@ We cannot beta reduce and substitute in the body of $f$ because the
 variable in head position, ie $f$, is free. We don't know anything about what
 the body of $f$ looks like.
 The best we can do is normalize, ie fully reduce, each of the $E_i$ to say $E_i'$
-and then leave $(f \,\, E_1 \, \dots \, E_n)$ as $(f \,\, E_1' \, \dots \, E_n')$.
+and then leave it as $(f \,\, E_1' \, \dots \, E_n')$.
 
 Similar scenarios occur with expressions of the other types in our language.
-If $p$ is a variable of the pair type, $\fst \,\, p$ cannot project out the first
-component of $p$, so we normalize $p$ to $p'$ and then leave it as $\fst \,\, p'$.
+For instance, if $p$ is a free variable of the Sigma type, $\fst \,\, p$ cannot
+project out the first component of $p$, so we normalize $p$ to $p'$ and then
+leave it as $\fst \,\, p'$.
 
 % With this, we generalize the notion of head normal form to be one in which
 % the expression cannot be further simplified by applying any of the 3
@@ -1420,9 +1425,9 @@ normal form because we treat them as syntactic sugar for the application
 $(\lambda x, \, E') \, E$ during the process of normalization.
 }
 
-Finally, we also define the notion of beta equivalence. 
+Finally, we also define the notion of and alpha and beta equivalence. 
 
-\begin{definition} [Beta equivalence]
+\begin{definition} [Alpha and beta equivalence]
 We say that two expressions are beta equivalent to each other, written
 $E_1 \equiv_\beta E_2$ if they have the same head normal form.
 
@@ -1430,6 +1435,12 @@ If both expressions are also alpha equivalent, ie
 they're equal up to renaming of bound variables, we write
 $E_1 \equiv_{\alpha \beta} E_2$.
 \end{definition}
+
+\info{
+  This concept is alpha and beta equivalence is important because we will
+  need to compare expressions for equivalence later when we describe our
+  bidirectional typechecking rules.
+}
 
 \subsubsection{Contexts}
 This is a variation of the environments as seen in a big-step denotational
@@ -1447,7 +1458,7 @@ We will use $\emptyset$ to denote the empty context, and $::$ to refer to the
 list cons operation.
 
 The binding can be an expression or a special undefined value, which we denote by
-\verb|und|.
+\texttt{und}.
 % Contexts have global scope and the top level statements \verb|def|
 % and \verb|axiom|, return new contexts with updated bindings.
 % The special \verb|und| value is used for the bindings created by \verb|axiom|
@@ -1463,8 +1474,7 @@ Most of the time, when we work with contexts, we want them to be \textit{well
 formed} in the sense that we want the contexts that we deal with in our typing
 and normalization judgments to satisfy some additional invariants.
 
-Primarily, we want everything we store in it to be in head normal form and
-we also want``types'' that we store in the context to be ``valid types"
+Primarily, we want the``types'' that we store in the context to be ``valid types"
 rather than just being expressions in our language.
 }
 
@@ -1475,8 +1485,8 @@ overview of them.
 
 \begin{enumerate}
 \item $\wf(\Gamma)$ \\
-  This asserts that a context $\Gamma$ is well formed, ie that everything we
-  store in it is in head normal form and the types are well formed.
+  This asserts that a context $\Gamma$ is well formed, ie that $\Gamma$ satisfies
+  some extra invariants. 
 
 \item $\Gamma \vdash E \Leftarrow T$ \qquad $\Gamma \vdash E \Rightarrow T$ \\
   These judgments will be used to formalize our bidirectional typechecking
@@ -1519,8 +1529,7 @@ overview of them.
 
 The aim of normalization is to reduce an
 expression, through repeated applications of the eliminators for the 4 types,
-(ie \verb|Pi|, \verb|Sigma|, \verb|Sum| and \verb|Exists|) to head normal 
-form.
+(ie Pi, Sigma, sum and existentials) to head normal form.
 
 % \info{
 % One may notice that this intuitive formulation resembles a small-step semantics.
@@ -1626,8 +1635,8 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
   The second rule utilizes the previously introduced concept of a neutral
   expression to handle the case when the elimination rule cannot be used because
   the expression at the head of a function application is a free variable.
-  Remember that such variables can exist because users are allowed to introduce
-  indeterminate constants as the top level via \texttt{axiom} statements.
+  Remember that such variables can exist because we are normalizing under
+  binders.
 
 \item \textbf{Local let binding} \\
     \[
@@ -1900,20 +1909,22 @@ be provided via ascriptions, eg we must write
 just \texttt{(a, b)} alone.
 }
 
-It should be noted here that this isn't real unification based type inference.
-In fact, type inference for dependently typed languages is unfortunately 
-undecidable in general (see \cite{undecidable_type_infer}).
-Proof assistants such as Lean often use complex heuristics (see \cite{elab_in_dtt})
-to handle this.
-
-In order to keep our semantics and implementation simple, we chose to use
-bidirectional typechecking, which allows for a limited form of inference instead. 
-Unfortunately, this means that our language can be rather verbose as a lot of 
-explicit type parameters must be provided.
-
 % It's a form of lightweight type inference that can infer simple stuff like 
 % the return type of a function application but not the type parameter in the
 % polymorphic identity function $\lambda \, (T : \Type) (x : T), \, x$.
+
+In the rules below, we'll see that each of the 4 main types, ie Pi, Sigma, sum
+and existentials come with 3 rules, namely
+\begin{itemize}[label=$\ast$]
+  \item Type formation
+  \item Introduction
+  \item Elimination
+\end{itemize}
+
+Type formation rules tell us when an expression constructed using a type
+constructor like \texttt{Pi} or \texttt{+} is well formed.
+The introduction and elimination rules give us the typing rules for the data
+constructors and eliminators respectively.
 
 \begin{enumerate}
 \item \textbf{Var} \\
@@ -1986,6 +1997,7 @@ explicit type parameters must be provided.
   \info{
     To compare 2 expressions that are in head normal form for equality,
     we only need to compare them structurally, modulo alpha equivalence.
+
     This is the reason why we prefer to eagerly normalize all types as soon
     as we verify that they are well formed. It makes the check for equality
     simple.
@@ -2115,7 +2127,7 @@ explicit type parameters must be provided.
   \begin{gather*}
     \begin{prooftree}
       \hypo{\Gamma \vdash E \Rightarrow \Sigma_{x : \tau_1}\tau_2(x)}
-      \infer1{\Gamma \vdash \fst E \Rightarrow \tau_1}
+      \infer1{\Gamma \vdash \fst \,\, E \Rightarrow \tau_1}
     \end{prooftree}
   ~ \quad
     \begin{prooftree}
@@ -2148,8 +2160,6 @@ explicit type parameters must be provided.
         \exists x : \tau_1, \, \tau_2'(x)}
     \end{prooftree}
 \]
-
-\newpage
 
 \item \textbf{Existential elimination} \\
 \[
@@ -2514,6 +2524,190 @@ In other words, the expression output to the user is the expression obtained by
 beginning with the initial configuration and then recursively evaluating
 until we reach a final configuration.
 
+\section{Limitations and future work}
+\subsection{Loss of strong normalization and consistency}
+The original formulation of CoC possesses some nice properties like type
+preservation (aka subject-reduction in the literature) and strong
+normalization \cite{coc_strong_norm_kripke, coc_strong_norm_short_flexible}. 
+This means that any sequence of reductions (like beta reduction) using the 
+various eliminators, when applied to \textit{any} well typed expression, always terminates.
+Note that this is a very strong version of the progress property that says
+that well typed expressions never ``get stuck''. 
+
+By the Curry-Howard correspondence, we can view a type system as a
+\textit{logical calculus} since we may identify propositions (ie logical
+formulae) as types and expressions as proofs.
+% For instance, we can view the type formation rules as telling us when a
+% proposition (ie type) is valid. Introduction and elimination rules correspond
+% directly to their counterparts in natural deduction.
+With this, \cite{coc_strong_norm_kripke} explains that the strong normalization
+of CoC yields yet another nice property: the type system of CoC is logically
+consistent.
+
+In logic, a calculus is said to be inconsistent if there is a proof of false
+from it.
+By the Curry-Howard correspondence, an inconsistency arises in a type system if
+there is an expression (ie a proof) of the empty type (ie falsity).
+\footnote{
+  Note that this concept of consistency is not the same as type safety.
+  Many functional programming languages, like Haskell, are type safe but not
+  consistent.
+  To see this, note that the expression \texttt{undefined} in Haskell has type
+  \texttt{a} where \texttt{a} is an arbitrary type variable.
+  Since \texttt{a} is arbitrary, we could take this to be the empty type
+  \texttt{Void}.
+}
+
+Many of these expressions are constructed via Girard's paradox
+\cite{analysis_of_girard}. 
+These expressions are non-normalizing in that they have infinite reduction
+sequences.
+As an example, the looping combinator from the untyped lambda calculus
+ \[ (\lambda x, \, (x \, x)) \,\, (\lambda x, \, (x \, x)) \]
+is non-normalizing since we can keep beta reducing it forever.
+Thus being able to derive Girard's paradox comprises both strong normalization
+as well as consistency.
+
+While CoC possesses the nice properties of strong normalization and
+consistency, these need not hold for $\lambda C+$
+since we extend CoC with 3 additional types, ie Sigma, sum and existentials.
+% For existentials, we are unsure if our typing rules can lead to any
+% inconsistencies.
+
+For instance, section 2.2.4 of \cite{extended_coc} explains that our
+Sigma formation rule
+ \[
+    \begin{prooftree}
+      \hypo{\Gamma \vdash A \Rightarrow s_1}
+      \hypo{\Gamma \vdash A \Downarrow \tau}
+      \hypo{(x, \, \tau, \, \text{und}) :: \Gamma \vdash B(x) \Rightarrow s_2}
+      \infer3{\Gamma \vdash \Sigma_{x : A}B(x) \Rightarrow s_2}
+    \end{prooftree}
+ \]
+allows for Girard's paradox to be derived since we allow for $s_1$ to be
+\texttt{Kind} and $s_2$ to be \texttt{Type}.
+Note that the paper uses $Prop$ instead of \texttt{Type} as we do here.
+
+This means that there are expressions in $\lambda C+$ that do not
+terminate (even though $\lambda C+$ forgoes recursion) and users are (in theory)
+able to construct these to provide a proof of false.
+
+While this is undesirable as our language is aimed at formalizing logic and
+theorem proving, we are not particularly bothered since
+these expressions are astronomically large and intricate
+\cite{analysis_of_girard}. Thus it is highly unlikely that users will stumble
+upon these issues unwittingly.
+
+% Secondly as we are not experts in the subject, our emphasis was on formalizing
+% a simple semantics for the purposes of implementation, rather than on metatheoretic
+% properties like strong normalization and consistency.
+
+In order to provide a semantics for the Sigma type that doesn't affect the logical
+consistency of the type system, a common trick as found in \cite{extended_coc}
+is to further stratify the universe of sorts from simply \texttt{Type : Kind} to 
+a countable hierarchy of type universes.
+Proof assistants like Coq and Lean which are based on a variation of CoC with
+inductive types use this approach as well.
+However, adopting such a solution will drastically complicate our semantics and
+implementation. 
+
+Sigma types aside, we are also unsure if our variation of existential types
+can lead to any issues with strong normalization and consistency.
+
+As we are not experts on the subject, our emphasis was on simplicity rather than
+these metatheoretic properties.
+We wanted a simple semantics that would allow us to implement a language that
+explores the Curry-Howard correspondence.
+As such, we were willing to make this trade off.
+
+That said, we would like to explore how to address these issues in future once
+we acquire more expertise in type theory.
+
+% Although logical inconsistencies are undesirable in a language designed for theorem
+% proving, it is difficult to ensure that a type system is logically consistent.
+% This is particularly true for those which embrace dependent types to
+% formalize predicate logic, since dependent type theory is a complex subject in 
+% itself.
+
+% As we are not experts in the subject, our emphasis was on formalizing a simple
+% semantics for the purposes of implementation, rather than on metatheoretic
+% properties like logical consistency.
+% Hence we are not too disturbed by our inability to guarantee the consistency of our
+% semantics.
+
+\subsection{Negation, falsity and truth}
+Currently $\lambda C+$ doesn't include types for the following connectives:
+\begin{itemize}[label=$\ast$]
+  \item Negation, ie $\neg A$
+  \item Falsity, ie $\bot$
+  \item Truth, ie $\top$ 
+\end{itemize} 
+
+According to the Curry-Howard correspondence, $\bot$ and $\top$ can be modeled
+by empty and singleton types respectively. 
+Negation, ie $\neg A$, can then be treated as an abbreviation for
+$A \rightarrow \bot$.
+These should not prove difficult to add to our language but we decided to leave
+them out as we were running out of time for the project.
+We would however like to come back to add these in the future.
+
+\subsection{Lack of real type inference}
+In our static semantics, we used a bidirectional typechecking algorithm
+as in \cite{lambdapi}. While this provides a limited form of type inference,
+it is highly limited compared to the unification based methods as used in algorithms
+like Hindley-Milner.
+As such $\lambda C+$ can be rather annoying to use since a lot of type annotations
+must be provided explicitly.
+
+While this is undesirable and makes our language rather verbose, there is
+unfortunately, no easy solution.
+Type inference for dependently typed languages is unfortunately undecidable in
+general \cite{undecidable_type_infer} since higher-order unification is needed
+to infer certain things, like the element of a Pi type \cite{elab_in_dtt}.
+Proof assistants such as Lean often use various heuristics \cite{elab_in_dtt}
+to handle this.
+
+We chose to forgo this because they can get rather complicated. Fortunately,
+we found that bidirectional typechecking works well for dependently typed
+languages and it's not too difficult to formalize and implement.
+
+Still, we recognize this is an avenue for future work.
+$\lambda C+$ could be made less verbose by implementing some heuristics for type 
+inference. This would greatly improve the user friendliness of the language.
+
+\subsection{Conflation of Prop and Type}
+$\lambda C+$ stays true to the Curry-Howard correspondence by happily identifying
+propositions with types.
+Unfortunately, this may be unintuitive for users who are familiar with first
+(or higher order) logic.
+
+Consider the type in the concrete syntax, \verb|exists x : A, A|, where \texttt{A}
+is some arbitrary type.
+While this is a perfectly well formed type, it doesn't much sense from a
+logical point of view.
+The issue is that the type \texttt{A} is used in 2 different ways here.
+The first use of \texttt{A} suggests that it's being used like a \textit{set}, with
+\texttt{x} being an element of it. But the second \texttt{A} suggests that it's
+being used as a \textit{proposition}.
+
+In logic, there is a clear distinction between terms and well formed formulae,
+which belong to different syntactic categories.
+Thus formulae like $\exists x \in A, \, A$ are not well formed.
+
+Though the Curry-Howard correspondence is able to give meaning to the type
+\verb|exists x : A, A|, this may be counter-intuitive for some users. 
+
+Although we would like to address this, there is no easy fix for this because
+this was inherited from CoC. One way to fix this is to further stratify the
+universe of sorts. In other words, we would need to split \texttt{Prop} out 
+into its own sort, giving us 3 sorts: \texttt{Prop}, \texttt{Type} and
+\texttt{Kind}.
+
+The typing rules would then need to be adjusted to account for this.
+However, this would complicate our semantics and implementation and it may not
+preserve the consistency of the type system when viewed as a logical calculus.
+Thus we did not implement this.
+
 % \section{Metatheoretic discussion}
 % \todo[inline] {TODO: flesh out this part}
 % The original Calculus of Constructions is known to be strongly normalizing in
@@ -2521,7 +2715,6 @@ until we reach a final configuration.
 % terminates. Furthermore, it has decidable typechecking and is logically
 % consistent when its type system is viewed as a logical calculus, with the Pi type
 % corresponding to universal quantification.
-
 
 % Say something about why we think our bidirectional typechecking works.
 % https://arxiv.org/pdf/2102.06513.pdf
