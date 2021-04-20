@@ -821,7 +821,7 @@ like \texttt{def}, \texttt{axiom}, \texttt{check} and \texttt{eval}.
     fun x => (fun y => (fun (h : T) => E))
   \end{verbatim}
 
-\item \textbf{Pi, Sigma and Existential type constructor} \\
+\item \textbf{Pi, Sigma and Existential type former} \\
   \[
     \begin{prooftree}
       \hypo{x}
@@ -937,7 +937,7 @@ annotation via
 
 which is desugared into \verb|let x := (E : T) in E'|
 
-\item \textbf{Sum type constructor} \\
+\item \textbf{Sum type former} \\
 \[
   \begin{prooftree}
     \hypo{A}
@@ -1594,7 +1594,7 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
   there to tell the typechecker to ensure that $E$ really has the prescribed type
   $T$.
 
- \item \textbf{Pi type constructor and data constructor} \\
+ \item \textbf{Pi type former and data constructor} \\
   \begin{gather*}
     \begin{prooftree}
       \hypo{\Gamma \vdash A \Downarrow \tau}
@@ -1653,7 +1653,7 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
     This rule was derived by treating $\text{let } x := E \text{ in } E'$ as
     the function application $(\lambda x, \, E') \,\, E$.
 
-\item \textbf{Sigma type and data constructor} \\
+\item \textbf{Sigma type former and data constructor} \\
     \begin{gather*}
       \begin{prooftree}
         \hypo{\Gamma \vdash A \Downarrow \tau}
@@ -1693,7 +1693,7 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
   \end{gather*}
  \end{spreadlines}
 
-  \item \textbf{Existential type and data constructor} \\
+  \item \textbf{Existential type former and data constructor} \\
     \begin{gather*}
       \begin{prooftree}
         \hypo{\Gamma \vdash A \Downarrow \tau}
@@ -1741,7 +1741,7 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
   %   \end{prooftree}
   % \]
 
-  \item \textbf{Sum type and data constructor}
+  \item \textbf{Sum type former and data constructor}
   \begin{gather*}
      \begin{prooftree}
       \hypo{E_1 \Downarrow \nu_1}
@@ -1823,12 +1823,13 @@ $\Gamma \vdash T \Leftarrow \Type$, ie they can be checked to have type $\Type$.
 
 $\Kind$ is just here mainly to be the type of $\Type$ as well as the type of
 type constructors.
+(Type constructors are functions whose output type is $\Type$).
 This was inherited from CoC.
 }
 
   % Those $T$ satisfying $\Gamma \vdash T \Leftarrow \Kind$ instead represent the
-  % type of type constructors. 
-  % In other words, the type of a type constructor is a
+  % type of type formers. 
+  % In other words, the type of a type former is a
   % Kind, just like in Haskell.
 
 % With this, we define well formed contexts as contexts satisfying 2 key invariants:
@@ -2232,7 +2233,7 @@ should not occur free in the output type that is $\tau''$.
   \info{
   Recalling the Curry-Howard correspondence, we see sum types as a way to model
   disjunction. Hence we do not see a need to allow users to construct sums out 
-  of large types like type constructors found in \texttt{Kind}.
+  of large types like type formers found in \texttt{Kind}.
   }
 
   % Also we are unsure if the logical consistency of the system can be preserved
