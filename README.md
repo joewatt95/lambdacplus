@@ -1,9 +1,11 @@
 # λC+
 ## Introduction
-λC+ is a proof assistant implementing a typed lambda calculus that brings the Curry-Howard correspondence to life. For those who are more theoretically inclined, it is a
-typed lambda calculus at the core, based on the Calculus of Constructions.
+λC+ is a proof assistant implementing a typed lambda calculus that brings the Curry-Howard correspondence to life. 
+At its core is an extensions of the Calculus of Constructions.
 
-Here's an example formalizing the reflexivity of implication in λC+. 
+Try it out [here](https://aellym0.github.io/lambdacplus/)!
+
+Here's an example formalizing the reflexivity of implication in λC+.
 ```lean
 theorem A_implies_A :
 -- For any proposition A, A implies A itself.
