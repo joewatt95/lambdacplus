@@ -71,15 +71,15 @@ with a type of \texttt{Type} are types.
 CoC includes it primarily to prevent Girard's paradox
 (see \cite{analysis_of_girard}).
 
-As with CoC, $\lambda C+$ doesn't have a separate sort for propositions, so 
-\texttt{Prop} is identified with \texttt{Type}.
-Though this stays true to the Curry-Howard correspondence, this has the
-unfortunate consequence of conflating the syntactic roles of propositions and
-data types.
+Finally, as with CoC, $\lambda C+$ doesn't have a separate sort for
+propositions, so \texttt{Prop} is identified with \texttt{Type}.
+% Though this stays true to the Curry-Howard correspondence, this has the
+% unfortunate consequence of conflating the syntactic roles of propositions and
+% data types.
   
-This may be counter-intuitive for users because in first (or higher) order
-logic, there is a clear distinction between terms and well-formed formulae,
-which belong to different syntactic categories. 
+% This may be counter-intuitive for users because in first (or higher) order
+% logic, there is a clear distinction between terms and well-formed formulae,
+% which belong to different syntactic categories. 
 
 \subsubsection{Extensions to CoC}
 $\lambda C+$ extends CoC in 2 distinct ways. The first is that we provide more
@@ -89,7 +89,7 @@ the Pi type (aka the dependent function type).
 
 While this can encode $\forall$ and $\rightarrow$ naturally, $\wedge$, $\vee$ and
 $\exists$ have to be encoded in terms of the Pi.
-Chapter 7 of the book \cite{type_theory_and_formal_proof} explains how this can
+Chapter 7 of \cite{type_theory_and_formal_proof} explains how this can
 be done.
 However, we wanted to implement these directly via their Curry-Howard
 interpretation.
@@ -127,13 +127,10 @@ However, writing programs without any means to \textit{name} expressions, be it
 locally or globally is highly inconvenient.
 
 Similarly, when we write mathematical proofs, it is common to introduce
-auxiliary definitions, lemmas and axioms.
+auxiliary definitions, lemmas and axioms \cite{type_theory_and_formal_proof}.
 For instance, we define a surjective function to be an $f : X \to Y$ such that
 $\forall y \in Y, \, \exists x \in X, \, f(x) = y$. We then prefer writing that
 $f$ is surjective rather than repeatedly writing the long formula.
-Readers who are interested in reading more about the importance of
-definitions in practical implementations of proof assistants can refer to
-\cite{type_theory_and_formal_proof}.
 
 Thus we believe that it is necessary for any practical programming language and
 proof assistant to allow users to name things.
@@ -713,12 +710,12 @@ We list all the metavariables that we will use here.
 \end{enumerate}
 
 Note that we often add subscripts and ' to them, like for instance
-$E_1$, $\nu'$ and $\Gamma'$.
+$E_1$, $\nu'$.
 
 \section{Syntax}
 
 $\lambda C+$ has 2 syntactic categories, namely expressions and statements.
-Note that as with CoC, there are no separate syntactic categories for types and
+As with CoC, there are no separate syntactic categories for types and
 expressions.
 % A type is then an expression, say $T$, which satisfies a very
 % specific typing judgment, namely $\Gamma \vdash T \Leftarrow s$,
@@ -1094,7 +1091,7 @@ This instructs the interpreter to normalize (ie fully reduce) the expression $E$
 
 \end{enumerate}
 
-\subsection{Lean-esque syntactic sugar}
+\subsection{Lean inspired syntactic sugar}
 Following \href{https://leanprover.github.io/reference/expressions.html#structured-proofs}
 {Lean}, we provide some lightweight syntactic sugar that allows users to write
 structured proofs in a manner more akin to how one would do so on paper.
@@ -1104,17 +1101,17 @@ structured proofs in a manner more akin to how one would do so on paper.
 
   Similarly, type annotations can be given, so
 
-  \verb|assume (x0 : T0) ... (xn : Tn), E| desugars into 
+  \verb|assume (x0 : T0) ... (xn : Tn), E| abbreviates
   
   \verb|fun (x0 : T0) ... (xn : Tn) => E|
 
-  Users can write \verb|assume ...| in place of \verb|fun ...| to introduce an 
+  This lets us write \verb|assume ...| in place of \verb|fun ...| to introduce an 
   arbitrary variable or hypothesis into the context to prove a universally
   quantified statement or implication.
 
   \item \verb|have x : T, from E, E'| is sugar for \verb|let x : T := E in E'|
 
-  This models how we write ``We have ... because of ..." in pen and paper proofs.
+  This models how we write ``We have ... because of ...'' in pen and paper proofs.
   The variable \verb|x| is used to bind the expression \verb|E| that is the proof
   of the proposition \verb|T| in the remainder of the proof that is \verb|E'|. 
 
@@ -1139,8 +1136,8 @@ reduction in our big-step semantics.
 Though it is common for authors (like \cite{lambdapi}) to omit this in their
 semantics, we prefer to be explicit about this since great care must be taken
 when implementing these.
-Readers who are more interested in the semantics and not so much in the actual
-implementation should feel free to skip most of this section.
+Readers should free to skip most of this section and return here only when
+they need to clarify doubts.
 
 \subsection{Free variables}
 We define the set of free variables of an expression $E$, ie $\FV(E)$ recursively.
@@ -1172,9 +1169,9 @@ expressions, with $x$ being bound in the output type $B$ but not in the input ty
 \end{align*}
 Note that in match expressions, $x$ is bound in $E_1$ and $y$ is bound in $E_2$.
 
-For the expressions $\fst \, E$, $\snd \, E$, $\inl \, E$ and $\inr \, E$, the
-set of free variables is precisely $\FV(E)$, since those keywords are treated
-like constants.
+For the expressions $\fst \,\, E$, $\snd \,\, E$, $\inl \,\, E$ and 
+$\inr \,\, E$, the set of free variables is precisely $\FV(E)$, since those 
+keywords are treated like constants.
 
 Finally, for existential elimination, we have
 \begin{align*}
@@ -1419,7 +1416,7 @@ The rules are as follows:
 \end{spreadlines}
 
 \info{
-Note that \texttt{(let x := E in E')} expressions are not considered to be in head 
+\texttt{(let x := E in E')} expressions are not considered to be in head 
 normal form because we treat them as syntactic sugar for the application 
 $(\lambda x, \, E') \, E$ during the process of normalization.
 }
@@ -1436,9 +1433,12 @@ $E_1 \equiv_{\alpha \beta} E_2$.
 \end{definition}
 
 \info{
-  This concept is alpha and beta equivalence is important because we will
-  need to compare expressions for equivalence later when we describe our
-  bidirectional typechecking rules.
+  This concept of alpha and beta equivalence is important because in the
+  bidirectional typechecking algorithm, we will need to compare types for
+  beta equivalence.
+
+  For this, we will normalize them to head normal form and then compare them
+  structurally, modulo alpha equivalence.
 }
 
 \subsubsection{Contexts}
@@ -1448,16 +1448,24 @@ These will be used to store variables along with their typing and binding inform
 when they are defined via the \texttt{def x := E} and \verb|axiom x : T| statements.
 
 We define contexts, denoted by the metavariable, $\Gamma$, to be lists of
-triples of the form
+triples of the form $(x, \, \tau, \, \nu)$
+where $\tau$ and $\nu$ are allowed to be a special undefined value, which we
+denote by \texttt{und}.
+
+Each triple can be read as
 \begin{align*}
   (\text{variable name}, \, \text{type of variable}, \, \text{binding})
 \end{align*}
 
+\info{
+  Note that this means we will be eagerly normalizing the type and binding of a
+  variable before we store them in our contexts.
+}
+
 We will use $\emptyset$ to denote the empty context, and $::$ to refer to the
 list cons operation.
-
-The binding can be an expression or a special undefined value, which we denote by
-\texttt{und}.
+% The binding can be an expression or a special undefined value, which we denote by
+% \texttt{und}.
 % Contexts have global scope and the top level statements \verb|def|
 % and \verb|axiom|, return new contexts with updated bindings.
 % The special \verb|und| value is used for the bindings created by \verb|axiom|
@@ -1468,56 +1476,56 @@ If there are multiple occurrences of $x$ in $\Gamma$,
 as is the case when there is variable shadowing, we refer to the first occurrence
 of $x$.
 
-\info {
-Most of the time, when we work with contexts, we want them to be \textit{well
-formed} in the sense that we want the contexts that we deal with in our typing
-and normalization judgments to satisfy some additional invariants.
+% \info {
+% Most of the time, when we work with contexts, we want them to be \textit{well
+% formed} in the sense that we want the contexts that we deal with in our typing
+% and normalization judgments to satisfy some invariants.
 
-Primarily, we want the``types'' that we store in the context to be ``valid types"
-rather than just being expressions in our language.
-}
+% For instance, we want the ``types'' that we store in the context to be 
+% ``valid'' rather than just being any expression in our language.
+% }
 
-\subsubsection{Overview of judgement forms}
-Since we will be defining some judgment forms (including normalization and
-typing related ones) in a mutually recursive fashion, we first give an
-overview of them.
+% \subsubsection{Overview of judgement forms}
+% Since we will be defining some judgment forms (including normalization and
+% typing related ones) in a mutually recursive fashion, we first give an
+% overview of them.
 
-\begin{enumerate}
-\item $\wf(\Gamma)$ \\
-  This asserts that a context $\Gamma$ is well formed, ie that $\Gamma$ satisfies
-  some extra invariants. 
+% \begin{enumerate}
+% % \item $\wf(\Gamma)$ \\
+% %   This asserts that a context $\Gamma$ is well formed, ie that $\Gamma$ satisfies
+% %   some extra invariants. 
 
-\item $\Gamma \vdash E \Leftarrow T$ \qquad $\Gamma \vdash E \Rightarrow T$ \\
-  These judgments will be used to formalize our bidirectional typechecking
-  algorithm. They form the typing rules for our language.
-  % For now, it suffices to say that $\Gamma \vdash E \Leftarrow T$ formalizes the
-  % meaning that given an expression $E$ and some type $T$, we may verify that
-  % $E$ has type $T$ under the context $\Gamma$.
+% \item $\Gamma \vdash E \Leftarrow T$ \qquad $\Gamma \vdash E \Rightarrow T$ \\
+%   These judgments will be used to formalize our bidirectional typechecking
+%   algorithm. They form the typing rules for our language.
+%   % For now, it suffices to say that $\Gamma \vdash E \Leftarrow T$ formalizes the
+%   % meaning that given an expression $E$ and some type $T$, we may verify that
+%   % $E$ has type $T$ under the context $\Gamma$.
 
-  % On the other hand, $\Gamma \vdash E \Rightarrow T$ formalizes the notion of
-  % \textit{type inference}. It says that from a context $\Gamma$, we may infer
-  % the type of $E$ to be $T$. 
+%   % On the other hand, $\Gamma \vdash E \Rightarrow T$ formalizes the notion of
+%   % \textit{type inference}. It says that from a context $\Gamma$, we may infer
+%   % the type of $E$ to be $T$. 
   
-  % \info{
-  % It should be noted here that this isn't real unification based type inference.
-  % It's a form of lightweight type inference that can infer simple stuff like 
-  % the return type of a function application but not the type parameter in the
-  % polymorphic identity function $\lambda \, (T : \Type) (x : T), \, x$.
-  % Unfortunately, this means that our language can be rather verbose as a lot of 
-  % explicit type parameters must be provided.
+%   % \info{
+%   % It should be noted here that this isn't real unification based type inference.
+%   % It's a form of lightweight type inference that can infer simple stuff like 
+%   % the return type of a function application but not the type parameter in the
+%   % polymorphic identity function $\lambda \, (T : \Type) (x : T), \, x$.
+%   % Unfortunately, this means that our language can be rather verbose as a lot of 
+%   % explicit type parameters must be provided.
 
-  % Type inference for dependently typed languages is unfortunately undecidable
-  % (see \cite{undecidable_type_infer})
-  % }
+%   % Type inference for dependently typed languages is unfortunately undecidable
+%   % (see \cite{undecidable_type_infer})
+%   % }
 
-\item $\Gamma \vdash E \Downarrow \nu$ \\
-  The $\cdot \vdash \cdot \Downarrow \cdot$ relation is our big-step normalization
-  process.
-  It says that with respect to a context $\Gamma$ containing bindings, we
-  may normalize $E$ to $\nu$ which is in head normal form.
-  % Note that we can do so because our language is a lambda calculus that does
-  % not contain full blown recursion and is strongly normalizing. 
-\end{enumerate}
+% \item $\Gamma \vdash E \Downarrow \nu$ \\
+%   The $\cdot \vdash \cdot \Downarrow \cdot$ relation is our big-step normalization
+%   process.
+%   It says that with respect to a context $\Gamma$ containing bindings, we
+%   may normalize $E$ to $\nu$ which is in head normal form.
+%   % Note that we can do so because our language is a lambda calculus that does
+%   % not contain full blown recursion and is strongly normalizing. 
+% \end{enumerate}
 
 \subsubsection{Big step normalization}
 % Before defining our type system given by the 2 judgments,
@@ -1561,20 +1569,17 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
 \item \textbf{Type and variables}
   \begin{gather*}
     \begin{prooftree}
-      \hypo{\wf(\Gamma)}
-      \infer1{\Gamma \vdash \Type \Downarrow \Type} 
+      \infer0{\Gamma \vdash \Type \Downarrow \Type} 
     \end{prooftree}
    ~ \quad
     \begin{prooftree}
-      \hypo{\wf(\Gamma)}
       \hypo{(x, \, \tau, \, \nu) \in \Gamma}
-      \infer2{\Gamma \vdash x \Downarrow \nu}
+      \infer1{\Gamma \vdash x \Downarrow \nu}
     \end{prooftree} 
     ~ \quad
     \begin{prooftree}
-      \hypo{\wf(\Gamma)}
       \hypo{(x, \, \tau, \, \text{und}) \in \Gamma}
-      \infer2{\Gamma \vdash x \Downarrow x}
+      \infer1{\Gamma \vdash x \Downarrow x}
     \end{prooftree}
   \end{gather*}
 
@@ -1789,13 +1794,13 @@ in head normal form, ie $\nu$ and $\tau$, as well as neutral ones, ie $n$.
 \end{enumerate}
 
 \info{
-Note that the lack of a normalization rule for \texttt{Kind} is deliberate.
+The lack of a normalization rule for \texttt{Kind} is deliberate.
 The reason is that we will ensure that we only normalize expressions after we
 typecheck them, and we will see in the next section that \texttt{Kind} has no
 type. Thus we will never need to normalize it.
 }
 
-\subsubsection{Well formed types and contexts}
+\subsubsection{Well formed types}
 % Recall that when defining the notion of a context earlier, we said that we
 % normally only work with well formed ones. In particular, this means that the
 % types we store in the context are ``valid''. Here we properly define these
@@ -1804,28 +1809,27 @@ type. Thus we will never need to normalize it.
 % First we introduce a new metavariable $s$ to denote either of the 2 sorts,
 % \verb|Type| and \verb|Kind|. 
 
-\begin{definition} [Well formed type and type constructor]
-  An expression $T$ is said to be a well formed type with respect to the context
-  $\Gamma$ if it satisfies
-  \[ \Gamma \vdash T \Leftarrow s \]
-  This will be defined formally later via \textit{type formation rules} in our
-  static semantics.
-  These rules tell us when an expression is a well formed type.
+An expression $T$ is said to be a well formed type with respect to the context
+$\Gamma$ if it satisfies
+\[ \Gamma \vdash T \Leftarrow s \]
+This will be defined formally later via \textit{type formation rules} in our
+static semantics.
+These rules tell us when an expression is a well formed type.
 
-  \info{
-  Informally, we can think of $\Type$ as the ``type of all types'' and so
-  all well formed types are those expressions satisfying
-  $\Gamma \vdash T \Leftarrow \Type$, ie they can be checked to have type $\Type$.
+\info{
+Informally, we can think of $\Type$ as the ``type of all types'' and so
+all well formed types are those expressions satisfying
+$\Gamma \vdash T \Leftarrow \Type$, ie they can be checked to have type $\Type$.
 
-  $\Kind$ is just here mainly to be the type of $\Type$.
-  This was inherited from CoC.
-  }
+$\Kind$ is just here mainly to be the type of $\Type$ as well as the type of
+type constructors.
+This was inherited from CoC.
+}
 
   % Those $T$ satisfying $\Gamma \vdash T \Leftarrow \Kind$ instead represent the
   % type of type constructors. 
   % In other words, the type of a type constructor is a
   % Kind, just like in Haskell.
-\end{definition}
 
 % With this, we define well formed contexts as contexts satisfying 2 key invariants:
 % \begin{enumerate}
@@ -1847,34 +1851,34 @@ type. Thus we will never need to normalize it.
 % them. At no point in our formulation in the next section, do we attempt to
 % normalize an expression before checking that it has a well formed type.
 
-\begin{definition} [Well formed context]
-  Recalling that $\emptyset$ denotes the empty list and that $::$ denotes the list
-  cons operation, we define precisely the judgment $\wf(\Gamma)$.
-  We define this inductively via
+% \begin{definition} [Well formed context]
+%   Recalling that $\emptyset$ denotes the empty list and that $::$ denotes the list
+%   cons operation, we define precisely the judgment $\wf(\Gamma)$.
+%   We define this inductively via
 
-  \begin{gather*}
-    \begin{prooftree}
-      \infer0{\wf(\emptyset)}
-    \end{prooftree}
-    ~ \quad
-    \begin{prooftree}
-      \hypo{\wf(\Gamma)}
-      \hypo{\Gamma \vdash \tau \Leftarrow s}
-      \infer2{\wf ((x, \, \tau, \, \nu) :: \Gamma)}
-    \end{prooftree}
-  \end{gather*}
+%   \begin{gather*}
+%     \begin{prooftree}
+%       \infer0{\wf(\emptyset)}
+%     \end{prooftree}
+%     ~ \quad
+%     \begin{prooftree}
+%       \hypo{\wf(\Gamma)}
+%       \hypo{\Gamma \vdash \tau \Leftarrow s}
+%       \infer2{\wf ((x, \, \tau, \, \nu) :: \Gamma)}
+%     \end{prooftree}
+%   \end{gather*}
 
-  Here we allow both $\tau$ and $\nu$ to be undefined.
-\end{definition}
+%   Here we allow both $\tau$ and $\nu$ to be undefined.
+% \end{definition}
 
-\info{
-  Note that this means that all types and bindings that we store in our context
-  are either undefined or in head normal form.
-  Thus we will make sure to normalize expressions before storing them in the
-  context.
-  This is an invariant we would like to have for reasons that will be seen
-  later.
-}
+% \info{
+%   Note that this means that all types and bindings that we store in our context
+%   are either undefined or in head normal form.
+%   Thus we will make sure to normalize expressions before storing them in the
+%   context.
+%   This is an invariant we would like to have for reasons that will be seen
+%   later.
+% }
 
 \subsubsection{Static semantics and bidirectional typechecking}
 Here we define the 2 \textit{mutually recursive} relations in our bidirectional
@@ -1891,6 +1895,8 @@ $\cdot \vdash \cdot ::_{\uparrow} \cdot$ and
 $\cdot \vdash \cdot ::_{\downarrow} \cdot$.
 
 \info{
+We highly recommend the talk \cite{bidi_typing_youtube} for readers who
+need more intuition on this.
 The idea is that there are some expressions for which it is easier to
 \textit{infer},
 ie compute the type directly, while for others, it is easier to have the user
@@ -1921,7 +1927,7 @@ and existentials come with 3 rules, namely
 \end{itemize}
 
 Type formation rules tell us when an expression constructed using a type
-constructor like \texttt{Pi} or \texttt{+} is well formed.
+constructor like \texttt{Pi} or \texttt{+} is a well formed type.
 The introduction and elimination rules give us the typing rules for the data
 constructors and eliminators respectively.
 
@@ -1929,20 +1935,18 @@ constructors and eliminators respectively.
 \item \textbf{Var} \\
   \[
     \begin{prooftree}
-      \hypo{\wf(\Gamma)}
       \hypo{(x, \, \tau, \, v) \in \Gamma}
-      \infer2{\Gamma \vdash x \Rightarrow \tau}
+      \infer1{\Gamma \vdash x \Rightarrow \tau}
     \end{prooftree}
   \]
-  $\nu$ is allowed to be undefined here.
+  Here, $\nu$ is allowed to be undefined but not $\tau$.
   This says that we may infer the type of a variable if the type information
   is already in our context.
 
 \item \textbf{Type} \\
   \[
     \begin{prooftree}
-      \hypo{\wf(\Gamma)}
-      \infer1{\Gamma \vdash \Type \Rightarrow \Kind}
+      \infer0{\Gamma \vdash \Type \Rightarrow \Kind}
     \end{prooftree}
   \]
   This follows CoC.
@@ -1994,12 +1998,11 @@ constructors and eliminators respectively.
   to each other, we may conclude that $E$ indeed has type $\tau$.
 
   \info{
-    To compare 2 expressions that are in head normal form for equality,
-    we only need to compare them structurally, modulo alpha equivalence.
-
-    This is the reason why we prefer to eagerly normalize all types as soon
-    as we verify that they are well formed. It makes the check for equality
-    simple.
+    This is where we need to check types for alpha and beta equivalence.
+    % This is the reason why we prefer to eagerly normalize all types as soon
+    % as we verify that they are well formed. It makes the check for alpha and
+    % beta equivalence simple, since we need only compare them for structural 
+    % equality.
   }
 
   % \info{
@@ -2278,20 +2281,20 @@ should not occur free in the output type that is $\tau''$.
 % Similarly, we can't infer the type of an unannotated lambda like $\lambda x, \, x$.
 % Users must either annotate the input type or ascribe a type to the whole function.
 
-\info{
-Fortunately, the nice thing about these rules is that we may translate them almost
-directly into a typechecking and inference algorithm!
-More precisely, we may translate $\Gamma \vdash E \Leftarrow T$ into a
-function called $\checkk(\Gamma, \, E, \, T)$ which checks if the
-expression $E$ really has the type $T$ given a context $\Gamma$.
+% \info{
+% Fortunately, the nice thing about these rules is that we may translate them almost
+% directly into a typechecking and inference algorithm!
+% More precisely, we may translate $\Gamma \vdash E \Leftarrow T$ into a
+% function called $\checkk(\Gamma, \, E, \, T)$ which checks if the
+% expression $E$ really has the type $T$ given a context $\Gamma$.
 
-Similarly, $\Gamma \vdash E \Rightarrow T$ gives us the function
-$\infer(\Gamma, \, E)$ which outputs the inferred type of $E$ given
-the context $\Gamma$.
+% Similarly, $\Gamma \vdash E \Rightarrow T$ gives us the function
+% $\infer(\Gamma, \, E)$ which outputs the inferred type of $E$ given
+% the context $\Gamma$.
 
-% In the literature, such rules are called \textit{syntax directed}, as the
-% algorithm closely follows the formalization of the corresponding judgments.
-}
+% % In the literature, such rules are called \textit{syntax directed}, as the
+% % algorithm closely follows the formalization of the corresponding judgments.
+% }
 
 
 % \item \textbf{Local let binding} \\
@@ -2524,7 +2527,7 @@ beginning with the initial configuration and then recursively evaluating
 until we reach a final configuration.
 
 \section{Limitations and future work}
-\subsection{Loss of strong normalization and consistency}
+\subsection{Lack of strong normalization and consistency}
 The original formulation of CoC possesses some nice properties like type
 preservation (aka subject-reduction in the literature) and strong
 normalization \cite{coc_strong_norm_kripke, coc_strong_norm_short_flexible}. 
@@ -2533,15 +2536,18 @@ various eliminators, when applied to \textit{any} well typed expression, always 
 Note that this is a very strong version of the progress property that says
 that well typed expressions never ``get stuck''. 
 
-By the Curry-Howard correspondence, we can view a type system as a
-\textit{logical calculus} since we may identify propositions (ie logical
-formulae) as types and expressions as proofs.
 % For instance, we can view the type formation rules as telling us when a
 % proposition (ie type) is valid. Introduction and elimination rules correspond
 % directly to their counterparts in natural deduction.
-With this, \cite{coc_strong_norm_kripke} explains that the strong normalization
-of CoC yields yet another nice property: the type system of CoC is logically
+\cite{coc_strong_norm_kripke} explains that this strong normalization
+property yields yet another nice property: the type system of CoC is logically
 consistent.
+
+What does it mean for a type system to be logically consistent? Remember
+that the Curry-Howard correspondence allows us to identify propositions
+(ie logical formulae) as types and expressions as proofs.
+In this vein, we can view a type system as a \textit{logical calculus}
+presented in natural deduction form.
 
 In logic, a calculus is said to be inconsistent if there is a proof of false
 from it.
@@ -2588,7 +2594,7 @@ allows for Girard's paradox to be derived since we allow for $s_1$ to be
 Note that the paper uses $Prop$ instead of \texttt{Type} as we do here.
 
 This means that there are expressions in $\lambda C+$ that do not
-terminate (even though $\lambda C+$ forgoes recursion) and users are (in theory)
+terminate, even though $\lambda C+$ forgoes recursion! Users are (in theory)
 able to construct these to provide a proof of false.
 
 While this is undesirable as our language is aimed at formalizing logic and
@@ -2603,7 +2609,7 @@ upon these issues unwittingly.
 
 In order to provide a semantics for the Sigma type that doesn't affect the logical
 consistency of the type system, a common trick as found in \cite{extended_coc}
-is to further stratify the universe of sorts from simply \texttt{Type : Kind} to 
+is to further stratify the universe of sorts from simply \verb|Type : Kind| to 
 a countable hierarchy of type universes.
 Proof assistants like Coq and Lean which are based on a variation of CoC with
 inductive types use this approach as well.
