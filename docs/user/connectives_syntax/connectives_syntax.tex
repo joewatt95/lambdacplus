@@ -1,0 +1,41 @@
+\documentclass[convert={density=500}, border=2pt, varwidth=8in]{standalone}
+
+\usepackage[utf8]{inputenc}
+% \usepackage[htt]{hyphenat}
+\usepackage{amsmath, amssymb, amsthm, thmtools, thm-restate, tikz, graphicx,
+  hyperref, cleveref, comment, expl3, xparse, ebproof, enumitem,
+  stmaryrd, verbatim, todonotes, xargs, tabularx}
+
+% https://tex.stackexchange.com/questions/188148/how-to-center-gathered-aligned-equations-in-enumerate-environment
+\displaywidth=\textwidth
+\displayindent=-\leftskip
+
+\begin{document}
+
+\begin{tabularx}{\textwidth}{|X|X|}
+ \hline
+ Logical formula & $\mathtt{\lambda C+}$ syntax \\ 
+ \hline
+ $\forall x : A, \, B(x)$ & \verb|forall x : A, B| \\ 
+ \hline
+ $\forall x_0 : A_0, \dots, \forall x_n : A_n, \, B(x)$ & 
+  \verb|forall (x_0 : A_0), ... forall (x_n : A_n), B| \newline
+  \verb|forall (x_0 : A_0) ... (x_n : A_n), B |
+  \\ 
+ \hline
+ $A \rightarrow B$  & \texttt{A -> B} \\ 
+ \hline
+ $A \wedge B$ & \verb|A /\ B| \\ 
+ \hline
+ $A \vee B$ & \verb|A \/ B| \\ 
+ \hline
+ $\exists x : A, \, B(x)$ & \verb|exists x : A, B| \\ 
+ \hline
+ $\exists x_0 : A_0, \dots, \exists x_n : A_n, \, B(x)$ & 
+  \verb|exists (x_0 : A_0), ... exists (x_n : A_n), B| \newline
+  \verb|exists (x_0 : A_0) ... (x_n : A_n), B|
+  \\ 
+  \hline
+\end{tabularx}
+
+\end{document}

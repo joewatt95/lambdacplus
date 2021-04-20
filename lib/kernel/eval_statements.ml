@@ -22,7 +22,7 @@ let eval_stmt (stmt : int Ast.stmt) ctx =
     Context.get_type ctx 0, ctx
 
   | Ast.Def {var_name; binding; ascribed_type} ->
-    let var_type = 
+    let var_type =
       Typing.infer_annotation ~outer_expr:binding ctx binding ascribed_type in
     let binding = Norm.normalize ctx binding in
     let ctx =

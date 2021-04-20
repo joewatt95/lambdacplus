@@ -160,38 +160,13 @@ let rec infer ctx (expr : int Ast.expr) =
       body_type
       |> raise_err_if_index_found 1
       |> raise_err_if_index_found 0
-      (* |> Fun.tap @@ Ast.do_if_index_present 1 (fun _ -> raise Not_found)
-      |> Fun.tap @@ Ast.do_if_index_present 0 (fun _ -> raise Not_found) *)
+      (* Decrement the indices by -2 since we added 2 things to the context
+      when inferring the type of the body. *)
       |> Ast.shift (-2)
     | _ -> raise @@ Type_mismatch
             { expr=expr'; outer_expr=expr; inferred_type={expr=inferred_type; ctx}; 
               expected_type=Family "Sum" }
     end
-
-  (* | Ast.Let_pair {left_var; right_var; binding; body} ->
-    expr
-    |> infer_sigma_exn ctx 
-    |> begin 
-        function
-        | {expr=left_type; body=right_type; _} ->
-          let right_type = binding
-                           |> fun expr -> Ast.Fst expr
-                           |> Location.locate
-                           |> Norm.beta_reduce right_type
-                           |> Norm.normalize ctx 
-          in
-          let ctx = ctx
-                    |> Context.add_binding left_var ~var_type:left_type
-                    |> Context.add_binding right_var ~var_type:right_type          
-          in body
-             |> infer ctx
-             |> fun x ->
-                print_endline @@ Ast.show_expr Format.pp_print_int x;
-                print_endline @@ Context.show ctx;
-                x
-             |> Ast.shift (-2)
-       end
-  *)
 
  | Ast.Kind | Ast.Pair _ | Ast.Exists_pair _ | Ast.Fun {input_type=None; _}
  | Ast.Inl _ | Ast.Inr _ -> 

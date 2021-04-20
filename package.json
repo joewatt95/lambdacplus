@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "description": "A dependently typed language based on the Calculus of Constructions.",
   "esy": {
-    "build": [ "dune build ./bin/main.bc", "dune build ./bin/main.bc.js" ]
-  },
+    "build": [ 
+      "dune build ./bin/main.bc", 
+      "dune build ./bin/main.bc.js",
+      "dune build @doc"
+  ] },
   "dependencies": {
     "@opam/containers": ">= 3.3 < 4.0",
     "@opam/containers-data": ">= 3.3 < 4.0",
@@ -22,6 +25,7 @@
     "@opam/ocaml-lsp-server": "~1.5.0",
     "@opam/ocamlformat": "0.18.0",
     "@opam/js_of_ocaml": "~3.9.0",
+    "@opam/odoc": "~1.5.2",
     "ocaml": "~4.12.0"
   }
 }

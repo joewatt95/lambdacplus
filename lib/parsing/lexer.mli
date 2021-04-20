@@ -1,12 +1,14 @@
-(* This indicates that a syntax error occured while parsing `lexeme` at 
-   `source_loc`. *)
+(** Implementation of the lexer using Sedlex. *)
+
 exception Syntax_error of {
-  lexeme : string;
-  source_loc : Common.Location.source_loc;
+  lexeme : string; (** The lexeme that caused the error. *)
+  source_loc : Common.Location.source_loc; (** The location of the lexeme. *)
 }
+(** Indicates that a syntax error occured while parsing. *)
 
-(* Tokenize a lexer buffer. *)
 val tokenize : Sedlexing.lexbuf -> Grammar.token
+(** [Tokenize lexbuf] converts a lexbuf into a token. *)
 
-(* This constructs a Syntax_error using the given lexbuf and raises it. *)
 val raise_syntax_err : Sedlexing.lexbuf -> 'a
+(** [raise_syntax_err lexbuf] constructs a {! Syntax_error} using [lexbuf] and 
+raises it. *)

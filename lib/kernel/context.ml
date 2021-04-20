@@ -1,6 +1,6 @@
 (* Concrete implementation of the Context module.
   We use the purely functional random access list implementation as found
-  in the countainers library. *)
+  in the Containers library. *)
 
 open Containers
 open Common

@@ -1,10 +1,4 @@
 open Containers
-
-(* Implementation of subst and normalize for expressions.
-   These closely follow those found in the Types and Programming Languages book.
-   The key modification is that we now have many more kinds of binders than just
-   lambdas.
-*)
 open Common
 
 let subst from_index to_expr =
