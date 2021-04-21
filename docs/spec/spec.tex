@@ -18,7 +18,7 @@ builtin types to encode the following logical connectives as per this
 correspondence
 \footnote{
   Note that negation ($\neg$), falsity ($\bot$) and truth ($\top$) are not
-  implemented in the language.
+  implemented in the language (yet).
 }
 
 \begin{enumerate}
@@ -134,7 +134,7 @@ $f$ is surjective rather than repeatedly writing the long formula.
 
 Thus we believe that it is necessary for any practical programming language and
 proof assistant to allow users to name things.
-For this, we augment CoC with the concept of a context, aka an environment,
+For this, we augment CoC with the concept of a context (our take on an environment),
 which will be used to store typing and binding information.
 New bindings can then be added to these contexts via the \texttt{def} statement.
 
@@ -2233,7 +2233,7 @@ should not occur free in the output type that is $\tau''$.
   \info{
   Recalling the Curry-Howard correspondence, we see sum types as a way to model
   disjunction. Hence we do not see a need to allow users to construct sums out 
-  of large types like type formers found in \texttt{Kind}.
+  of large types like type constructors found in \texttt{Kind}.
   }
 
   % Also we are unsure if the logical consistency of the system can be preserved
@@ -2375,7 +2375,7 @@ We formalize the execution of programs by defining a
 Before that, we first define the notion of a configuration, which plays the
 same role as states in automata. 
 
-\subsubsection{Configuration, ie state of program}
+\subsubsection{Configuration}
 A configuration has the form
 \begin{align*}
   (\Gamma, \, \langle S_0; \, \dots; \, S_n \rangle, \, E)
@@ -2406,7 +2406,7 @@ one of these states.
 % \Downarrow \cdot$ using
 % this notion of a configuration.
 
-\subsubsection{Big step semantics for programs}
+\subsubsection{Big step transition}
 We define the big step transition relation, $\cdot \Downarrow \cdot$, via a
 new judgment form.
 
@@ -2512,7 +2512,7 @@ we obtain a transition system, given by the tuple
   (\emptyset, \, \langle S_0; \, \dots; \, S_n \rangle, \, \Type), \, F \rangle
 \end{align*}
 
-Notice how our formalization mimics the definition of an automaton.
+% Notice how our formalization mimics the definition of an automaton.
 
 \subsubsection{Output expression of evaluating a program}
 With these rules, given a user-entered program, say $\langle S_0;
@@ -2528,7 +2528,25 @@ beginning with the initial configuration and then recursively evaluating
 until we reach a final configuration.
 
 \section{Limitations and future work}
+As with any other project, $\lambda C+$ has some limitations.
+Most of them are a result of dependent type theory being a complicated subject.
+Since we are far from experts in this field, we have opted for simplicity to
+keep our semantics and implementation manageable.
+Consequently, some trade-offs had to be made.
+
+Some of these, like \cref{lack_of_strong_norm} are primarily metatheoretic in
+nature and not much of a practical concern for users.
+Others like \cref{lack_of_real_type_infer} and \cref{conflaiton_prop_type}
+unfortunately do hurt the user-friendliness of our implementation.
+
+% The limitations of the language \cref{lack_of_strong_norm} are theoretical in
+% nature and offers some avenues for future work.
+% and don't really affect the usability of our language.
+% Others like \cref{lack_of_real_type_infer} 
+
 \subsection{Lack of strong normalization and consistency}
+\label{lack_of_strong_norm}
+
 The original formulation of CoC possesses some nice properties like type
 preservation (aka subject-reduction in the literature) and strong
 normalization \cite{coc_strong_norm_kripke, coc_strong_norm_short_flexible}. 
@@ -2571,7 +2589,7 @@ sequences.
 As an example, the looping combinator from the untyped lambda calculus
  \[ (\lambda x, \, (x \, x)) \,\, (\lambda x, \, (x \, x)) \]
 is non-normalizing since we can keep beta reducing it forever.
-Thus being able to derive Girard's paradox comprises both strong normalization
+Thus being able to derive Girard's paradox compromises both strong normalization
 as well as consistency.
 
 While CoC possesses the nice properties of strong normalization and
@@ -2626,6 +2644,8 @@ We wanted a simple semantics that would allow us to implement a language that
 explores the Curry-Howard correspondence.
 As such, we were willing to make this trade off.
 
+It should be stressed that this does not have too much of an impact on the
+practical usability of the language and is more of a metatheoretic concern.
 That said, we would like to explore how to address these issues in future once
 we acquire more expertise in type theory.
 
@@ -2658,6 +2678,7 @@ them out as we were running out of time for the project.
 We would however like to come back to add these in the future.
 
 \subsection{Lack of real type inference}
+\label{lack_of_real_type_infer}
 In our static semantics, we used a bidirectional typechecking algorithm
 as in \cite{lambdapi}. While this provides a limited form of type inference,
 it is highly limited compared to the unification based methods as used in algorithms
@@ -2682,10 +2703,12 @@ $\lambda C+$ could be made less verbose by implementing some heuristics for type
 inference. This would greatly improve the user friendliness of the language.
 
 \subsection{Conflation of Prop and Type}
+\label{conflaiton_prop_type}
+
 $\lambda C+$ stays true to the Curry-Howard correspondence by happily identifying
 propositions with types.
-Unfortunately, this may be unintuitive for users who are familiar with first
-(or higher order) logic.
+Unfortunately, treating \texttt{Prop} as an abbreviation for \texttt{Type} can 
+be unintuitive for users who are familiar with first (or higher order) logic.
 
 Consider the type in the concrete syntax, \verb|exists x : A, A|, where \texttt{A}
 is some arbitrary type.
@@ -2695,24 +2718,63 @@ The issue is that the type \texttt{A} is used in 2 different ways here.
 The first use of \texttt{A} suggests that it's being used like a \textit{set}, with
 \texttt{x} being an element of it. But the second \texttt{A} suggests that it's
 being used as a \textit{proposition}.
+In other words, there are some types for which we want to think of as sets and
+others as propositions.
 
-In logic, there is a clear distinction between terms and well formed formulae,
-which belong to different syntactic categories.
-Thus formulae like $\exists x \in A, \, A$ are not well formed.
+In logic, there is a clear semantic distinction between terms 
+(which denote elements of a set) and well formed formulae (ie logical propositions).
+Formulae like $\exists x \in A, \, A$ are considered invalid.
 
 Though the Curry-Howard correspondence is able to give meaning to the type
-\verb|exists x : A, A|, this may be counter-intuitive for some users. 
+\verb|exists x : A, A|, this may be counter-intuitive. 
+Ideally, we would like to report an error to the user if such types are
+formed.
 
-Although we would like to address this, there is no easy fix for this because
-this was inherited from CoC. One way to fix this is to further stratify the
+Unfortunately, there is no easy way to address this as this is baked into
+the underlying theory of CoC.
+Indeed in the original paper that introduced CoC \cite{coc_coquand_huet},
+Coquand and Huet explain that
+\begin{quote}
+  Here, in the spirit of the so-called ``Curry-Howard isomorphism,'' 
+  [\texttt{Type}]
+  \footnote{Note that they use $*$ instead of \texttt{Type}, as is customary in the literature.}
+  must
+  be thought of as the type of all types, and the type of all propositions.
+\end{quote} 
+
+% Another downside of confliating \texttt{Prop} and \texttt{Type} is that
+% our error messages can be rather cryptic.
+% For instance, when a user gives a wrong proof for a theorem, like
+% \begin{verbatim}
+%   theorem h : forall (A : Prop) (B : Prop), A /\ B -> A :=
+%     fun A B a_and_b => snd a
+% \end{verbatim}
+
+% we simply
+% complain that there's a type mismatch in that the expression they provided has
+% a different type from the one they claimed it was supposed to have.
+% This exposes the underlying Pi and Sigma types to the user, which can be
+% overwhelming.
+% While this is perfectly acceptable according to Curry-Howard, the usability of
+% our language suffers as a result.
+% What we would ideally prefer is to o
+
+% Since we lose information about whether a type variable \texttt{A} was introduced
+% as a \texttt{Prop} or \texttt{Type}, our error messages
+
+One way to fix this is to further stratify the
 universe of sorts. In other words, we would need to split \texttt{Prop} out 
 into its own sort, giving us 3 sorts: \texttt{Prop}, \texttt{Type} and
 \texttt{Kind}.
+The typing rules would then need to be adjusted to capture the semantic difference
+between \texttt{Type} (which behaves like a universe of sets) and \texttt{Prop}
+(which behaves like a universe of logical propositions).
+The Calculus of  Inductive Constructions (CiC) \cite{intro_to_cic} which lies
+at the heart of proof assistants like Coq and Lean adopts an approach like this.
 
-The typing rules would then need to be adjusted to account for this.
-However, this would complicate our semantics and implementation and it may not
-preserve the consistency of the type system when viewed as a logical calculus.
-Thus we did not implement this.
+To avoid complicating our semantics and implementation, we chose not to
+implement this.
+However, we would like to revisit this in the future.
 
 % \section{Metatheoretic discussion}
 % \todo[inline] {TODO: flesh out this part}
