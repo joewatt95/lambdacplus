@@ -1,9 +1,10 @@
 # λC+
 ## Introduction
-λC+ is a proof assistant implementing a typed lambda calculus that brings the Curry-Howard correspondence to life. 
-At its core is an extensions of the Calculus of Constructions.
+λC+ is a proof assistant implementing a typed lambda calculus that brings the 
+Curry-Howard correspondence to life. 
+At its core is an extension of the Calculus of Constructions.
 
-Try it out [here](https://aellym0.github.io/lambdacplus/)!
+Try it out [here](https://aellym0.github.io/lambdacplus/webeditor)!
 
 Here's an example formalizing the reflexivity of implication in λC+.
 ```lean
@@ -43,8 +44,8 @@ a _proposition_.
 [structured proofs terms](https://leanprover.github.io/reference/expressions.html#structured-proofs).
 
 We hope that this helps improve the readability of proofs for those who are more
-used to traditional natural deduction proofs.
+used to traditional pen and paper proofs.
 
 ## Documentation
-To learn more about the project, please see
+To learn more about the project, head over to
 [our wiki](https://github.com/aellym0/lambdacplus/wiki/1.-Home).

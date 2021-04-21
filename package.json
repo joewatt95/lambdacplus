@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "A dependently typed language based on the Calculus of Constructions.",
   "esy": {
-    "build": [ 
+    "build": [
       "dune build ./bin/main.bc", 
       "dune build ./bin/main.bc.js",
       "dune build @doc"
@@ -12,7 +12,7 @@
     "@opam/containers": ">= 3.3 < 4.0",
     "@opam/containers-data": ">= 3.3 < 4.0",
     "@opam/iter": "~1.2.1",
-    "@opam/js_of_ocaml-ppx": "3.9.0",
+    "@opam/js_of_ocaml-ppx": "~3.9.0",
     "@opam/menhir": ">= 20210310",
     "@opam/ppx_deriving": "~5.2.1",
     "@opam/ppx_fields_conv": ">= v0.14.2",
