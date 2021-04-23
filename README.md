@@ -48,4 +48,4 @@ used to traditional pen and paper proofs.
 
 ## Documentation
 To learn more about the project, head over to
-[our wiki](https://github.com/aellym0/lambdacplus/wiki/Home).
+[our wiki](https://github.com/aellym0/lambdacplus/wiki).
