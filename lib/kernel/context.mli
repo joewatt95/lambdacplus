@@ -96,8 +96,8 @@ This is used when generating fresh variable names when unparsing expressions
 from the de bruijn AST back to the parser's AST.   
 *)
 
-val pretty_print : t -> unit
-(** [prett_print ctx] pretty prints [ctx] to [stdout].
+val pp : t -> unit
+(** [pp ctx] pretty prints [ctx] to [stdout].
 
 This is mostly for internal debugging purposes.
 *)

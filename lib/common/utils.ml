@@ -1,13 +1,9 @@
-(** This module contains general purpose utilities *)
+let rec until pred f x =
+  if pred x then x else until pred f @@ f x
 
-(** This is the same as Haskell's until *)
-let rec until pred f init =
-  match pred init with
-  | true -> init
-  | false -> until pred f @@ f init
-
-(** Useful for comparisons. *)
 let always_true _ _ = true
 
-(** Like Haskell's uncurry3 *)
 let uncurry3 f (x, y, z) = f x y z
+
+let find_first_index pred =
+  Iter.find_mapi @@ fun index elem -> if pred elem then Some index else None

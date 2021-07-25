@@ -49,17 +49,16 @@ let rec infer ctx (expr : int Ast.expr) =
 
  | Ast.App {left=fn; right=arg} ->
   let inferred_type = infer ctx fn in
-  begin
-    match inferred_type.data with
-    | Ast.Pi {expr=input_type; body=output_type; _} ->
-      check ~outer_expr:expr ctx arg input_type;
-      arg
-      |> Norm.beta_reduce output_type
-      |> Norm.normalize ctx
-    | _ -> 
-      raise @@ Type_mismatch
-        { expr=fn; outer_expr=expr; inferred_type={expr=inferred_type; ctx}; 
-          expected_type=Family "Pi"}
+  begin match inferred_type.data with
+  | Ast.Pi {expr=input_type; body=output_type; _} ->
+    check ~outer_expr:expr ctx arg input_type;
+    arg
+    |> Norm.beta_reduce output_type
+    |> Norm.normalize ctx
+  | _ -> 
+    raise @@ Type_mismatch
+      {expr=fn; outer_expr=expr; inferred_type={expr=inferred_type; ctx}; 
+       expected_type=Family "Pi"}
   end
 
  | Ast.Fun {input_var; input_type=Some input_ty; body} ->
@@ -68,7 +67,8 @@ let rec infer ctx (expr : int Ast.expr) =
   let ctx = Context.add_binding input_var ~var_type:input_ty ctx in
   let output_type = infer ctx body in
   (* What source location info should be used here? *)
-  Location.set_data expr @@ Ast.Pi {var_name=input_var; expr=input_ty; body=output_type}
+  Location.set_data expr @@ Ast.Pi 
+    {var_name=input_var; expr=input_ty; body=output_type}
 
  | Ast.Let {abstraction={var_name; expr=binding; body}; ascribed_type} ->
   let var_type = infer_annotation ~outer_expr:expr ctx binding ascribed_type in 
@@ -85,22 +85,21 @@ let rec infer ctx (expr : int Ast.expr) =
  | Ast.Fst _ | Ast.Snd _ ->
   expr
   |> infer_sigma_exn ctx
-  |> begin
-      function
-      | ({expr=left_type; body=right_type; _} : int Ast.abstraction) ->
-        match expr.data with
-        | Ast.Fst _ -> left_type
-        | Ast.Snd expr ->
-          expr
-          |> fun expr -> Ast.Fst expr
-          |> Location.locate
-          |> Norm.beta_reduce right_type
-          |> Norm.normalize ctx
+  |> begin function
+     | ({expr=left_type; body=right_type; _} : int Ast.abstraction) ->
+       match expr.data with
+       | Ast.Fst _ -> left_type
+       | Ast.Snd expr ->
+         expr
+         |> fun expr -> Ast.Fst expr
+         |> Location.locate
+         |> Norm.beta_reduce right_type
+         |> Norm.normalize ctx
 
-        (* No other cases are possible since expr came from the outer match
-        where we already guaranteed that it will be a Ast.Fst or 
-        Ast.Snd. *)
-        | _ -> assert false
+       (* No other cases are possible since expr came from the outer match
+       where we already guaranteed that it will be a Ast.Fst or 
+       Ast.Snd. *)
+       | _ -> assert false
      end
 
  | Ast.Sum {left; right} ->
@@ -110,32 +109,29 @@ let rec infer ctx (expr : int Ast.expr) =
 
  | Ast.Match {expr=expr'; inl; inr} ->
   let inferred_type = infer ctx expr' in
-  begin
-    match inferred_type.data with
-    | Sum {left; right} ->
-      let infer_match_binding ({match_var; match_body} : int Ast.match_binding) ty =
-        ctx
-        |> Context.add_binding match_var ~var_type:ty
-        |> Fun.flip infer match_body
-        (* It's important to shift the indices by -1 here to avoid an off-by-one
-        bug. This is because we added a binding to the context when inferring the
-        type of the body. *)
-        |> Ast.shift (-1)
-      in
-      (* Infer the return type in both branches. *)
-      let inl_type = infer_match_binding inl left in
-      let inr_type = infer_match_binding inr right in
-      if equal_expr inl_type inr_type 
-  
-      then inl_type
-      (* then Ast.shift (-1) inl_type *)
-      else
-        let inl_type = {expr=inl_type; ctx} in
-        let inr_type = {expr=inr_type; ctx} in
-        raise @@ Type_mismatch_in_match { outer_expr=expr; inl_type; inr_type }
-    | _ -> raise @@ Type_mismatch
-            { expr=expr'; outer_expr=expr; inferred_type={expr=inferred_type; ctx}; 
-              expected_type=Family "Sum" }
+  begin match inferred_type.data with
+  | Sum {left; right} ->
+    let infer_match_binding ({match_var; match_body} : int Ast.match_binding) ty =
+      ctx
+      |> Context.add_binding match_var ~var_type:ty
+      |> Fun.flip infer match_body
+      (* It's important to shift the indices by -1 here to avoid an off-by-one
+      bug. This is because we added a binding to the context when inferring the
+      type of the body. *)
+      |> Ast.shift (-1)
+    in
+    (* Infer the return type in both branches. *)
+    let inl_type = infer_match_binding inl left in
+    let inr_type = infer_match_binding inr right in
+    if equal_expr inl_type inr_type
+    then inl_type
+    else 
+      let inl_type = {expr=inl_type; ctx} in
+      let inr_type = {expr=inr_type; ctx} in
+      raise @@ Type_mismatch_in_match { outer_expr=expr; inl_type; inr_type }
+  | _ -> raise @@ Type_mismatch
+          {expr=expr'; outer_expr=expr; inferred_type={expr=inferred_type; ctx}; 
+           expected_type=Family "Sum"}
   end
 
   | Ast.Exists_elim {expr=expr'; witness_var; witness_cert; body; _} ->
@@ -149,9 +145,8 @@ let rec infer ctx (expr : int Ast.expr) =
       let body_type = infer ctx body in
       let raise_err_if_index_found index = 
         let free_var = Context.index_to_var_name ctx index in
-        let raise_free_var_err _ = raise @@ 
-          Type_contains_free_var { outer_expr=expr; free_var; 
-                                   inferred_type={expr=body_type; ctx} }  
+        let raise_free_var_err _ = raise @@ Type_contains_free_var
+          {outer_expr=expr; free_var; inferred_type={expr=body_type; ctx}}  
         in
         raise_free_var_err
         |> Ast.do_if_index_present index
@@ -169,8 +164,7 @@ let rec infer ctx (expr : int Ast.expr) =
     end
 
  | Ast.Kind | Ast.Pair _ | Ast.Exists_pair _ | Ast.Fun {input_type=None; _}
- | Ast.Inl _ | Ast.Inr _ -> 
-  raise @@ Cannot_infer_type expr
+ | Ast.Inl _ | Ast.Inr _ -> raise @@ Cannot_infer_type expr
 
 (* This used to ensure that the expression that Fst and Snd are applied to is
 really a Sigma. *)
@@ -182,8 +176,8 @@ and infer_sigma_exn ctx (outer_expr : int Ast.expr) =
     |  Sigma abstraction -> abstraction
     | _ -> 
       raise @@ Type_mismatch 
-        { outer_expr; expr; inferred_type={expr=inferred_type; ctx}; 
-          expected_type=Family "Sigma" }
+        {outer_expr; expr; inferred_type={expr=inferred_type; ctx}; 
+         expected_type=Family "Sigma"}
     end
 
   (* This case should never occur since this function is only used to infer
@@ -202,8 +196,8 @@ and infer_annotation ~outer_expr ctx expr ascribed_type =
 (* If `ascribed_type` is Some, check that it's well formed and that `expr` has
 that type. Otherwise, try to infer the type of `expr` from `ctx` directly. *)
   ascribed_type
-  |> Option.map @@ begin
-    fun (ascribed_type : int Ast.expr) ->
+  |> Option.map @@ 
+    begin fun (ascribed_type : int Ast.expr) ->
       match ascribed_type.data with
       (* Here we allow for Kind to be in annotations. *)
       | Ast.Kind ->
@@ -227,8 +221,7 @@ and check ~outer_expr ctx expr expected_type =
 
   | Ast.Pair {left; right}, Ast.Sigma abstraction
   | Ast.Exists_pair {left; right}, Ast.Exists abstraction ->
-    begin
-    match abstraction with {expr=left_type; body=right_type; _} ->
+    begin match abstraction with {expr=left_type; body=right_type; _} ->
       check ctx ~outer_expr left left_type;
       right_type
       |> Fun.flip Norm.beta_reduce left
@@ -247,8 +240,8 @@ and check ~outer_expr ctx expr expected_type =
     if not @@ equal_expr inferred_type expected_type
     then
       let expected_type = Exact expected_type in
-      raise @@ Type_mismatch { expr; inferred_type={expr=inferred_type; ctx}; 
-                               expected_type; outer_expr }
+      raise @@ Type_mismatch
+        {expr; inferred_type={expr=inferred_type; ctx}; expected_type; outer_expr}
 
 (* Check if `expr` is a well-formed type wrt `ctx`. In other words, this checks
   if the type of expr is Type or Kind. If so, we return it. Otherwise, we throw

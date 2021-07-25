@@ -5,19 +5,16 @@
 open Containers
 open Common
 
-(* For convenience *)
-(* module BFT = BatFingerTree *)
-
 type entry = {
-  var_name : string; (* The name of the variable*)
-  var_type : int Ast.expr option; (* The type of the variable*)
-  binding  : int Ast.expr option (* The binding of the varaiable *)
+  var_name : string;               (* The name of the variable*)
+  var_type : int Ast.expr option;  (* The type of the variable*)
+  binding  : int Ast.expr option   (* The binding of the varaiable *)
 } [@@deriving show, fields]
+(* Derive pretty printers and accessors for the fields of this record type. *)
 
 type t = entry CCRAL.t
 
-let pretty_print =
-  CCRAL.pp pp_entry @@ Format.formatter_of_out_channel stdout 
+let pp = CCRAL.pp pp_entry @@ Format.formatter_of_out_channel stdout
 
 let empty = CCRAL.empty
 
@@ -35,14 +32,9 @@ let add_name_bindings =
 given by `str` *)
 let var_name_to_index ctx str =
   ctx
-  (* Map all indices where the variable name is not str to -1 *)
-  |> CCRAL.mapi 
-      ~f:(fun index {var_name; _} ->
-            if Stdlib.(var_name = str) then index else -1) 
-  (* Remove all indices that are -1 *)
-  |> CCRAL.filter ~f:((<=) 0)
-  |> Fun.flip CCRAL.get 0
-  
+  |> CCRAL.to_iter
+  |> Utils.find_first_index @@ Fun.(var_name %> Stdlib.(=) str)
+
 (* Uses accessor_fn to access a property of the entry record at a given
    index of a context. *)
 let get_from_index (ctx : t) (accessor_fn : entry -> 'a) (index : int) : 'a = 
@@ -93,6 +85,6 @@ let get_type ctx index =
   |> Option.get_lazy @@ fun _ -> raise Not_found
 
 let is_var_name_bound var_name ctx =
-    ctx 
-    |> var_name_to_index var_name
-    |> Option.is_some
+  ctx
+  |> var_name_to_index var_name
+  |> Option.is_some

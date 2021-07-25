@@ -3,6 +3,6 @@
  (public_name lambdacplus.kernel)
  (preprocess 
   (pps ppx_deriving.show ppx_fields_conv))
- (libraries containers containers-data ppx_deriving
+ (libraries containers containers-data iter ppx_deriving
             parsing common)
 )

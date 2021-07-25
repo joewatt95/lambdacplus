@@ -1,7 +1,7 @@
 {
   "name": "lambdacplus",
   "version": "0.1.0",
-  "description": "A dependently typed language based on the Calculus of Constructions.",
+  "description": "A proof assistant based on the Calculus of Constructions.",
   "esy": {
     "build": [
       "dune build ./bin/main.bc", 
@@ -9,23 +9,24 @@
       "dune build @doc"
   ] },
   "dependencies": {
-    "@opam/containers": ">= 3.3 < 4.0",
-    "@opam/containers-data": ">= 3.3 < 4.0",
+    "@opam/containers": ">= 3.3 <= 3.4",
+    "@opam/containers-data": ">= 3.3 <= 3.4",
     "@opam/iter": "~1.2.1",
     "@opam/js_of_ocaml-ppx": "~3.9.0",
-    "@opam/menhir": ">= 20210310",
+    "@opam/menhir": ">= 20201216 <= 20210419",
     "@opam/ppx_deriving": "~5.2.1",
-    "@opam/ppx_fields_conv": ">= v0.14.2",
-    "@opam/sedlex": ">= 2.3",
-    "@opam/visitors": ">= 20210316",
+    "@opam/ppx_fields_conv": ">= v0.14.2 < v0.15.0",
+    "@opam/sedlex": ">= 2.3 < 3.0",
+    "@opam/visitors": ">= 20210316 <= 20210608",
     "ocaml": "~4.12.0"
   },
   "devDependencies": {
-    "@opam/dune": "~2.8.5",
-    "@opam/ocaml-lsp-server": "~1.5.0",
-    "@opam/ocamlformat": "0.18.0",
+    "@opam/dune": ">= 2.8.0 <= 2.9.0",
+    "@opam/ocaml-lsp-server": ">= 1.5.0 <= 1.7.0",
+    "@opam/ocamlformat": ">= 0.18.0 <= 0.19.0",
     "@opam/js_of_ocaml": "~3.9.0",
     "@opam/odoc": "~1.5.2",
+    "@opam/utop": "~2.8.0",
     "ocaml": "~4.12.0"
   }
 }

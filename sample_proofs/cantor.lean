@@ -20,7 +20,7 @@ axiom eq_refl : forall (X : Type) (x : X), eq X x x
 axiom eq_symm : forall (X : Type) (x : X) (y : X), (eq X x y) -> (eq X y x)
 
 -- Transitivity of =
-axiom eq_trans : 
+axiom eq_trans :
     forall (X : Type) (x : X) (y : X) (z : X),
         (eq X x y) -> (eq X y z) -> (eq X x z)
 

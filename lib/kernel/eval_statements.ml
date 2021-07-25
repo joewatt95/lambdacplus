@@ -25,12 +25,13 @@ let eval_stmt (stmt : int Ast.stmt) ctx =
     let var_type =
       Typing.infer_annotation ~outer_expr:binding ctx binding ascribed_type in
     let binding = Norm.normalize ctx binding in
-    let ctx =
-      Context.add_binding var_name ~var_type ~binding ctx 
+    let ctx = Context.add_binding var_name ~var_type ~binding ctx 
     in
     (* Here we also need to shift all the indices in the binding and type before
     we can return them. *)
-    let expr = 0 |> Context.get_binding ctx |> Option.get_exn in 
+    let expr = 0 |> Context.get_binding ctx 
+                 |> Option.get_exn_or "" 
+    in
     let ascribed_type = Context.get_type ctx 0 in
     Location.locate @@ Ast.Ascription {ascribed_type; expr}, ctx
 

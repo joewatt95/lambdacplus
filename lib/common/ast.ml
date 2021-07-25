@@ -1,5 +1,3 @@
-open Containers
-
 (** This module contains the AST of λC+. 
 
 The AST is parameterized over ['a], which denotes the type of data stored in 
@@ -65,16 +63,18 @@ and 'a raw_expr =
   | Type | Kind
  
   | Var of ('a [@visitors.opaque])
-  (** Variables
+  (** Variables:
   ['a] is [string] for the parser's AST and [int] for the internal AST using de
   bruijn indices. *)
 
   (* Pi types *)
-  | Pi of 'a abstraction (** Pi ({! var_name} : {! expr}), {! body} *) 
-  | Fun of
-    { input_var : (string [@visitors.opaque] [@equal Utils.always_true]);
+  | Pi of 'a abstraction 
+  (** Pi ({! var_name} : {! expr}), {! body} *) 
+  | Fun of {
+      input_var : (string [@visitors.opaque] [@equal Utils.always_true]);
       input_type : ('a expr option [@visitors.opaque] [@equal Utils.always_true]);
-      body : 'a expr }
+      body : 'a expr
+    }
   (** Represents:
     - fun [input_var] => [body]
     - fun ([input_var] : [input_type]) => [body]
@@ -100,11 +100,12 @@ and 'a raw_expr =
   | Exists of 'a abstraction
   (** Existential type: exists ({! var_name} : {! expr}), {! body} *)
 
-  | Exists_elim of 
-    { expr : 'a expr; 
+  | Exists_elim of {
+      expr : 'a expr; 
       witness_var : (string [@visitors.opaque] [@equal Utils.always_true]);
-      witness_cert: (string [@visitors.opaque] [@equal Utils.always_true]);
-      body : 'a expr }
+      witness_cert : (string [@visitors.opaque] [@equal Utils.always_true]);
+      body : 'a expr
+    }
   (** Existential elimination: 
 
   let \{{! witness_var}, {! witness_cert}\} := {! expr} in {! body} *)
@@ -119,10 +120,11 @@ and 'a raw_expr =
   | Inr of 'a expr
   (** Right constructor for sum type: inr {! expr} *)
 
-  | Match of 
-    { expr : 'a expr; 
+  | Match of {
+      expr : 'a expr; 
       inl : 'a match_binding;
-      inr : 'a match_binding }
+      inr : 'a match_binding
+    }
   (** Sum eliminator: 
 
 match expr with
@@ -134,14 +136,18 @@ match expr with
 end
  *)
  
-  (* Optional type ascriptons *)
-  | Ascription of { expr : 'a expr; ascribed_type : 'a expr }
+  | Ascription of {
+      expr : 'a expr;
+      ascribed_type : 'a expr
+    }
   (** Type ascriptions:
-  ({! expr} : {! ascribed_type})*)
+  ({! expr} : {! ascribed_type})
+  *)
 
-  | Let of 
-    { abstraction : 'a abstraction; 
-      ascribed_type : ('a expr option [@visitors.opaque]) }
+  | Let of {
+      abstraction : 'a abstraction; 
+      ascribed_type : ('a expr option [@visitors.opaque])
+    }
   (** Local let binding:
   - let {! var_name} := {! expr} in {! body}
   - let {! var_name} : {! ascribed_type} := {! expr} in {! body}
@@ -339,21 +345,28 @@ wrapped with a source location.
 *)
 
 and 'a raw_stmt =
-  | Def of {var_name : string; 
-            binding : 'a expr; 
-            ascribed_type : ('a expr option [@visitors.opaque] [@Utils.always_true])}
+  | Def of {
+    var_name : string; 
+    binding : 'a expr; 
+    ascribed_type : ('a expr option [@visitors.opaque] [@Utils.always_true])
+    }
   (** Def statement:
   - def [var_name] := [binding] 
   - def [var_name] : [ascribed_type] := [binding] 
   *)
 
-  | Axiom of {var_name : string; var_type : 'a expr}
+  | Axiom of {
+    var_name : string; 
+    var_type : 'a expr
+    }
   (** Axiom statement: 
-  - axiom [var_name] : [var_type] *)
+  - axiom [var_name] : [var_type]
+  *)
 
   | Check of 'a expr
   (** Check statement:
-  - check {! expr} *)
+  - check {! expr}
+  *)
 
   | Eval of 'a expr
   (** Eval statement:
