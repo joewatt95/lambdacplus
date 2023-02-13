@@ -4,7 +4,7 @@
 Curry-Howard correspondence to life. 
 At its core is an extension of the Calculus of Constructions.
 
-Try it out [here](https://aellym0.github.io/lambdacplus/webeditor)!
+Try it out [here](https://joewatt95.github.io/lambdacplus/webeditor)!
 
 Here's an example formalizing the reflexivity of implication in λC+.
 ```lean
